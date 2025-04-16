@@ -10,6 +10,16 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-white text-gray-800 font-sans">
+
+<nav class="w-full bg-white shadow fixed top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-center space-x-2">
+    <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="index.html">首頁</a>
+    <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="experience.html">活動體驗</a>
+    <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="classes.html">銷售中課程</a>
+    <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="contact.html">聯絡我們</a>
+  </div>
+</nav>
+
 <!-- Hero 區塊 -->
 <section class="relative h-screen bg-cover bg-center pt-24" style="background-image: url('./images/showu-hero.png')">
   <div class="absolute inset-0 bg-white bg-opacity-60 flex items-center justify-center">
@@ -21,6 +31,7 @@
     </div>
   </div>
 </section>
+
 <!-- 服務介紹 -->
 <section class="py-16 px-6 md:px-16 bg-gray-50" id="services">
   <h2 class="text-3xl font-bold text-center mb-12">我們的服務</h2>
@@ -47,6 +58,7 @@
     </div>
   </div>
 </section>
+
 <!-- Lightbox -->
 <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
   <div class="relative">
@@ -54,6 +66,7 @@
     <img id="lightbox-img" src="" alt="服務圖片" class="max-w-[90vw] max-h-[80vh] rounded shadow-xl">
   </div>
 </div>
+
 <script>
   function openLightbox(imgSrc) {
     document.getElementById('lightbox-img').src = imgSrc;
@@ -67,7 +80,8 @@
     if (e.target.id === 'lightbox') closeLightbox();
   });
 </script>
-<!-- Footer 區塊 -->
+
+<!-- Footer -->
 <footer class="bg-white border-t mt-16 py-10 px-6 md:px-16 text-center space-y-4">
   <p class="text-lg font-semibold">聯絡信箱：<a class="text-blue-600 hover:underline" href="mailto:showujapon@gmail.com">showujapon@gmail.com</a></p>
   <div class="flex justify-center mt-4">
@@ -77,5 +91,3 @@
 </footer>
 </body>
 </html>
-
-<!-- force commit: 2025-04-16T05:15:45.759771 -->
