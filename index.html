@@ -80,6 +80,27 @@
   </div>
   <p class="text-sm text-gray-500 mt-4">© 2025 秀優 ShowU, Inc.</p>
 </footer>
+<!-- Lightbox -->
+<div id="lightbox" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden">
+  <div class="relative">
+    <button onclick="closeLightbox()" class="absolute top-2 right-2 text-white text-3xl font-bold">&times;</button>
+    <img id="lightbox-img" src="" alt="服務圖片" class="max-w-[90vw] max-h-[80vh] rounded shadow-xl">
+  </div>
+</div>
+
+<script>
+  function openLightbox(imgSrc) {
+    document.getElementById('lightbox-img').src = imgSrc;
+    document.getElementById('lightbox').classList.remove('hidden');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.add('hidden');
+    document.getElementById('lightbox-img').src = '';
+  }
+  document.getElementById('lightbox').addEventListener('click', function(e) {
+    if (e.target.id === 'lightbox') closeLightbox();
+  });
+</script>
 
 </body>
 </html>
