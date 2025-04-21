@@ -8,33 +8,15 @@
   <meta name="keywords" content="日本遊學, 熟齡遊學, 京都文化體驗, 滑雪課程, 國際貿易, 秀優, ShowU">
   <link rel="icon" href="favicon.ico" />
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-  <style>
-    .submenu.hidden {
-      display: none;
-    }
-  </style>
 </head>
 <body class="bg-white text-gray-800 font-sans">
 
-<!-- ☰ 展開選單按鈕 -->
-<div class="fixed top-3 left-3 z-50">
-  <button onclick="toggleMenu()" class="text-2xl font-bold bg-gray-800 text-white px-4 py-2 rounded">☰</button>
-</div>
-
-<!-- 漢堡選單內容 -->
-<nav id="mobileMenu" class="hidden fixed top-16 left-3 bg-white border shadow-lg z-50 w-64 p-4 rounded space-y-2">
-  <a class="block text-gray-800 hover:text-blue-600" href="index.html">🏠 首頁</a>
-  <a class="block text-gray-800 hover:text-blue-600" href="experience.html">🎎 活動體驗</a>
-  <a class="block text-gray-800 hover:text-blue-600" href="classes.html">📚 銷售中課程</a>
-  <a class="block text-gray-800 hover:text-blue-600" href="senior.html">👵 熟齡遊學</a>
-  <a class="block text-gray-800 hover:text-blue-600" href="contact.html">📩 聯絡我們</a>
-</nav>
-
-<!-- 原本的橫向導覽列 -->
-<nav class="w-full bg-white shadow fixed top-0 z-40">
+<!-- 原本的橫向導覽列（已新增「熟齡遊學」） -->
+<nav class="w-full bg-white shadow fixed top-0 z-50">
   <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-center space-x-2">
     <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="experience.html">活動體驗</a>
     <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="classes.html">銷售中課程</a>
+    <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="senior.html">熟齡遊學</a>
     <a class="bg-gray-800 text-white px-4 py-2 rounded whitespace-nowrap" href="contact.html">聯絡我們</a>
   </div>
 </nav>
@@ -98,10 +80,6 @@
   document.getElementById('lightbox').addEventListener('click', function(e) {
     if (e.target.id === 'lightbox') closeLightbox();
   });
-
-  function toggleMenu() {
-    document.getElementById('mobileMenu').classList.toggle('hidden');
-  }
 </script>
 
 <!-- Footer -->
