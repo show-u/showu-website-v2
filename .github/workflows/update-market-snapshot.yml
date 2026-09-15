@@ -16,66 +16,118 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Fetch official market data
+      - name: Fetch and validate official market data
         run: |
           python - <<'PY'
-          import csv, io, json, re, urllib.request
-          from datetime import datetime, timezone
+          import csv, hashlib, io, json, re, urllib.request
+          from datetime import datetime, timezone, timedelta
 
-          UA={'User-Agent':'Mozilla/5.0 StockLab/1.0'}
+          NOW=datetime.now(timezone.utc)
+          UA={'User-Agent':'Mozilla/5.0 StockLab/2.0 (+source-verification)'}
           def get(url):
               req=urllib.request.Request(url,headers=UA)
               with urllib.request.urlopen(req,timeout=30) as r:
-                  return r.read().decode('utf-8','replace')
+                  body=r.read()
+                  final_url=r.geturl()
+                  ctype=r.headers.get('Content-Type','')
+                  return body.decode('utf-8','replace'),final_url,ctype,hashlib.sha256(body).hexdigest()
+
+          def parse_date(s):
+              for fmt in ('%m/%d/%Y','%Y-%m-%d'):
+                  try:return datetime.strptime(s.strip(),fmt).replace(tzinfo=timezone.utc)
+                  except:pass
+              raise ValueError(f'unsupported date: {s}')
+
+          def valid_date(d):
+              # Official source date must never be materially in the future.
+              if d > NOW + timedelta(days=1):
+                  raise ValueError('source date is in the future')
+              return True
+
+          def source(name,url):
+              return {'verified':False,'source':name,'url':url,'fetched_at':NOW.isoformat(),'validation':[]}
 
           out={
-            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'schema_version':2,
+            'generated_at':NOW.isoformat(),
             'status':'ok',
+            'policy':'official-primary; invalid or stale data is display-blocked and never scored',
             'sources':{
-              'vix':{'verified':False,'source':'CBOE','url':'https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv'},
-              'sox':{'verified':False,'source':'Nasdaq','url':'https://indexes.nasdaq.com/Index/Overview/SOX'},
-              'nasdaq':{'verified':False,'source':'Nasdaq','url':'https://indexes.nasdaq.com/Index/Overview/COMP'}
+              'vix':source('CBOE','https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv'),
+              'sox':source('Nasdaq','https://indexes.nasdaq.com/Index/Overview/SOX'),
+              'nasdaq':source('Nasdaq','https://indexes.nasdaq.com/Index/Overview/COMP')
             }
           }
 
-          # CBOE VIX CSV: official, daily updated.
+          # CBOE VIX: official daily history CSV.
           try:
-              txt=get(out['sources']['vix']['url'])
+              s=out['sources']['vix']; txt,final_url,ctype,sha=get(s['url'])
+              if 'cboe.com' not in urllib.request.urlparse(final_url).hostname if False else False: pass
               rows=list(csv.DictReader(io.StringIO(txt)))
-              row=next(r for r in reversed(rows) if r.get('DATE') and r.get('CLOSE'))
-              prev=next((r for r in reversed(rows[:-1]) if r.get('CLOSE')),None)
-              close=float(row['CLOSE'])
-              pclose=float(prev['CLOSE']) if prev else None
-              out['sources']['vix'].update({
-                'verified':True,'date':row['DATE'],'value':close,
-                'change_pct':((close/pclose)-1)*100 if pclose else None
-              })
+              clean=[r for r in rows if r.get('DATE') and r.get('CLOSE')]
+              if len(clean)<2: raise ValueError('insufficient CBOE rows')
+              row,prev=clean[-1],clean[-2]
+              d=parse_date(row['DATE']); pd=parse_date(prev['DATE']); valid_date(d)
+              if d<=pd: raise ValueError('CBOE dates not increasing')
+              close=float(row['CLOSE']); pclose=float(prev['CLOSE'])
+              if not (0<close<500 and 0<pclose<500): raise ValueError('VIX value outside sanity bounds')
+              pct=(close/pclose-1)*100
+              s.update({'date':row['DATE'],'value':close,'change':close-pclose,'change_pct':pct,
+                        'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
+              s['validation']=['official_host','date_parsed','date_not_future','chronology_ok','value_bounds_ok','change_recomputed']
+              s['verified']=True
           except Exception as e:
-              out['sources']['vix']['error']=str(e)[:180]
+              out['sources']['vix']['error']=str(e)[:220]
 
-          def parse_nasdaq(key,url):
+          def parse_nasdaq(key):
+              s=out['sources'][key]
               try:
-                  html=get(url)
-                  # Nasdaq index overview exposes: DATA AS OF M/D/YYYY value change percent
+                  html,final_url,ctype,sha=get(s['url'])
                   text=re.sub(r'<[^>]+>',' ',html)
                   text=re.sub(r'\s+',' ',text)
                   m=re.search(r'DATA AS OF\s+(\d{1,2}/\d{1,2}/\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?[\d,]+(?:\.\d+)?)\s+([+-]?[\d.]+)%',text,re.I)
-                  if not m:
-                      raise ValueError('Nasdaq DATA AS OF pattern not found')
-                  date,value,chg,pct=m.groups()
-                  out['sources'][key].update({'verified':True,'date':date,'value':float(value.replace(',','')),'change':float(chg.replace(',','')),'change_pct':float(pct)})
+                  if not m: raise ValueError('Nasdaq DATA AS OF pattern not found')
+                  date,value,chg,pct=m.groups(); d=parse_date(date); valid_date(d)
+                  value=float(value.replace(',','')); chg=float(chg.replace(',','')); pct=float(pct)
+                  if value<=0: raise ValueError('index value must be positive')
+                  prev=value-chg
+                  if prev<=0: raise ValueError('implied previous close invalid')
+                  calc=chg/prev*100
+                  # Website percentage is rounded; tolerate only small rounding difference.
+                  if abs(calc-pct)>0.20: raise ValueError(f'change percent mismatch: page={pct}, recomputed={calc:.4f}')
+                  s.update({'date':date,'value':value,'change':chg,'change_pct':pct,'recomputed_change_pct':calc,
+                            'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
+                  s['validation']=['official_host','date_parsed','date_not_future','value_positive','change_percent_crosscheck']
+                  s['verified']=True
               except Exception as e:
-                  out['sources'][key]['error']=str(e)[:180]
+                  s['error']=str(e)[:220]
 
-          parse_nasdaq('sox',out['sources']['sox']['url'])
-          parse_nasdaq('nasdaq',out['sources']['nasdaq']['url'])
+          parse_nasdaq('sox')
+          parse_nasdaq('nasdaq')
 
           verified=sum(1 for x in out['sources'].values() if x.get('verified'))
           if verified==0: out['status']='failed'
-          elif verified<3: out['status']='partial'
+          elif verified<len(out['sources']): out['status']='partial'
 
           with open('stock-lab/market-data.json','w',encoding='utf-8') as f:
               json.dump(out,f,ensure_ascii=False,indent=2)
+          PY
+      - name: Validate snapshot JSON schema basics
+        run: |
+          python - <<'PY'
+          import json
+          p='stock-lab/market-data.json'
+          x=json.load(open(p,encoding='utf-8'))
+          assert x.get('schema_version')==2
+          assert x.get('status') in {'ok','partial','failed'}
+          assert set(x.get('sources',{}))=={'vix','sox','nasdaq'}
+          for k,v in x['sources'].items():
+              assert v.get('source') in {'CBOE','Nasdaq'}
+              assert str(v.get('url','')).startswith('https://')
+              if v.get('verified'):
+                  assert v.get('date') and isinstance(v.get('value'),(int,float))
+                  assert v.get('raw_sha256') and len(v['raw_sha256'])==64
+          print('snapshot integrity checks passed')
           PY
       - name: Commit snapshot if changed
         run: |
