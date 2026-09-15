@@ -53,18 +53,16 @@ jobs:
               z=stocks.setdefault(c,{});z['market']=market;ind=str(val(x,['產業別','產業類別','Industry','IndustryName','產業別名稱']) or '').strip()
               if ind:z['industry']=ind
           tw=get('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&selectType=ALL') or {}
-          # TWSE response contains multiple field/data tables. Select the per-security table by headers, not table position.
           for fk,fields in list(tw.items()):
             if not fk.startswith('fields') or not isinstance(fields,list):continue
             suffix=fk[6:];rows=tw.get('data'+suffix)
             if not isinstance(rows,list):continue
             heads=[re.sub('<[^>]+>','',str(x)).replace('\n','').replace(' ','') for x in fields]
             if not any('代號' in x for x in heads) or not any('融資' in x for x in heads) or not any('融券' in x for x in heads):continue
-            # The detailed table is grouped: code,name, margin buy/sell/cash/prev/today/limit, short buy/sell/return/prev/today/limit,...
             for r in rows:
               c=code(r)
               if not re.fullmatch(r'\d{4}',c) or len(r)<14:continue
-              z=stocks.setdefault(c,{});mp,mc,sp,sc=num(r[5]),num(r[6]),num(r[12]),num(r[13]);a,b=chg(mp,mc),chg(sp,sc)
+              z=stocks.setdefault(c,{});mp,mc,sp,sc=num(r[5]),num(r[6]),num(r[11]),num(r[12]);a,b=chg(mp,mc),chg(sp,sc)
               if a is not None:z['margin_change_pct']=a
               if b is not None:z['short_change_pct']=b
               note=str(r[-1]) if r else ''
@@ -89,9 +87,10 @@ jobs:
           otc=get('https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index') or [];market={'otc_state':'unavailable'}
           if otc:
             x=otc[0];d=num(val(x,['ChangePercent','漲跌幅','漲跌百分比','Change']));market={'otc_state':'偏多' if d is not None and d>0 else '偏空' if d is not None and d<0 else '震盪' if d is not None else '已取得','otc_change':d,'otc_close':num(val(x,['Close','ClosingIndex','收盤指數','指數']))}
-          out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'official-derived','profile_status':profiles,'market':market,'stocks':stocks}
+          coverage={'industry':sum('industry'in z for z in stocks.values()),'margin':sum('margin_change_pct'in z for z in stocks.values()),'short':sum('short_change_pct'in z for z in stocks.values()),'attention':sum(bool(z.get('attention')) for z in stocks.values()),'disposition':sum(bool(z.get('disposition')) for z in stocks.values())}
+          out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'official-derived','profile_status':profiles,'market':market,'coverage':coverage,'stocks':stocks}
           json.dump(out,open('stock-lab/taiwan-factors.json','w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
-          print('stocks',len(stocks),'margin',sum('margin_change_pct'in z for z in stocks.values()),'short',sum('short_change_pct'in z for z in stocks.values()),'attention',sum(bool(z.get('attention')) for z in stocks.values()),'disposition',sum(bool(z.get('disposition')) for z in stocks.values()))
+          print('stocks',len(stocks),'coverage',coverage)
           PY
       - name: Validate derived factor file
         run: |
@@ -99,10 +98,11 @@ jobs:
           import json
           x=json.load(open('stock-lab/taiwan-factors.json',encoding='utf-8'));s=x['stocks']
           assert x['schema_version']==2 and x['source']=='official-derived';assert len(s)>=100
-          assert sum('margin_change_pct' in z for z in s.values())>=50
-          assert sum('short_change_pct' in z for z in s.values())>=20
+          assert x.get('coverage',{}).get('industry',0)>=100
+          assert x.get('coverage',{}).get('margin',0)>=50
+          assert x.get('coverage',{}).get('short',0)>=20
           assert 'otc_state' in x['market']
-          print('Taiwan v2 factors valid',len(s))
+          print('Taiwan v2 factors valid',len(s),x['coverage'])
           PY
       - name: Commit factor file
         run: |
