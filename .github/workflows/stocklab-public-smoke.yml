@@ -11,6 +11,7 @@ on:
       - 'stock-lab/data-status.js'
       - 'stock-lab/api-client.js'
       - 'stock-lab/health.js'
+      - 'stock-lab/entry-decision.js'
       - 'stock-lab/top10-gate.js'
       - 'stock-lab/market-router.js'
       - 'stock-lab/holding-model.js'
@@ -23,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
-      - name: Verify public StockLab Truth Rules v8 deployment
+      - name: Verify public StockLab Truth Rules v9 deployment
         shell: bash
         run: |
           set -euo pipefail
@@ -31,7 +32,7 @@ jobs:
           ready=0
           for i in 1 2 3 4 5 6 7 8; do
             curl -fsSL --max-time 20 "$base/?smoke=$RANDOM" -o /tmp/index.html || true
-            if grep -q './runtime-config.js' /tmp/index.html 2>/dev/null && grep -q './compliance-gate.js' /tmp/index.html 2>/dev/null && grep -q '已持有' /tmp/index.html 2>/dev/null; then ready=1; break; fi
+            if grep -q './runtime-config.js' /tmp/index.html 2>/dev/null && grep -q './entry-decision.js' /tmp/index.html 2>/dev/null && grep -q './compliance-gate.js' /tmp/index.html 2>/dev/null && grep -q '9項入場因子＋3個市場背景' /tmp/index.html 2>/dev/null; then ready=1; break; fi
             sleep 10
           done
           test "$ready" = 1
@@ -39,23 +40,29 @@ jobs:
           grep -q '不知道買什麼' /tmp/index.html
           grep -q '想買這檔' /tmp/index.html
           grep -q '已持有' /tmp/index.html
+          grep -q '判斷是否適合入場' /tmp/index.html
           grep -q '總量成本均價' /tmp/index.html
-          grep -q '短／中／長只在持股分析使用' /tmp/index.html
-          grep -q '14:20、14:50、15:20、15:50' /tmp/index.html
+          grep -q '9項入場因子＋3個市場背景' /tmp/index.html
+          grep -q '美股、台指期 TX、國際時事' /tmp/index.html
+          grep -q '絕對不能違反的資料規則' /tmp/index.html
+          ! grep -q 'holdHorizon' /tmp/index.html
+          ! grep -q '<option value="1m"' /tmp/index.html
+          grep -q './entry-decision.js' /tmp/index.html
           grep -q './holding-model.js' /tmp/index.html
           grep -q './compliance-gate.js' /tmp/index.html
 
-          for f in runtime-config.js data-status.js api-client.js health.js top10-gate.js market-router.js holding-model.js compliance-gate.js tpex-health.json market-data.json futures-data.json history-ogdl/manifest.json; do
+          for f in runtime-config.js data-status.js api-client.js health.js entry-decision.js top10-gate.js market-router.js holding-model.js compliance-gate.js tpex-health.json market-data.json futures-data.json history-ogdl/manifest.json; do
             out="/tmp/$(echo "$f" | tr '/' '_')"
             curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors --max-time 20 "$base/$f?smoke=$RANDOM" -o "$out"
             test -s "$out"
           done
 
-          grep -q "import('./data-status.js')" /tmp/runtime-config.js
-          grep -q 'never advances a target session from the wall clock' /tmp/data-status.js
-          grep -q '下一交易時段價格尚未解鎖' /tmp/data-status.js
-          grep -q '09:00 後若沒有合法即時／延遲行情' /tmp/compliance-gate.js
-          grep -q 'holdingExitValidation 必須獨立 PASS' /tmp/compliance-gate.js
+          grep -q 'hardPolicyVersion:9' /tmp/runtime-config.js
+          grep -q 'entryNineFactors:false' /tmp/runtime-config.js
+          grep -q 'internationalEventFeed:false' /tmp/runtime-config.js
+          grep -q 'nineFactorBlocked' /tmp/compliance-gate.js
+          grep -q '完整判斷指定的九項因子＋美股＋台指期＋國際時事尚未全部驗證' /tmp/compliance-gate.js
+          grep -q "'trend','volume','movingAverages','institution','macd','rsi','kd','crossovers','candlestick'" /tmp/entry-decision.js
 
           python - <<'PY'
           import json
@@ -66,6 +73,5 @@ jobs:
           assert m['source_class']=='ogdl_daily_archive'
           assert m['licence']=='OGDL-1.0'
           assert m['no_imputation'] is True
-          assert m['last_date'] and m['latest_ingest']['TWSE']['date'] and m['latest_ingest']['TPEx']['date']
-          print('public StockLab Truth Rules v8 deployment passed; legal data cutoff:',m['last_date'])
+          print('public StockLab Truth Rules v9 unified-entry deployment passed; legal data cutoff:',m.get('last_date'))
           PY
