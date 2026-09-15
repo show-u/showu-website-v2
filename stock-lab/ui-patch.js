@@ -1,7 +1,7 @@
-// UX patch: three-way navigation plus exact-schema ticker/company-name resolution.
+// UX: three-way navigation plus exact-schema ticker/company-name resolution.
 (function(){
-  const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn'),horizon=document.querySelector('#horizon');
-  const holdInput=document.querySelector('#holdTicker'),holdAnalyze=document.querySelector('#holdAnalyzeBtn');
+  const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn');
+  const holdInput=document.querySelector('#holdTicker');
   const singleBtn=document.querySelector('#singleBtn'),findBtn=document.querySelector('#findBtn'),holdBtn=document.querySelector('#holdBtn');
   const singlePanel=document.querySelector('#singlePanel'),findPanel=document.querySelector('#findPanel'),holdPanel=document.querySelector('#holdPanel');
   if(singleBtn&&findBtn&&holdBtn&&singlePanel&&findPanel&&holdPanel){
@@ -10,8 +10,7 @@
     const showSingle=()=>{activate(singleBtn,singlePanel);input?.focus()};
     const showFind=()=>activate(findBtn,findPanel);
     const showHold=()=>{activate(holdBtn,holdPanel);holdInput?.focus()};
-    singleBtn.addEventListener('click',showSingle);findBtn.addEventListener('click',showFind);holdBtn.addEventListener('click',showHold);
-    if(horizon)horizon.value='buy';showFind();
+    singleBtn.addEventListener('click',showSingle);findBtn.addEventListener('click',showFind);holdBtn.addEventListener('click',showHold);showFind();
   }
   let cachePromise=null;
   const norm=s=>String(s||'').trim().replace(/\s+/g,'').toLowerCase();
@@ -33,7 +32,7 @@
     if(!m)throw Error('合法公開資料中找不到這個股票名稱或代號');return m.code;
   }
   if(input&&btn){const original=btn.onclick;btn.onclick=async function(ev){try{input.value=await resolveQuery(input.value)}catch(e){alert(e.message);return}return original&&original.call(this,ev)}}
-  if(holdInput&&holdAnalyze){holdAnalyze.addEventListener('click',async()=>{try{holdInput.value=await resolveQuery(holdInput.value)}catch(e){alert(e.message)}} ,true)}
+  window.StockLabTickerResolver={resolve:resolveQuery,loadUniverse};
   const observer=new MutationObserver(()=>{document.querySelector('#result [data-price-summary]')?.remove();document.querySelectorAll('#top10 .item').forEach(item=>item.querySelectorAll('.mini').forEach(el=>{if(el.textContent.includes('收盤 '))el.textContent=el.textContent.replace('收盤 ','最新官方收盤 ')}))});
   observer.observe(document.body,{subtree:true,childList:true});
 })();
