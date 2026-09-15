@@ -1,6 +1,6 @@
 // UX patch: tab switching, ticker/company-name search, plus explicit price presentation.
 (function(){
-  const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn');
+  const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn'),horizon=document.querySelector('#horizon');
   const singleBtn=document.querySelector('#singleBtn'),findBtn=document.querySelector('#findBtn');
   const singlePanel=document.querySelector('#singlePanel'),findPanel=document.querySelector('#findPanel');
   if(singleBtn&&findBtn&&singlePanel&&findPanel){
@@ -8,6 +8,7 @@
     const showFind=()=>{findPanel.classList.remove('hidden');singlePanel.classList.add('hidden');findBtn.classList.remove('ghost');singleBtn.classList.add('ghost');};
     singleBtn.addEventListener('click',showSingle);
     findBtn.addEventListener('click',showFind);
+    if(horizon)horizon.value='preopen';
     // Stock search is the primary entry because the five-price model is a single-stock decision tool.
     showSingle();
   }
