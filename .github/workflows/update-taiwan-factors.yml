@@ -8,129 +8,104 @@ on:
       - '.github/workflows/update-taiwan-factors.yml'
   schedule:
     - cron: '10 12 * * 1-5'
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+        with: {python-version: '3.12'}
       - name: Build derived Taiwan factors
         run: |
           python - <<'PY'
-          import json, urllib.request, re, time
-          from datetime import datetime, timezone
-          UA={'User-Agent':'StockLab-Taiwan-Factors/3.0','Accept':'application/json,text/html;q=0.8'}
-          def fetch_json(url,required=True):
-            err=None
+          import json,urllib.request,re,time
+          from datetime import datetime,timezone
+          UA={'User-Agent':'StockLab-Taiwan-Factors/3.1','Accept':'application/json,text/html;q=0.8'}
+          def get(url):
             for i in range(4):
               try:
-                req=urllib.request.Request(url,headers=UA)
-                with urllib.request.urlopen(req,timeout=60) as r:return json.loads(r.read().decode('utf-8'))
-              except Exception as e:err=e;time.sleep(i+1)
-            if required:raise RuntimeError(f'{url}: {err}')
-            return None
-          def val(o,keys):
-            for k in keys:
+                with urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=60) as r:return json.loads(r.read().decode())
+              except Exception as e:
+                if i==3:return None
+                time.sleep(i+1)
+          def val(o,ks):
+            for k in ks:
               if isinstance(o,dict) and k in o and str(o[k]).strip()!='':return o[k]
-            return None
           def num(v):
             try:return float(str(v).replace(',','').replace('%',''))
             except:return None
-          def rows_any(x):
-            if isinstance(x,list):return x
-            if not isinstance(x,dict):return []
-            for k in ('data','aaData','rows'):
-              if isinstance(x.get(k),list):return x[k]
-            for v in x.values():
-              z=rows_any(v)
-              if z:return z
-            return []
-          def code_of(x):
-            if isinstance(x,dict):return str(val(x,['公司代號','證券代號','SecuritiesCompanyCode','Code','股票代號']) or '').strip()
-            if isinstance(x,list):
-              for s in x:
-                s=str(s).strip()
-                if re.fullmatch(r'\d{4}',s):return s
+          def code(o):
+            if isinstance(o,dict):return str(val(o,['公司代號','證券代號','SecuritiesCompanyCode','Code','股票代號']) or '').strip()
+            if isinstance(o,list):
+              for x in o:
+                if re.fullmatch(r'\d{4}',str(x).strip()):return str(x).strip()
             return ''
-          def change(prev,cur):return round((cur/prev-1)*100,3) if prev not in (None,0) and cur is not None else None
-          stocks={};profile_status={}
+          def chg(p,c):return round((c/p-1)*100,3) if p not in (None,0) and c is not None else None
+          stocks={};profiles={}
           for market,url in [('TWSE','https://openapi.twse.com.tw/v1/opendata/t187ap03_L'),('TPEx','https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O')]:
-            data=fetch_json(url,False);profile_status[market]=bool(isinstance(data,list) and data)
-            for x in data or []:
-              c=code_of(x)
+            d=get(url) or [];profiles[market]=bool(d)
+            for x in d:
+              c=code(x)
               if not re.fullmatch(r'\d{4}',c):continue
-              ind=str(val(x,['產業別','產業類別','Industry','IndustryName','產業別名稱']) or '').strip();stocks.setdefault(c,{})['market']=market
-              if ind:stocks[c]['industry']=ind
-          twm=fetch_json('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&selectType=ALL',False)
-          if isinstance(twm,dict) and isinstance(twm.get('fields'),list):
-            fields=twm['fields'];ix={str(k):i for i,k in enumerate(fields)}
-            def fi(names):
-              for name in names:
-                for k,i in ix.items():
-                  if name in k:return i
-              return None
-            ci=fi(['股票代號','證券代號']);mp=fi(['融資前日餘額']);mc=fi(['融資今日餘額']);sp=fi(['融券前日餘額']);sc=fi(['融券今日餘額'])
-            for row in twm.get('data') or []:
-              if ci is None or ci>=len(row):continue
-              c=str(row[ci]).strip()
-              if not re.fullmatch(r'\d{4}',c):continue
-              z=stocks.setdefault(c,{});mchg=change(num(row[mp]) if mp is not None else None,num(row[mc]) if mc is not None else None);schg=change(num(row[sp]) if sp is not None else None,num(row[sc]) if sc is not None else None)
-              if mchg is not None:z['margin_change_pct']=mchg
-              if schg is not None:z['short_change_pct']=schg
-          tpm=fetch_json('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_margin_balance',False)
-          for x in tpm or []:
-            c=code_of(x)
+              z=stocks.setdefault(c,{});z['market']=market;ind=str(val(x,['產業別','產業類別','Industry','IndustryName','產業別名稱']) or '').strip()
+              if ind:z['industry']=ind
+          tw=get('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&selectType=ALL') or {}
+          # TWSE response contains multiple field/data tables. Select the per-security table by headers, not table position.
+          for fk,fields in list(tw.items()):
+            if not fk.startswith('fields') or not isinstance(fields,list):continue
+            suffix=fk[6:];rows=tw.get('data'+suffix)
+            if not isinstance(rows,list):continue
+            heads=[re.sub('<[^>]+>','',str(x)).replace('\n','').replace(' ','') for x in fields]
+            if not any('代號' in x for x in heads) or not any('融資' in x for x in heads) or not any('融券' in x for x in heads):continue
+            # The detailed table is grouped: code,name, margin buy/sell/cash/prev/today/limit, short buy/sell/return/prev/today/limit,...
+            for r in rows:
+              c=code(r)
+              if not re.fullmatch(r'\d{4}',c) or len(r)<14:continue
+              z=stocks.setdefault(c,{});mp,mc,sp,sc=num(r[5]),num(r[6]),num(r[12]),num(r[13]);a,b=chg(mp,mc),chg(sp,sc)
+              if a is not None:z['margin_change_pct']=a
+              if b is not None:z['short_change_pct']=b
+              note=str(r[-1]) if r else ''
+              if any(k in note for k in ('O','X','!')):z['margin_suspended']=True
+          tp=get('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_margin_balance') or []
+          for x in tp:
+            c=code(x)
             if not c:continue
-            z=stocks.setdefault(c,{})
-            mchg=change(num(val(x,['PreviousBalanceOfMarginPurchase','PreviousMarginPurchaseBalance','前日融資餘額','昨日融資餘額'])),num(val(x,['BalanceOfMarginPurchase','MarginPurchaseBalance','融資餘額','今日融資餘額','本日融資餘額'])))
-            schg=change(num(val(x,['PreviousBalanceOfShortSale','PreviousShortSaleBalance','前日融券餘額','昨日融券餘額'])),num(val(x,['BalanceOfShortSale','ShortSaleBalance','融券餘額','今日融券餘額','本日融券餘額'])))
-            if mchg is not None:z['margin_change_pct']=mchg
-            if schg is not None:z['short_change_pct']=schg
-            note=str(val(x,['Note','備註']) or '')
-            if any(k in note for k in ('O','X','!','D')):z['margin_suspended']=True
-          for url,key in [('https://www.twse.com.tw/rwd/zh/announcement/notice?response=json','attention'),('https://www.twse.com.tw/rwd/zh/announcement/punish?response=json','disposition')]:
-            data=fetch_json(url,False)
-            for row in rows_any(data):
-              c=code_of(row)
+            z=stocks.setdefault(c,{});a=chg(num(val(x,['PreviousBalanceOfMarginPurchase','PreviousMarginPurchaseBalance','前日融資餘額','昨日融資餘額'])),num(val(x,['BalanceOfMarginPurchase','MarginPurchaseBalance','融資餘額','今日融資餘額','本日融資餘額'])));b=chg(num(val(x,['PreviousBalanceOfShortSale','PreviousShortSaleBalance','前日融券餘額','昨日融券餘額'])),num(val(x,['BalanceOfShortSale','ShortSaleBalance','融券餘額','今日融券餘額','本日融券餘額'])))
+            if a is not None:z['margin_change_pct']=a
+            if b is not None:z['short_change_pct']=b
+            if any(k in str(val(x,['Note','備註']) or '') for k in ('O','X','!')):z['margin_suspended']=True
+          def mark(url,key):
+            d=get(url)
+            if isinstance(d,list):rows=d
+            elif isinstance(d,dict):rows=[];[rows.extend(v) for k,v in d.items() if k.startswith('data') and isinstance(v,list)]
+            else:rows=[]
+            for x in rows:
+              c=code(x)
               if c:stocks.setdefault(c,{})[key]=True
-          for endpoint,key in [('tpex_trading_warning_information','attention'),('tpex_disposal_information','disposition')]:
-            data=fetch_json('https://www.tpex.org.tw/openapi/v1/'+endpoint,False)
-            for x in data or []:
-              c=code_of(x)
-              if c:stocks.setdefault(c,{})[key]=True
-          otc=fetch_json('https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index',False);market={'otc_state':'unavailable'}
-          if isinstance(otc,list) and otc:
-            x=otc[0];ch=num(val(x,['ChangePercent','漲跌幅','漲跌百分比','Change']));close=num(val(x,['Close','ClosingIndex','收盤指數','指數']))
-            market={'otc_state':('偏多' if ch is not None and ch>0 else '偏空' if ch is not None and ch<0 else '震盪') if ch is not None else '已取得','otc_change':ch,'otc_close':close}
-          out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'official-derived','profile_status':profile_status,'market':market,'stocks':stocks}
-          with open('stock-lab/taiwan-factors.json','w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,separators=(',',':'))
-          print('stocks',len(stocks),'profiles',profile_status,'market',market,'margin',sum('margin_change_pct' in x for x in stocks.values()),'short',sum('short_change_pct' in x for x in stocks.values()))
+          mark('https://www.twse.com.tw/rwd/zh/announcement/notice?response=json','attention');mark('https://www.twse.com.tw/rwd/zh/announcement/punish?response=json','disposition');mark('https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information','attention');mark('https://www.tpex.org.tw/openapi/v1/tpex_disposal_information','disposition')
+          otc=get('https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index') or [];market={'otc_state':'unavailable'}
+          if otc:
+            x=otc[0];d=num(val(x,['ChangePercent','漲跌幅','漲跌百分比','Change']));market={'otc_state':'偏多' if d is not None and d>0 else '偏空' if d is not None and d<0 else '震盪' if d is not None else '已取得','otc_change':d,'otc_close':num(val(x,['Close','ClosingIndex','收盤指數','指數']))}
+          out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'official-derived','profile_status':profiles,'market':market,'stocks':stocks}
+          json.dump(out,open('stock-lab/taiwan-factors.json','w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
+          print('stocks',len(stocks),'margin',sum('margin_change_pct'in z for z in stocks.values()),'short',sum('short_change_pct'in z for z in stocks.values()),'attention',sum(bool(z.get('attention')) for z in stocks.values()),'disposition',sum(bool(z.get('disposition')) for z in stocks.values()))
           PY
       - name: Validate derived factor file
         run: |
           python - <<'PY'
           import json
-          x=json.load(open('stock-lab/taiwan-factors.json',encoding='utf-8'))
-          assert x['schema_version']==2 and x['source']=='official-derived'
-          assert isinstance(x['stocks'],dict) and len(x['stocks'])>=100
-          assert isinstance(x['market'],dict) and 'otc_state' in x['market']
-          assert sum('margin_change_pct' in z for z in x['stocks'].values())>0
-          print('Taiwan factor file valid:',len(x['stocks']))
+          x=json.load(open('stock-lab/taiwan-factors.json',encoding='utf-8'));s=x['stocks']
+          assert x['schema_version']==2 and x['source']=='official-derived';assert len(s)>=100
+          assert sum('margin_change_pct' in z for z in s.values())>=50
+          assert sum('short_change_pct' in z for z in s.values())>=20
+          assert 'otc_state' in x['market']
+          print('Taiwan v2 factors valid',len(s))
           PY
       - name: Commit factor file
         run: |
           if [ -z "$(git status --porcelain -- stock-lab/taiwan-factors.json)" ]; then echo 'No changes'; exit 0; fi
-          git config user.name 'stocklab-bot'
-          git config user.email 'stocklab-bot@users.noreply.github.com'
-          git add stock-lab/taiwan-factors.json
-          git commit -m 'update derived Taiwan market factors'
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          git config user.name stocklab-bot;git config user.email stocklab-bot@users.noreply.github.com
+          git add stock-lab/taiwan-factors.json;git commit -m 'update derived Taiwan market factors';git fetch origin main;git rebase origin/main;git push origin HEAD:main
