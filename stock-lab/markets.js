@@ -19,11 +19,20 @@ function verifiedExternal(x,key){
 }
 async function loadExternalMarket(){try{const r=await fetch('./market-data.json',{cache:'no-store'});if(!r.ok)throw Error('market-data.json unavailable');const x=await r.json();if(x.schema_version!==3)throw Error('snapshot schema invalid');if(!x.generated_at||ageDays(x.generated_at)>5)throw Error('snapshot stale');EXTERNAL_MARKET=x;return x}catch(e){EXTERNAL_MARKET={status:'unavailable',sources:{},error:String(e.message||e)};return EXTERNAL_MARKET}}
 function marketItem(label,key,x){const v=verifiedExternal(x,key);if(!v.ok)return `<div class=sourceitem><b>⚠️ ${label}</b><span class=mini>${v.why}；略過、不補值</span></div>`;const pct=x.change_pct!=null?`${x.change_pct>0?'+':''}${Number(x.change_pct).toFixed(2)}%`:'—';return `<div class=sourceitem><b>${label}</b>${fmt(x.value)}｜${pct}<br><span class=mini>${x.date}｜${x.source}</span></div>`}
+function extComponent(key){const x=EXTERNAL_MARKET?.sources?.[key],v=verifiedExternal(x,key);if(!v.ok)return{verified:false,key,state:'unknown',reason:v.why,provenance:'unavailable'};const ch=Number(x.change_pct);return{verified:true,key,state:Number.isFinite(ch)?(ch>0?'up':ch<0?'down':'flat'):'unknown',change_pct:Number.isFinite(ch)?ch:null,value:Number(x.value),date:x.date,source:x.source,provenance:'observed'}}
+function usContext(sectorFamily='general'){
+ const nasdaq=extComponent('nasdaq'),vix=extComponent('vix'),sox=extComponent('sox'),needsSox=['semiconductor','electronics'].includes(String(sectorFamily));
+ const required=needsSox?[nasdaq,vix,sox]:[nasdaq,vix],verified=required.every(x=>x.verified===true);
+ if(!verified){const miss=required.filter(x=>!x.verified).map(x=>`${x.key}:${x.reason||'未驗證'}`);return{verified:false,state:'unknown',reason:`美股必要資料未完整驗證：${miss.join('；')}`,components:{nasdaq,vix,sox},provenance:'unavailable'}}
+ let state='mixed';if(nasdaq.state==='up'&&vix.state!=='up'&&(!needsSox||sox.state==='up'))state='supportive';else if(nasdaq.state==='down'&&vix.state==='up'&&(!needsSox||sox.state==='down'))state='adverse';
+ return{verified:true,state,reason:`NASDAQ ${nasdaq.change_pct==null?'—':nasdaq.change_pct.toFixed(2)+'%'}｜VIX ${vix.change_pct==null?'—':vix.change_pct.toFixed(2)+'%'}${needsSox?`｜SOX ${sox.change_pct==null?'—':sox.change_pct.toFixed(2)+'%'}`:''}`,components:{nasdaq,vix,sox},provenance:'derived'};
+}
 const _showMarketBase=showMarket;
 showMarket=function(m){
  _showMarketBase(m);
  const target=document.querySelector('#marketDetailsBody');if(!target)return;
  let box=target.querySelector('[data-external-market]');if(!box){box=document.createElement('div');box.dataset.externalMarket='1';target.appendChild(box)}
- box.innerHTML=`<h3>國際市場觀察</h3><div class=sourcegrid>${marketItem('SOX 費城半導體','sox',EXTERNAL_MARKET?.sources?.sox)}${marketItem('NASDAQ','nasdaq',EXTERNAL_MARKET?.sources?.nasdaq)}${marketItem('VIX','vix',EXTERNAL_MARKET?.sources?.vix)}</div><div class=mini style="margin-top:8px">只作背景觀察；未通過驗證時直接略過，不改變個股或選股分數。</div>`;
+ box.innerHTML=`<h3>美股市場觀察</h3><div class=sourcegrid>${marketItem('SOX 費城半導體','sox',EXTERNAL_MARKET?.sources?.sox)}${marketItem('NASDAQ','nasdaq',EXTERNAL_MARKET?.sources?.nasdaq)}${marketItem('VIX','vix',EXTERNAL_MARKET?.sources?.vix)}</div><div class=mini style="margin-top:8px">只使用通過來源、日期、內容與雜湊驗證的資料；未通過就標示未取得，不拿其他網站或舊值補入。</div>`;
 };
 loadExternalMarket();
+window.StockLabExternalMarket={load:loadExternalMarket,context:usContext,verify:verifiedExternal,get snapshot(){return EXTERNAL_MARKET}};
