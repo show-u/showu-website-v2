@@ -3,7 +3,7 @@
   const FACTOR_URL='./taiwan-factors.json';
   let FACTORS={generated_at:null,stocks:{},market:{},source_status:{}},PEERS={valuation:{},financial:{}};let factorPromise=null;
   const _extrasTW=extras,_combineTW=combine,_renderTW=render,_techTW=tech;
-  function num(v){const x=Number(v);return Number.isFinite(x)?x:null}
+  function num(v){if(v==null)return null;const s=String(v).trim();if(!s||['-','--','—','N/A','NA','null','undefined'].includes(s))return null;const x=Number(s.replace(/,/g,'').replace(/%$/,''));return Number.isFinite(x)?x:null}
   function quantile(a,q){const v=a.filter(Number.isFinite).sort((x,y)=>x-y);if(!v.length)return null;const p=(v.length-1)*q,l=Math.floor(p),h=Math.ceil(p);return l===h?v[l]:v[l]+(v[h]-v[l])*(p-l)}
   function pctRank(a,x){const v=a.filter(Number.isFinite).sort((p,q)=>p-q);if(x==null||v.length<5)return null;let n=0;for(const z of v)if(z<=x)n++;return n/v.length}
   function atr(r,p=14){if(!r||r.length<=p)return null;const t=[];for(let i=r.length-p;i<r.length;i++){const x=r[i],pc=r[i-1].c;t.push(Math.max(x.h-x.l,Math.abs(x.h-pc),Math.abs(x.l-pc)))}return avg(t)}
