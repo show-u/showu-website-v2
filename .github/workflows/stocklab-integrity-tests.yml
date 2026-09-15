@@ -26,7 +26,7 @@ jobs:
 
       - name: JavaScript syntax checks
         run: |
-          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router holding-model ui-patch health hard-policy compliance-gate api-client runtime-config; do
+          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch health hard-policy compliance-gate api-client runtime-config; do
             node --check "stock-lab/$f.js"
           done
 
@@ -42,6 +42,7 @@ jobs:
           idx=R('stock-lab/index.html')
           entry=R('stock-lab/entry-decision.js')
           router=R('stock-lab/market-router.js')
+          position=R('stock-lab/position-input.js')
           holding=R('stock-lab/holding-model.js')
           top10=R('stock-lab/top10-gate.js')
           hard=R('stock-lab/hard-policy.js')
@@ -84,12 +85,13 @@ jobs:
           assert t86['licence']=='unverified' and t86['automated_collection'] is False and t86['scoring'] is False
 
           # UX has exactly three workflows and no investment-horizon buy/holding selector.
-          for x in ('不知道買什麼','想買這檔','已持有','判斷是否適合入場','總量成本均價','目前持有股數','首次買入日','9項入場因子＋3個市場背景','美股','台指期 TX','國際時事'):
+          for x in ('不知道買什麼','想買這檔','已持有','判斷是否適合入場','目前總量成本均價','目前持有股數','首次買入日','逐筆輸入目前仍持有的買入明細','9項入場因子＋3個市場背景','美股','台指期 TX','國際時事'):
             assert x in idx,x
           assert 'holdHorizon' not in idx
           assert '<option value="1m"' not in idx and '<option value="3m"' not in idx and '<option value="long"' not in idx
-          assert './entry-decision.js' in idx
+          assert './entry-decision.js' in idx and './position-input.js' in idx
           assert idx.rfind('./entry-decision.js')<idx.rfind('./market-router.js')
+          assert idx.rfind('./position-input.js')<idx.rfind('./holding-model.js')
           assert idx.rfind('./compliance-gate.js')>idx.rfind('./health.js')
 
           # Unified nine-factor entry contract.
@@ -115,9 +117,16 @@ jobs:
           for legacy in ('momentum:{','growth:{','income:{','total_return:{','scanner_momentum','scanner_growth','scanner_income','scanner_total_return'):
             assert legacy not in top10+hard+runtime,legacy
 
-          # Holding is cost/position based; no horizon selector or horizon-dependent model.
-          assert all(x in holding for x in ('averageCost','shares','buyDate','entryContextComplete','TW-holding-exit-v2','user_observed'))
+          # Position input is user supplied; lot mode derives weighted average without inventing missing values.
+          assert all(x in position for x in ('StockLabPositionInput','positionInputMode','逐筆買入明細尚未完整','derived_from_user_lots','缺值不補 0'))
+          assert 'totalCost=used.reduce' in position and 'weighted=totalShares?totalCost/totalShares:null' in position
+          assert "if(!(a>0)||!(s>0)||!d)throw Error('逐筆買入明細尚未完整')" in position
+
+          # Holding is cost/position/buy-date based; actual holding age selects structure automatically.
+          assert all(x in holding for x in ('averageCost','shares','buyDate','entryContextComplete','TW-holding-exit-v3','user_observed','holdingProfile','estimatedTradingDays','sharesAffectSignal:false'))
           assert 'horizonConfig' not in holding and 'holdHorizon' not in compliance
+          assert '正式出場模型需要有效首次買入日' in holding
+          assert '持有股數只用於計算市值與金額損益' in holding
 
           # Runtime and hard policy remain fail closed until all new gates are explicitly passed.
           assert 'hardPolicyVersion:9' in runtime
@@ -144,7 +153,7 @@ jobs:
           assert 'licensed-open-data-cache' in cache and 'OGDL-1.0' in cache and 'schema_version!==2' in cache
           assert all(x in cachewf for x in ('data_gov_dataset','licence_verified','OGDL-1.0','attribution','licensed-open-data-cache'))
 
-          print('StockLab Taiwan Truth Rules v9 unified 9+3 entry invariants passed')
+          print('StockLab Taiwan Truth Rules v9 unified entry + actual-position holding invariants passed')
           PY
 
       - name: Fail-closed behavior fixtures
@@ -177,5 +186,11 @@ jobs:
           # Price estimates cannot be treated as observations.
           provenance={'official_close':'observed','gap_median':'derived','entry_price':'model_estimate','missing_factor':'unavailable'}
           assert provenance['entry_price']!='observed' and provenance['missing_factor']=='unavailable'
-          print('v9 no-imputation and unified-entry fail-closed fixtures passed')
+
+          # Holding structure follows actual holding age rather than a user-selected short/mid/long label.
+          def lookback(days): return max(20,min(120,round(days*5/7)))
+          assert lookback(14)==20
+          assert 60<=lookback(90)<=70
+          assert lookback(365)==120
+          print('v9 no-imputation, unified-entry and actual-position holding fixtures passed')
           PY
