@@ -14,9 +14,13 @@ permissions:
   contents: write
 
 jobs:
-  backtest:
+  shard:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,20 +28,66 @@ jobs:
           python-version: '3.12'
       - name: Syntax check
         run: python -m py_compile stock-lab/backtest-model.py stock-lab/backtest-taiwan-v3.py
-      - name: Run large Taiwan stress test
-        run: python stock-lab/backtest-taiwan-v3.py --months 60 --twse 100 --tpex 60 --out stock-lab/backtest-result.json
-      - name: Validate result
+      - name: Run Taiwan stress shard
+        run: |
+          python stock-lab/backtest-taiwan-v3.py \
+            --months 60 --twse 100 --tpex 60 --workers 3 \
+            --shard-index ${{ matrix.shard }} --shard-count 8 \
+            --out stock-lab/backtest-part-${{ matrix.shard }}.json
+      - name: Validate shard
+        run: |
+          python - <<'PY'
+          import glob,json
+          p=glob.glob('stock-lab/backtest-part-*.json');assert len(p)==1,p
+          x=json.load(open(p[0],encoding='utf-8'))
+          assert x['schema_version']==3 and x['partial'] is True
+          assert x['shard_count']==8 and x['shard_requested']>0
+          assert isinstance(x['stocks'],list) and len(x['stocks'])==x['shard_requested']
+          print('shard valid',x['shard_index'],x['shard_requested'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backtest-part-${{ matrix.shard }}
+          path: stock-lab/backtest-part-${{ matrix.shard }}.json
+          retention-days: 3
+
+  merge:
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: backtest-part-*
+          path: stock-lab/parts
+          merge-multiple: true
+      - name: Merge all 160-stock shards
+        run: |
+          python stock-lab/backtest-taiwan-v3.py \
+            --months 60 --twse 100 --tpex 60 \
+            --merge-glob 'stock-lab/parts/backtest-part-*.json' \
+            --out stock-lab/backtest-result.json
+      - name: Validate final OOS stress result
         run: |
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
           assert x['schema_version']==3 and x['market']=='TWSE+TPEx'
-          assert x['universe_requested']>=120,x['universe_requested'];assert x['universe_ok']>=60,x['universe_ok']
+          assert x['universe_requested']>=120,x['universe_requested']
+          assert x['universe_ok']>=60,x['universe_ok']
           assert 'no fixed price-percentage entry bands' in x['method']
           c=x['cost_assumptions'];assert all(c[k]>0 for k in ('commission_each_side_pct','normal_stock_sell_tax_pct','daytrade_sell_tax_pct','slippage_each_side_pct'))
           for mode in ('preopen','short','swing','long'):
-              z=x['aggregate'][mode];assert z['all']['n']>0,(mode,z);assert z['oos']['n']>0,(mode,z);assert z['stress_status'] in ('PASS','FAIL','INSUFFICIENT')
-          print('Taiwan v3 large OOS stress validated',x['universe_ok'],x['aggregate'])
+              z=x['aggregate'][mode]
+              assert z['all']['n']>0,(mode,z)
+              assert z['oos']['n']>0,(mode,z)
+              assert z['stress_status'] in ('PASS','FAIL','INSUFFICIENT')
+          print('Taiwan v3 large OOS stress validated',x['universe_ok'])
+          for mode,z in x['aggregate'].items():print(mode,z['stress_status'],z['oos'])
           PY
       - name: Persist result when changed
         run: |
