@@ -24,6 +24,7 @@ jobs:
       - name: JavaScript syntax checks
         run: |
           node --check stock-lab/app.js
+          node --check stock-lab/indicators-v2.js
           node --check stock-lab/tpex.js
           node --check stock-lab/financials.js
           node --check stock-lab/integrity.js
@@ -40,6 +41,7 @@ jobs:
           from urllib.parse import urlparse
           idx=Path('stock-lab/index.html').read_text(encoding='utf-8')
           app=Path('stock-lab/app.js').read_text(encoding='utf-8')
+          indicators=Path('stock-lab/indicators-v2.js').read_text(encoding='utf-8')
           tpex=Path('stock-lab/tpex.js').read_text(encoding='utf-8')
           fin=Path('stock-lab/financials.js').read_text(encoding='utf-8')
           integ=Path('stock-lab/integrity.js').read_text(encoding='utf-8')
@@ -49,9 +51,10 @@ jobs:
           gate=Path('stock-lab/top10-gate.js').read_text(encoding='utf-8')
           router=Path('stock-lab/market-router.js').read_text(encoding='utf-8')
           policy=json.loads(Path('stock-lab/verification-policy.json').read_text(encoding='utf-8'))
-          for script in ('app.js','tpex.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js'):
+          for script in ('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js'):
               assert f'./{script}' in idx, f'{script} not loaded by index'
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
+          assert "Wilder RSI 14 v2" in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
           assert "h!=='www.tpex.org.tw'" in tpex
           assert 'tpex_mainboard_daily_close_quotes' in tpex
           assert 'tpex_mainboard_peratio_analysis' in tpex
@@ -65,6 +68,8 @@ jobs:
           assert 'schema_version!==3' in markets
           assert 'cross_check' in futures and 'TAIFEX' in futures
           assert policy['taiwan']['taiex_futures']['scored'] is False
+          assert policy['external_market']['sox']['cross_check_host']=='fred.stlouisfed.org'
+          assert policy['external_market']['nasdaq']['cross_check_host']=='fred.stlouisfed.org'
           assert policy['news_events']['scored'] is False
           assert set(policy['news_events']['levels'])=={'A','B','C','D'}
           assert 'headline' in policy['news_events']['rule'].lower()
@@ -76,6 +81,7 @@ jobs:
           assert '資料不足者不得進榜' in gate
           assert "marketName='TPEx'" in router and "marketName='TWSE'" in router
           assert '不需要 ChatGPT／GPT 帳號' in idx
+          assert 'Wilder 14 日平滑算法' in idx
           snap=json.loads(Path('stock-lab/market-data.json').read_text(encoding='utf-8'))
           assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
@@ -91,7 +97,7 @@ jobs:
           if tph.get('verified'):
               assert tph.get('status')=='ok'
               assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
-          print('source-policy, TPEx health and TOP10 gate checks passed')
+          print('source-policy, Wilder RSI, TPEx health and TOP10 gate checks passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
@@ -113,7 +119,6 @@ jobs:
           assert a!=b
           assert 80>=80 and 79<80
           assert 85>=85 and 84<85
-          # Health gate behavior: only verified+ok+fresh is usable.
           assert all([True,True,True]) is True
           assert all([True,False,True]) is False
           print('anomaly, TAIFEX, TPEx health and completeness fixtures passed')
