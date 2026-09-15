@@ -17,10 +17,7 @@
   </section>
 
   <section id="marketCard" class="card">
-    <div class="toprow">
-      <div><div class="muted">市場環境</div><h2>台股大盤狀態</h2></div>
-      <div class="bubble" id="marketScore">—</div>
-    </div>
+    <div class="toprow"><div><div class="muted">市場環境</div><h2>台股大盤狀態</h2></div><div class="bubble" id="marketScore">—</div></div>
     <div id="marketBody" class="muted">執行分析後顯示。</div>
   </section>
 
@@ -30,25 +27,16 @@
   </details>
 
   <section class="card">
-    <div class="tabs">
-      <button id="findBtn">不知道買什麼</button>
-      <button id="singleBtn" class="ghost">想買這檔</button>
-      <button id="holdBtn" class="ghost">已持有</button>
-    </div>
-    <div class="section-lead">找標的、判斷是否入場、持股出場是三個不同問題，各自使用對應模型。</div>
+    <div class="tabs"><button id="findBtn">不知道買什麼</button><button id="singleBtn" class="ghost">想買這檔</button><button id="holdBtn" class="ghost">已持有</button></div>
+    <div class="section-lead">找標的、判斷是否建立新部位、管理既有持股是三個不同問題，不再用短／中／長買入價混在一起。</div>
   </section>
 
   <section id="singlePanel" class="card hidden">
     <label>股票代號／股票名稱<input id="ticker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <select id="horizon" class="hidden" aria-hidden="true"><option value="buy" selected>入場判斷</option></select>
-    <p class="simple-rule">只回答一件事：依最新合法且驗證通過的資料，這檔股票現在／下一個可判斷交易時段是否適合入場。</p>
-    <details class="source-note">
-      <summary><b>判斷基準：9項入場因子＋3個市場背景</b></summary>
-      <div class="mini" style="margin-top:8px">9項：價格趨勢與支撐／壓力、成交量、均線、法人／籌碼、MACD、RSI、KD/KDJ、黃金／死亡交叉、K線型態。<br>市場背景：美股、台指期 TX、國際時事。任何必要資料未取得或未通過驗證，就不能形成完整入場結論。</div>
-    </details>
-    <div class="strategy-note">若沒有合法即時／延遲行情，09:00 後不會假裝知道目前成交價。新計畫只在官方最新完成交易日真的更新、且所有必要資料 Gate 都通過後才建立。</div>
-    <button id="analyzeBtn">判斷是否適合入場</button>
-    <div id="singleLoad" class="loader hidden">正在驗證九項因子、美股、台指期與國際時事…</div>
+    <p class="simple-rule">只回答一件事：依最新合法且驗證通過的資料，這檔股票在下一個可判斷交易時段是否適合建立新部位。</p>
+    <details class="source-note"><summary><b>判斷基準：9項入場因子＋3個市場背景</b></summary><div class="mini" style="margin-top:8px">9項：價格趨勢與支撐／壓力、成交量、均線、法人／籌碼、MACD、RSI、KD/KDJ、黃金／死亡交叉、K線型態。<br>市場背景：美股、台指期 TX、國際時事。任何必要資料未取得或未通過驗證，就不能形成完整入場結論。</div></details>
+    <div class="strategy-note">沒有合法即時／延遲行情時，不會假裝知道盤中目前成交價。新計畫只在最新完成交易日真的更新、且所有必要資料 Gate 都通過後建立。</div>
+    <button id="analyzeBtn">判斷是否適合入場</button><div id="singleLoad" class="loader hidden">正在驗證九項因子、美股、台指期與國際時事…</div>
   </section>
 
   <section id="result" class="card hidden"></section>
@@ -57,43 +45,24 @@
     <label>股票代號／股票名稱<input id="holdTicker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
     <div style="height:10px"></div>
     <label>部位輸入方式<select id="positionInputMode"><option value="manual" selected>券商目前總均價＋目前持股數</option><option value="lots">逐筆輸入目前仍持有的買入明細</option></select></label>
-
-    <div id="manualPositionFields" class="grid" style="margin-top:10px">
-      <label>目前總量成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label>
-      <label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label>
-      <label>首次買入日（正式出場模型建議填寫）<input id="holdBuyDate" type="date"></label>
-    </div>
-
-    <div id="positionLots" class="hidden" style="margin-top:10px">
-      <div class="source-note compact-note"><b>逐筆買入明細</b><div class="mini">每筆填「買入日＋買入價格＋目前仍持有股數」。只計算你現在還持有的部位；已賣出的股數不要放進來。缺值不補 0。</div></div>
-      <div id="positionLotRows"></div>
-      <button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button>
-      <div id="positionLotSummary" class="source-note compact-note"></div>
-    </div>
-
-    <p class="simple-rule">已持有股票不再要求你選「短／中／長」。正式出場模型會依你的實際買入時間自動選擇相符的價格結構，再結合成本均價、部位大小、最新已驗證價格、九項市場訊號與風險狀態，判斷續抱、減碼或出場。</p>
-    <div class="strategy-note">目前持股數只用來計算部位市值與損益；若沒有整體投資組合資產與風險預算，系統不得假裝知道你的「部位過大／過小」。</div>
-    <button id="holdAnalyzeBtn">查看持股狀態與出場條件</button>
-    <div id="holdLoad" class="loader hidden">正在驗證持股資料與市場訊號…</div>
+    <div id="manualPositionFields" class="grid" style="margin-top:10px"><label>目前總量成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>首次買入日<input id="holdBuyDate" type="date"></label></div>
+    <div id="positionLots" class="hidden" style="margin-top:10px"><div class="source-note compact-note"><b>逐筆買入明細</b><div class="mini">每筆填「買入日＋買入價格＋目前仍持有股數」。只計算現在仍持有的部位；已賣出的股數不要放進來。缺值不補 0。</div></div><div id="positionLotRows"></div><button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button><div id="positionLotSummary" class="source-note compact-note"></div></div>
+    <p class="simple-rule">已持有股票不再選短／中／長。系統以你的實際成本、股數與買入交易日，搭配最新已驗證市場資料，評估續抱、獲利保護、減碼或出場條件。</p>
+    <div class="strategy-note">股數只用來計算市值與金額損益；沒有整體資產與風險預算時，不會假裝知道部位過大或過小。若持股出場模型尚未通過正式 OOS，只顯示持股事實與阻塞原因，不產生可執行賣出建議。</div>
+    <button id="holdAnalyzeBtn">評估續抱／減碼／出場條件</button><div id="holdLoad" class="loader hidden">正在驗證持股資料與市場訊號…</div>
     <div id="holdResult" class="source-note compact-note"><b>資料規則</b><div class="mini">成本、股數、買入日只採你的輸入；市場資料缺漏就標示未知，不推測、不補值。</div></div>
   </section>
 
   <section id="findPanel" class="card">
     <h2 style="margin-top:0">目前最適合研究入場的 10 檔</h2>
-    <p class="muted">全市場候選都使用同一套「9項入場因子＋美股＋台指期＋國際時事」判斷。不依投資期間產生不同排行榜，也不拿缺資料股票補滿十檔。</p>
-    <input id="scanObjective" type="hidden" value="entry">
-    <button id="scanBtn">找出目前最適合入場的 10 檔</button>
-    <div id="scanLoad" class="loader hidden">正在驗證候選股票的 9＋3 項資料…</div>
+    <p class="muted">全市場候選使用同一套「9項入場因子＋美股＋台指期＋國際時事」判斷。不依投資期間產生不同排行榜，也不拿缺資料股票補滿十檔。</p>
+    <button id="scanBtn">找出目前最適合研究入場的股票</button><div id="scanLoad" class="loader hidden">正在驗證候選股票的 9＋3 項資料…</div>
   </section>
 
   <section id="top10" class="card hidden"></section>
 
-  <details class="source-note">
-    <summary><b>絕對不能違反的資料規則</b></summary>
-    <div class="mini" style="margin-top:8px">①只使用明確合法可用的資料來源；公開網址不等於授權。②資料日期、商品、欄位與來源必須可追溯。③未取得、過期、欄位不符、交叉驗證失敗或授權不明，一律維持「未取得／未通過驗證」。④不得以 0、平均值、前期值、其他網站未驗證值、AI 生成值或任何推估值假裝成已取得資料。⑤事實、衍生計算、模型估計必須分開標示。⑥未通過正式樣本外驗證，不得標示勝率、機率、信心或可執行推薦。</div>
-  </details>
-
-  <div class="disclaimer"><b>投資風險聲明</b>本工具提供的分析、評分與排名僅供研究與資訊參考，不構成投資建議或收益保證。未通過必要資料與樣本外驗證 Gate 時，系統只能顯示已驗證事實與缺口，不能產生完整入場結論。</div>
+  <details class="source-note"><summary><b>絕對不能違反的資料規則</b></summary><div class="mini" style="margin-top:8px">①只使用明確合法可用的資料來源；公開網址不等於授權。②資料日期、商品、欄位與來源必須可追溯。③未取得、過期、欄位不符、交叉驗證失敗或授權不明，一律維持「未取得／未通過驗證」。④不得以 0、平均值、前期值、其他網站未驗證值、AI 生成值或任何推估值假裝成已取得資料。⑤事實、使用者輸入、衍生計算、模型估計必須分開標示。⑥未通過正式樣本外驗證，不得標示勝率、機率、信心或可執行推薦。</div></details>
+  <div class="disclaimer"><b>投資風險聲明</b>本工具提供的分析、評分與排名僅供研究與資訊參考，不構成投資建議或收益保證。未通過必要資料與樣本外驗證 Gate 時，系統只能顯示已驗證事實與缺口，不能產生完整入場或出場結論。</div>
 </main>
 <script src="./runtime-config.js"></script>
 <script src="./api-client.js"></script>
@@ -113,6 +82,7 @@
 <script src="./position-input.js"></script>
 <script src="./holding-model.js"></script>
 <script src="./ui-patch.js"></script>
+<script src="./holding-router.js"></script>
 <script src="./health.js"></script>
 <script src="./compliance-gate.js"></script>
 </body>
