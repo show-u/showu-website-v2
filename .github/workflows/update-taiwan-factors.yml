@@ -1,7 +1,6 @@
 name: Update StockLab Taiwan factors
 
-# Taiwan factor pipeline: official industry, per-stock margin/short changes,
-# warning/disposition flags and OTC regime. Fail closed when core coverage is absent.
+# Official-derived Taiwan factors. No guessed fields, no fabricated zero/default values.
 on:
   workflow_dispatch:
   push:
@@ -25,79 +24,89 @@ jobs:
       - name: Build derived Taiwan factors
         run: |
           python - <<'PY'
-          import json,re,time,urllib.request
-          from datetime import datetime,timezone
+          import csv,io,json,re,time,urllib.request
+          from datetime import datetime,timezone,date
 
-          UA={'User-Agent':'StockLab-Taiwan-Factors/4.0','Accept':'application/json'}
-          def get(url,required=False):
+          UA={'User-Agent':'StockLab-Taiwan-Factors/5.0','Accept':'application/json,text/csv'}
+          def fetch_bytes(url,required=False):
             err=None
             for i in range(4):
               try:
                 req=urllib.request.Request(url,headers=UA)
-                with urllib.request.urlopen(req,timeout=60) as r:
-                  return json.loads(r.read().decode('utf-8-sig'))
+                with urllib.request.urlopen(req,timeout=60) as r:return r.read()
               except Exception as e:
                 err=e;time.sleep(i+1)
-            if required: raise RuntimeError(f'{url}: {err}')
+            if required:raise RuntimeError(f'{url}: {err}')
             return None
-
+          def get_json(url,required=False):
+            raw=fetch_bytes(url,required)
+            if raw is None:return None
+            try:return json.loads(raw.decode('utf-8-sig'))
+            except Exception as e:
+              if required:raise RuntimeError(f'{url}: invalid json: {e}')
+              return None
+          def get_csv(url,required=False):
+            raw=fetch_bytes(url,required)
+            if raw is None:return[]
+            txt=raw.decode('utf-8-sig',errors='strict')
+            return list(csv.DictReader(io.StringIO(txt)))
           def num(v):
             try:return float(str(v).replace(',','').replace('%','').strip())
             except:return None
-
           def val(o,keys):
             for k in keys:
               if isinstance(o,dict) and k in o and str(o[k]).strip()!='':return o[k]
             return None
-
           def code(o):
-            if not isinstance(o,dict):return ''
+            if not isinstance(o,dict):return''
             return str(val(o,['公司代號','證券代號','股票代號','SecuritiesCompanyCode','Code']) or '').strip()
-
-          def change(prev,cur):
-            return round((cur/prev-1)*100,3) if prev not in (None,0) and cur is not None else None
-
+          def iso(v):
+            s=str(v or '').strip();digits=re.sub(r'\D','',s)
+            if len(digits)==7:return f'{int(digits[:3])+1911:04d}-{digits[3:5]}-{digits[5:7]}'
+            if len(digits)==8:return f'{digits[:4]}-{digits[4:6]}-{digits[6:8]}'
+            m=re.search(r'(\d{2,3})[/-](\d{1,2})[/-](\d{1,2})',s)
+            if m:return f'{int(m.group(1))+1911:04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
+            m=re.search(r'(20\d{2})[/-](\d{1,2})[/-](\d{1,2})',s)
+            if m:return f'{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
+            return None
+          def change(prev,cur):return round((cur/prev-1)*100,3) if prev not in (None,0) and cur is not None else None
           def credit_values(o,side):
-            # First use known official field labels. Then use a conservative semantic fallback.
+            # Only versioned exact field names. No semantic/substring guessing.
             if side=='margin':
-              prev_keys=['融資前日餘額','前日融資餘額','昨日融資餘額','PreviousBalanceOfMarginPurchase','PreviousMarginPurchaseBalance','MarginPurchasePreviousBalance']
-              cur_keys=['融資今日餘額','今日融資餘額','本日融資餘額','BalanceOfMarginPurchase','MarginPurchaseBalance','MarginPurchaseTodayBalance']
-              zh='融資';en=('margin','purchase')
+              pk=['融資前日餘額','PreviousBalanceOfMarginPurchase','PreviousMarginPurchaseBalance','MarginPurchasePreviousBalance']
+              ck=['融資今日餘額','BalanceOfMarginPurchase','MarginPurchaseBalance','MarginPurchaseTodayBalance']
             else:
-              prev_keys=['融券前日餘額','前日融券餘額','昨日融券餘額','PreviousBalanceOfShortSale','PreviousShortSaleBalance','ShortSalePreviousBalance']
-              cur_keys=['融券今日餘額','今日融券餘額','本日融券餘額','BalanceOfShortSale','ShortSaleBalance','ShortSaleTodayBalance']
-              zh='融券';en=('short','sale')
-            prev=num(val(o,prev_keys));cur=num(val(o,cur_keys))
-            if prev is not None and cur is not None:return prev,cur
-            for k,v in o.items():
-              raw=str(k);norm=re.sub(r'[^a-z0-9]','',raw.lower())
-              is_side=(zh in raw) or all(t in norm for t in en)
-              if not is_side or '餘額' not in raw and 'balance' not in norm:continue
-              x=num(v)
-              if x is None:continue
-              if any(t in raw for t in ('前日','昨日')) or any(t in norm for t in ('previous','yesterday')):prev=x
-              elif any(t in raw for t in ('今日','本日')) or ('balance' in norm and not any(t in norm for t in ('previous','yesterday'))):cur=x
-            return prev,cur
+              pk=['融券前日餘額','PreviousBalanceOfShortSale','PreviousShortSaleBalance','ShortSalePreviousBalance']
+              ck=['融券今日餘額','BalanceOfShortSale','ShortSaleBalance','ShortSaleTodayBalance']
+            return num(val(o,pk)),num(val(o,ck))
+          def active_period(text,asof):
+            dates=[]
+            for m in re.finditer(r'(\d{2,4})[年/.-](\d{1,2})[月/.-](\d{1,2})',str(text or '')):
+              y=int(m.group(1));y=y+1911 if y<1900 else y
+              try:dates.append(date(y,int(m.group(2)),int(m.group(3))))
+              except:pass
+            if len(dates)<2:return None
+            return min(dates)<=asof<=max(dates)
 
           stocks={};profiles={};source_status={}
           for market,url in [
             ('TWSE','https://openapi.twse.com.tw/v1/opendata/t187ap03_L'),
             ('TPEx','https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O')]:
-            rows=get(url,True) or [];profiles[market]=bool(rows)
+            rows=get_json(url,True) or [];profiles[market]=bool(rows)
             for x in rows:
               c=code(x)
               if not re.fullmatch(r'\d{4}',c):continue
               z=stocks.setdefault(c,{});z['market']=market
               ind=str(val(x,['產業別','產業類別','Industry','IndustryName','產業別名稱']) or '').strip()
-              if ind:z['industry']=ind
+              if ind:z['industry']=ind;z['industry_provenance']='observed'
 
+          # Credit balances: government-open-data endpoints, exact fields only.
           credit_sources=[
             ('TWSE','https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN'),
             ('TPEx','https://www.tpex.org.tw/openapi/v1/tpex_mainboard_margin_balance')]
           for market,url in credit_sources:
-            rows=get(url) or [];used=0;mcount=0;scount=0
+            rows=get_json(url) or [];used=mcount=scount=0
             if isinstance(rows,dict):
-              # tolerate wrapped official responses without relying on table position
               candidates=[]
               for v in rows.values():
                 if isinstance(v,list) and v and isinstance(v[0],dict):candidates.extend(v)
@@ -108,52 +117,75 @@ jobs:
               used+=1;z=stocks.setdefault(c,{});z.setdefault('market',market)
               mp,mc=credit_values(x,'margin');sp,sc=credit_values(x,'short')
               a,b=change(mp,mc),change(sp,sc)
-              if a is not None:z['margin_change_pct']=a;mcount+=1
-              if b is not None:z['short_change_pct']=b;scount+=1
-              note=str(val(x,['備註','Note','信用交易狀態']) or '')
-              if any(k in note for k in ('暫停','停止','不得','X','!')):z['margin_suspended']=True
-            source_status[market]={'rows':used,'margin':mcount,'short':scount,'ok':used>0 and mcount>0 and scount>0}
-            if not source_status[market]['ok']:
-              sample=rows[0] if isinstance(rows,list) and rows else {}
-              print(market,'credit source incomplete',source_status[market],'sample_keys',list(sample)[:30] if isinstance(sample,dict) else type(sample).__name__)
+              if a is not None:z['margin_change_pct']=a;z['margin_provenance']='derived_from_observed_balances';mcount+=1
+              if b is not None:z['short_change_pct']=b;z['short_provenance']='derived_from_observed_balances';scount+=1
+              note=val(x,['註記','Note','信用交易狀態'])
+              if note is not None:z['credit_note']=str(note)
+            source_status[f'{market}_credit']={'rows':used,'margin':mcount,'short':scount,'ok':used>0 and mcount>0,'schema':'exact_fields_only','legal':'OGDL-1.0'}
 
-          def flatten_rows(d):
-            if isinstance(d,list):return d
-            if not isinstance(d,dict):return []
-            out=[]
-            for k,v in d.items():
-              if k.startswith('data') and isinstance(v,list):out.extend(v)
-            return out
+          # OTC market regime: Change is POINTS, never percentage. Latest two TPExIndex rows determine pct.
+          otc=get_json('https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index') or []
+          parsed=[]
+          for x in otc if isinstance(otc,list) else []:
+            d=iso(x.get('Date'));cl=num(x.get('TPExIndex'));chg=num(x.get('Change'))
+            if d and cl is not None:parsed.append((d,cl,chg))
+          parsed.sort(key=lambda z:z[0])
+          market={'otc_state':'unavailable','otc_verified':False}
+          if len(parsed)>=2:
+            d0,c0,_=parsed[-2];d1,c1,official_points=parsed[-1];calc_points=round(c1-c0,4);pct=round((c1/c0-1)*100,4) if c0 else None
+            points_ok=official_points is None or abs(calc_points-official_points)<=0.02
+            if pct is not None and points_ok:
+              market={'otc_state':'偏多' if pct>0 else '偏空' if pct<0 else '震盪','otc_date':d1,'otc_close':c1,'otc_change_points':official_points,'otc_change_pct':pct,'otc_verified':True,'provenance':'derived_from_two_observed_TPExIndex_rows'}
+          source_status['TPEx_index']={'ok':bool(market.get('otc_verified')),'date':market.get('otc_date'),'legal':'OGDL-1.0','schema':'Date/TPExIndex/Change(points)'}
 
-          def mark(url,key):
-            d=get(url);rows=flatten_rows(d)
-            for x in rows:
-              if isinstance(x,dict):c=code(x)
-              else:
-                c=''
-                for v in x if isinstance(x,list) else []:
-                  s=str(v).strip()
-                  if re.fullmatch(r'\d{4}',s):c=s;break
-              if c:stocks.setdefault(c,{})[key]=True
+          asof=date.fromisoformat(market['otc_date']) if market.get('otc_verified') else datetime.now(timezone.utc).date()
 
-          mark('https://www.twse.com.tw/rwd/zh/announcement/notice?response=json','attention')
-          mark('https://www.twse.com.tw/rwd/zh/announcement/punish?response=json','disposition')
-          mark('https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information','attention')
-          mark('https://www.tpex.org.tw/openapi/v1/tpex_disposal_information','disposition')
+          # TPEx attention: only exact announcement date matching the latest verified OTC trading date.
+          aw=get_json('https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information') or []
+          attention_count=0;attention_date_known=bool(market.get('otc_date'))
+          if attention_date_known:
+            for x in aw if isinstance(aw,list) else []:
+              c=code(x);d=iso(val(x,['公告日期','Date','AnnouncementDate']))
+              if c and d==market['otc_date']:
+                stocks.setdefault(c,{})['attention']=True;stocks[c]['attention_date']=d;stocks[c]['attention_provenance']='observed';attention_count+=1
+          source_status['TPEx_attention']={'ok':attention_date_known,'active_count':attention_count,'date':market.get('otc_date'),'legal':'OGDL-1.0','rule':'announcement date must equal verified OTC trade date'}
 
-          otc=get('https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index') or []
-          market={'otc_state':'unavailable'}
-          if isinstance(otc,list) and otc:
-            x=otc[0];d=num(val(x,['ChangePercent','漲跌幅','漲跌百分比','Change']))
-            market={'otc_state':'偏多' if d is not None and d>0 else '偏空' if d is not None and d<0 else '震盪' if d is not None else '已取得','otc_change':d,'otc_close':num(val(x,['Close','ClosingIndex','收盤指數','指數']))}
+          # TPEx disposition: only rows whose exact disposition period can be parsed and is active as of latest market date.
+          dp=get_json('https://www.tpex.org.tw/openapi/v1/tpex_disposal_information') or []
+          tpex_disp=0;unparsed=0
+          for x in dp if isinstance(dp,list) else []:
+            c=code(x);period=val(x,['處置起訖時間','DisposalPeriod','處置期間'])
+            active=active_period(period,asof)
+            if c and active is True:
+              stocks.setdefault(c,{})['disposition']=True;stocks[c]['disposition_period']=str(period);stocks[c]['disposition_provenance']='observed_active_period';tpex_disp+=1
+            elif c and active is None:unparsed+=1
+          source_status['TPEx_disposition']={'ok':unparsed==0,'active_count':tpex_disp,'unparsed_periods':unparsed,'asof':asof.isoformat(),'legal':'OGDL-1.0'}
+
+          # TWSE disposition uses the exact CSV resource linked by data.gov.tw dataset 29082 (OGDL-1.0).
+          twdp=get_csv('https://www.twse.com.tw/announcement/punish?response=open_data')
+          twse_disp=0;tw_unparsed=0
+          for x in twdp:
+            c=code(x);period=val(x,['處置起迄時間'])
+            active=active_period(period,asof)
+            if c and active is True:
+              stocks.setdefault(c,{})['disposition']=True;stocks[c]['disposition_period']=str(period);stocks[c]['disposition_provenance']='observed_active_period';twse_disp+=1
+            elif c and active is None:tw_unparsed+=1
+          source_status['TWSE_disposition']={'ok':bool(twdp) and tw_unparsed==0,'active_count':twse_disp,'unparsed_periods':tw_unparsed,'asof':asof.isoformat(),'legal':'OGDL-1.0','dataset_id':29082}
+
+          # No TWSE full attention flag is asserted here. The licensed cumulative-warning dataset lacks a row date,
+          # so absence must NOT be interpreted as "not an attention stock".
+          source_status['TWSE_attention']={'ok':False,'reason':'no same-session row date in registered licensed source; unknown stays unknown','legal':'not_used_for_scoring'}
+
+          for z in stocks.values():
+            z['risk_status_provenance']='verified_flags_only'
 
           coverage={
             'industry':sum('industry' in z for z in stocks.values()),
             'margin':sum('margin_change_pct' in z for z in stocks.values()),
             'short':sum('short_change_pct' in z for z in stocks.values()),
-            'attention':sum(bool(z.get('attention')) for z in stocks.values()),
-            'disposition':sum(bool(z.get('disposition')) for z in stocks.values())}
-          out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'official-derived','profile_status':profiles,'source_status':source_status,'market':market,'coverage':coverage,'stocks':stocks}
+            'attention_verified_positive':sum(bool(z.get('attention')) for z in stocks.values()),
+            'disposition_verified_active':sum(bool(z.get('disposition')) for z in stocks.values())}
+          out={'schema_version':3,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'official-derived-no-imputation','profile_status':profiles,'source_status':source_status,'market':market,'coverage':coverage,'stocks':stocks}
           with open('stock-lab/taiwan-factors.json','w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,separators=(',',':'))
           print('stocks',len(stocks),'coverage',coverage,'sources',source_status)
           PY
@@ -162,14 +194,17 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          x=json.load(open('stock-lab/taiwan-factors.json',encoding='utf-8'));s=x['stocks'];c=x.get('coverage',{});src=x.get('source_status',{})
-          assert x['schema_version']==2 and x['source']=='official-derived'
+          x=json.load(open('stock-lab/taiwan-factors.json',encoding='utf-8'));s=x['stocks'];c=x.get('coverage',{});src=x.get('source_status',{});m=x.get('market',{})
+          assert x['schema_version']==3 and x['source']=='official-derived-no-imputation'
           assert len(s)>=100 and c.get('industry',0)>=100
-          assert c.get('margin',0)>=50, c
-          assert c.get('short',0)>=20, c
-          assert any(v.get('ok') for v in src.values()), src
-          assert 'otc_state' in x['market']
-          print('Taiwan factors valid',len(s),c,src)
+          assert c.get('margin',0)>=50,c
+          assert src.get('TWSE_credit',{}).get('schema')=='exact_fields_only'
+          assert src.get('TPEx_credit',{}).get('schema')=='exact_fields_only'
+          assert m.get('otc_verified') is True,m
+          assert m.get('otc_date') and m.get('otc_close') is not None and m.get('otc_change_pct') is not None
+          assert 'otc_change' not in m, 'ambiguous OTC change field forbidden'
+          assert src.get('TWSE_attention',{}).get('ok') is False
+          print('Taiwan factors truth-gated',len(s),c,src,m)
           PY
 
       - name: Commit factor file
@@ -178,7 +213,7 @@ jobs:
           git config user.name stocklab-bot
           git config user.email stocklab-bot@users.noreply.github.com
           git add stock-lab/taiwan-factors.json
-          git commit -m 'update derived Taiwan market factors'
+          git commit -m 'update truth-gated Taiwan market factors'
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
