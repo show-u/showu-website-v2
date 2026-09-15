@@ -14,7 +14,10 @@ on:
       - 'stock-lab/entry-decision.js'
       - 'stock-lab/top10-gate.js'
       - 'stock-lab/market-router.js'
+      - 'stock-lab/position-input.js'
       - 'stock-lab/holding-model.js'
+      - 'stock-lab/holding-router.js'
+      - 'stock-lab/ui-patch.js'
       - 'stock-lab/compliance-gate.js'
       - 'stock-lab/history-ogdl/manifest.json'
       - '.github/workflows/stocklab-public-smoke.yml'
@@ -24,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
-      - name: Verify public StockLab Truth Rules v9 deployment
+      - name: Verify public StockLab unified-entry + holding deployment
         shell: bash
         run: |
           set -euo pipefail
@@ -32,7 +35,7 @@ jobs:
           ready=0
           for i in 1 2 3 4 5 6 7 8; do
             curl -fsSL --max-time 20 "$base/?smoke=$RANDOM" -o /tmp/index.html || true
-            if grep -q './runtime-config.js' /tmp/index.html 2>/dev/null && grep -q './entry-decision.js' /tmp/index.html 2>/dev/null && grep -q './compliance-gate.js' /tmp/index.html 2>/dev/null && grep -q '9項入場因子＋3個市場背景' /tmp/index.html 2>/dev/null; then ready=1; break; fi
+            if grep -q './holding-router.js' /tmp/index.html 2>/dev/null && grep -q '評估續抱／減碼／出場條件' /tmp/index.html 2>/dev/null && ! grep -q 'id="horizon"' /tmp/index.html 2>/dev/null; then ready=1; break; fi
             sleep 10
           done
           test "$ready" = 1
@@ -41,31 +44,36 @@ jobs:
           grep -q '想買這檔' /tmp/index.html
           grep -q '已持有' /tmp/index.html
           grep -q '判斷是否適合入場' /tmp/index.html
+          grep -q '評估續抱／減碼／出場條件' /tmp/index.html
           grep -q '總量成本均價' /tmp/index.html
-          grep -q '9項入場因子＋3個市場背景' /tmp/index.html
-          grep -q '美股、台指期 TX、國際時事' /tmp/index.html
+          grep -q '首次買入日' /tmp/index.html
           grep -q '絕對不能違反的資料規則' /tmp/index.html
-          ! grep -q 'holdHorizon' /tmp/index.html
+          ! grep -q 'id="horizon"' /tmp/index.html
+          ! grep -q 'id="scanObjective"' /tmp/index.html
           ! grep -q '<option value="1m"' /tmp/index.html
+          ! grep -q '<option value="3m"' /tmp/index.html
+          ! grep -q '<option value="long"' /tmp/index.html
           grep -q './entry-decision.js' /tmp/index.html
+          grep -q './position-input.js' /tmp/index.html
           grep -q './holding-model.js' /tmp/index.html
+          grep -q './holding-router.js' /tmp/index.html
           grep -q './compliance-gate.js' /tmp/index.html
 
-          for f in runtime-config.js data-status.js api-client.js health.js entry-decision.js top10-gate.js market-router.js holding-model.js compliance-gate.js tpex-health.json market-data.json futures-data.json history-ogdl/manifest.json; do
+          for f in runtime-config.js data-status.js api-client.js health.js entry-decision.js top10-gate.js market-router.js position-input.js holding-model.js holding-router.js ui-patch.js compliance-gate.js tpex-health.json market-data.json futures-data.json history-ogdl/manifest.json; do
             out="/tmp/$(echo "$f" | tr '/' '_')"
             curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors --max-time 20 "$base/$f?smoke=$RANDOM" -o "$out"
             test -s "$out"
           done
 
-          grep -q 'hardPolicyVersion:9' /tmp/runtime-config.js
-          grep -q 'entryNineFactors:false' /tmp/runtime-config.js
-          grep -q 'internationalEventFeed:false' /tmp/runtime-config.js
-          grep -q 'nineFactorBlocked' /tmp/compliance-gate.js
-          grep -q '完整判斷指定的九項因子＋美股＋台指期＋國際時事尚未全部驗證' /tmp/compliance-gate.js
+          grep -q 'productionPredictionReady:false' /tmp/runtime-config.js
+          grep -q 'holdingExitValidation:false' /tmp/runtime-config.js
           grep -q 'window.StockLabEntryDecision' /tmp/entry-decision.js
-          grep -q 'marketContexts' /tmp/entry-decision.js
-          grep -q "'trend','① 價格趨勢＋支撐／壓力'" /tmp/entry-decision.js
-          grep -q "'candlestick','⑨ K線型態'" /tmp/entry-decision.js
+          grep -q 'window.StockLabPositionInput' /tmp/position-input.js
+          grep -q 'window.StockLabHolding' /tmp/holding-model.js
+          grep -q 'StockLabPositionInput?.collect' /tmp/holding-router.js
+          grep -q 'NO IMPUTATION' /tmp/holding-router.js
+          grep -q 'window.StockLabTickerResolver' /tmp/ui-patch.js
+          ! grep -q 'horizon=document.querySelector' /tmp/ui-patch.js
 
           python - <<'PY'
           import json
@@ -76,5 +84,5 @@ jobs:
           assert m['source_class']=='ogdl_daily_archive'
           assert m['licence']=='OGDL-1.0'
           assert m['no_imputation'] is True
-          print('public StockLab Truth Rules v9 unified-entry deployment passed; legal data cutoff:',m.get('last_date'))
+          print('public StockLab cleaned unified-entry + holding deployment passed; legal data cutoff:',m.get('last_date'))
           PY
