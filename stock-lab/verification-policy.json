@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "principle": "No verified data, no score. Unverified values may be displayed only as explicitly unverified observations.",
   "taiwan": {
     "price": {"hosts": ["www.twse.com.tw", "openapi.twse.com.tw"], "cross_check_required": true, "max_age_calendar_days": 4, "scored": true},
@@ -8,12 +8,22 @@
     "valuation": {"dataset": "BWIBBU_ALL", "hosts": ["openapi.twse.com.tw"], "max_gap_from_stock_date_days": 7, "scored": true},
     "monthly_revenue": {"dataset": "t187ap05_L", "hosts": ["openapi.twse.com.tw"], "period_validation_required": true, "scored": true},
     "quarterly_income": {"dataset": "t187ap06_L_ci", "hosts": ["openapi.twse.com.tw"], "report_date_required": true, "scored": true},
-    "quarterly_balance": {"dataset": "t187ap07_L_ci", "hosts": ["openapi.twse.com.tw"], "report_date_required": true, "scored": true}
+    "quarterly_balance": {"dataset": "t187ap07_L_ci", "hosts": ["openapi.twse.com.tw"], "report_date_required": true, "scored": true},
+    "taiex_futures": {"source": "TAIFEX", "hosts": ["www.taifex.com.tw"], "contract": "TX", "cross_check_pages": ["futDailyMarketReport", "futDailyMarketExcel"], "same_trade_date_required": true, "same_contract_month_required": true, "same_last_price_required": true, "raw_sha256_required": true, "max_age_calendar_days": 4, "scored": false}
   },
   "external_market": {
     "vix": {"source": "CBOE", "host": "cdn.cboe.com", "raw_sha256_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false},
     "sox": {"source": "Nasdaq", "host": "indexes.nasdaq.com", "raw_sha256_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false},
     "nasdaq": {"source": "Nasdaq", "host": "indexes.nasdaq.com", "raw_sha256_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false}
   },
-  "news_events": {"scored": false, "rule": "Not implemented. A headline alone must never alter a stock score."}
+  "news_events": {
+    "scored": false,
+    "levels": {
+      "A": "Official regulator/government/company filing or enacted rule; may be shown as verified event.",
+      "B": "Company IR or two independent high-quality news sources corroborating the same event; observation only.",
+      "C": "Single reputable media report; provisional observation only.",
+      "D": "Social media, forums, anonymous claims or uncorroborated commentary; excluded."
+    },
+    "rule": "A headline alone must never alter a stock score. Event date, publication date and source tier must be explicit."
+  }
 }
