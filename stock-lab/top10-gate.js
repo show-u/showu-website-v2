@@ -16,13 +16,19 @@
     document.querySelector('#scanLoad').classList.remove('hidden');
     try{
       const tp=window.StockLabTPEx;
-      const [twAll,otcAll,ir]=await Promise.all([jget(U.snap),tp?tp.tpexSnapshot():Promise.resolve([]),ihist(6)]),m=market(ir);showMarket(m);
+      const [twAll,ir]=await Promise.all([jget(U.snap),ihist(6)]),m=market(ir);showMarket(m);
+      let otcAll=[],tpHealth={usable:false,status:'unavailable'};
+      if(tp){
+        tpHealth=await tp.tpexHealth().catch(e=>({usable:false,status:'failed',error:String(e.message||e)}));
+        if(tpHealth.usable)otcAll=await tp.tpexSnapshot().catch(()=>[]);
+      }
       const tw=twAll.map(x=>({market:'TWSE',code:String(x.Code||''),name:x.Name,c:n(x.ClosingPrice),v:n(x.TradeValue),date:null})).filter(x=>/^\d{4}$/.test(x.code)&&x.c&&x.v);
       const universe=[...tw,...otcAll].sort((a,b)=>b.v-a.v);
       const c=universe.slice(0,40);
       if(!c.length)throw Error('上市櫃全市場快照沒有可用候選');
       const firstTw=c.find(x=>x.market==='TWSE')||tw[0],twDate=firstTw?(await hist(firstTw.code,2)).at(-1)?.iso:null;
-      const [twExtra,tpExtra]=await Promise.all([twDate?extras(twDate):Promise.resolve({V:new Map(),I:new Map(),R:new Map()}),tp?tp.tpexExtras():Promise.resolve({V:new Map(),I:new Map(),R:new Map()})]);
+      const twExtra=twDate?await extras(twDate):{V:new Map(),I:new Map(),R:new Map()};
+      const tpExtra=tpHealth.usable&&tp?await tp.tpexExtras().catch(()=>({V:new Map(),I:new Map(),R:new Map()})):{V:new Map(),I:new Map(),R:new Map()};
       const qualified=[],rejected=[];
       for(const x of c){
         try{
@@ -38,8 +44,8 @@
         }catch(err){rejected.push({...x,reason:String(err.message||err)});}
       }
       qualified.sort((a,b)=>b.score-a.score);const out=qualified.slice(0,10),twCount=qualified.filter(x=>x.market==='TWSE').length,tpCount=qualified.filter(x=>x.market==='TPEx').length;
-      const box=document.querySelector('#top10');
-      box.innerHTML=`<h2>值得優先研究 TOP 10</h2><p class=muted>母體：TWSE 上市 + TPEx 上櫃官方快照 → 依成交值做流動性初篩前 40 檔 → 官方資料完整性閘門 → 同一公式排名。資料不足者不得進榜。</p><div class=list>${out.length?out.map((x,i)=>`<div class=item><div class=rank>#${i+1}</div><div><b>${x.code} ${x.name}</b><div class=mini>${x.market}｜✅ ${x.date}｜完整度 ${x.completeness.score}%｜${x.action}｜法人比 ${x.instRatio!=null?(x.instRatio*100).toFixed(1)+'%':'—'}｜營收YoY ${x.rev?.yoy??'—'}%</div></div><div class=price>${x.score}分<br><span class=mini>${fmt(x.c)}</span></div></div>`).join(''):`<p class=bad>目前沒有足夠資料完整度的股票符合入榜資格。</p>`}</div><p class=muted>本次合格 ${qualified.length} 檔（TWSE ${twCount}／TPEx ${tpCount}）／深入分析 ${c.length} 檔；${rejected.length} 檔因來源、日期、期別或完整度不足被排除。分數不是上漲機率。</p>`;
+      const box=document.querySelector('#top10'),scope=tpHealth.usable?'TWSE 上市 + TPEx 上櫃':'目前僅 TWSE 上市（TPEx 健康驗證尚未通過）',tpStatus=tpHealth.usable?'✅ TPEx verified':`⚠️ TPEx ${tpHealth.status||'unavailable'}：上櫃資料暫不納入`;
+      box.innerHTML=`<h2>值得優先研究 TOP 10</h2><p class=muted>本次母體：${scope} → 依成交值做流動性初篩前 40 檔 → 官方資料完整性閘門 → 同一公式排名。資料不足者不得進榜。</p><div class=sourceitem><b>${tpStatus}</b><span class=mini>Source Guard 採 fail-closed；TPEx 未驗證時不會用舊值或猜測補入排名。</span></div><div class=list>${out.length?out.map((x,i)=>`<div class=item><div class=rank>#${i+1}</div><div><b>${x.code} ${x.name}</b><div class=mini>${x.market}｜✅ ${x.date}｜完整度 ${x.completeness.score}%｜${x.action}｜法人比 ${x.instRatio!=null?(x.instRatio*100).toFixed(1)+'%':'—'}｜營收YoY ${x.rev?.yoy??'—'}%</div></div><div class=price>${x.score}分<br><span class=mini>${fmt(x.c)}</span></div></div>`).join(''):`<p class=bad>目前沒有足夠資料完整度的股票符合入榜資格。</p>`}</div><p class=muted>本次合格 ${qualified.length} 檔（TWSE ${twCount}／TPEx ${tpCount}）／深入分析 ${c.length} 檔；${rejected.length} 檔因來源、日期、期別或完整度不足被排除。分數不是上漲機率。</p>`;
       box.classList.remove('hidden');
     }catch(e){const box=document.querySelector('#top10');box.innerHTML=`<h3 class=bad>掃描失敗</h3><p>${e.message}</p>`;box.classList.remove('hidden');}
     finally{document.querySelector('#scanLoad').classList.add('hidden');}
