@@ -29,6 +29,7 @@
     if(rt.gates?.txFuturesContext!==true)reasons.push('台指期背景尚未完整');
     if(rt.gates?.internationalEventFeed!==true)reasons.push('國際時事背景尚未完整');
     if(rt.gates?.entryDecisionOosValidation!==true)reasons.push('入場模型正式 OOS 尚未通過');
+    if(rt.gates?.entryRangeExecutionValidation!==true)reasons.push('進場區間 OOS 觸價／成交可達性尚未通過');
     if(rt.gates?.entryConfidenceCalibration!==true)reasons.push('信心指數尚未完成樣本外校準');
     if(!vf?.complete)reasons.push('最新官方收盤交叉驗證未通過');
     if(entry?.summary?.complete!==true)reasons.push('必要內部資料仍有缺漏');
@@ -50,7 +51,7 @@
     box.innerHTML=`<div class=toprow><div><h2>${esc(label)}</h2><div class=muted>${esc(marketName)}｜想買這檔</div><div class=mini>資料基準 ${esc(plan.baseDate)}｜最新官方收盤 ${fmt(plan.baseClose)}</div></div></div>
       <div class=decision-strip><div class=sourceitem><div class=hero-label>建議進場區間</div><div class=hero-number>${fmt(plan.entryLow)}–${fmt(plan.entryHigh)}</div><div class=mini>${esc(plan.target.targetLabel)}</div></div><div class=sourceitem><div class=hero-label>信心指數</div><div class=hero-number>${confidence}</div><div class=mini>/100｜已校準；不是上漲機率</div></div></div>
       <div class=source-note><b>${esc(entry?.summary?.decision||'入場條件已通過')}</b><div class=mini>必要風險：${esc(riskText)}</div></div>
-      <div class=disclaimer><b>價格性質</b>這是由最新完成交易日建立的下一交易日模型區間，不是盤中即時報價。沒有合法即時／延遲行情時，盤中不會重新把舊資料冒充現在價格。</div>`;
+      <div class=disclaimer><b>價格性質</b>這是由最新完成交易日建立的下一交易日模型區間，且必須先通過 OOS 觸價／成交可達性驗證；不是盤中即時報價。沒有合法即時／延遲行情時，盤中不會重新把舊資料冒充現在價格。</div>`;
     box.classList.remove('hidden');
   }
   function renderPrivate(j){
