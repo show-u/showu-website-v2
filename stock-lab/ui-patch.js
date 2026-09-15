@@ -1,6 +1,16 @@
-// UX patch: ticker/company-name search plus explicit price presentation.
+// UX patch: tab switching, ticker/company-name search, plus explicit price presentation.
 (function(){
   const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn');
+  const singleBtn=document.querySelector('#singleBtn'),findBtn=document.querySelector('#findBtn');
+  const singlePanel=document.querySelector('#singlePanel'),findPanel=document.querySelector('#findPanel');
+  if(singleBtn&&findBtn&&singlePanel&&findPanel){
+    const showSingle=()=>{singlePanel.classList.remove('hidden');findPanel.classList.add('hidden');singleBtn.classList.remove('ghost');findBtn.classList.add('ghost');input?.focus();};
+    const showFind=()=>{findPanel.classList.remove('hidden');singlePanel.classList.add('hidden');findBtn.classList.remove('ghost');singleBtn.classList.add('ghost');};
+    singleBtn.addEventListener('click',showSingle);
+    findBtn.addEventListener('click',showFind);
+    // Keep the original product default: TOP10 visible first, but guarantee the single-stock input can always be restored.
+    if(singlePanel.classList.contains('hidden')&&!findPanel.classList.contains('hidden')) showFind();
+  }
   if(!input||!btn)return;
   let cachePromise=null;
   const norm=s=>String(s||'').trim().replace(/\s+/g,'').toLowerCase();
