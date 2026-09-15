@@ -22,9 +22,8 @@ jobs:
       - name: Fetch and cross-check official TAIFEX TX pages
         run: |
           python - <<'PY'
-          import hashlib, json, re, urllib.request
+          import hashlib, html, json, re, urllib.request
           from datetime import datetime, timezone
-          from html.parser import HTMLParser
           from urllib.parse import urlparse
 
           NOW=datetime.now(timezone.utc)
@@ -32,39 +31,31 @@ jobs:
             'report':'https://www.taifex.com.tw/cht/3/futDailyMarketReport?commodityId=TX',
             'excel':'https://www.taifex.com.tw/cht/3/futDailyMarketExcel?commodity_id=TX'
           }
-          class TableParser(HTMLParser):
-              def __init__(self): super().__init__(); self.rows=[]; self.row=None; self.cell=None
-              def handle_starttag(self,tag,attrs):
-                  if tag=='tr': self.row=[]
-                  elif tag in ('td','th') and self.row is not None: self.cell=[]
-              def handle_data(self,data):
-                  if self.cell is not None: self.cell.append(data)
-              def handle_endtag(self,tag):
-                  if tag in ('td','th') and self.cell is not None and self.row is not None:
-                      self.row.append(re.sub(r'\s+',' ',''.join(self.cell)).strip()); self.cell=None
-                  elif tag=='tr' and self.row is not None:
-                      if self.row: self.rows.append(self.row)
-                      self.row=None
           def get(url):
-              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 StockLab/1.0 (+verification)'})
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 StockLab/1.1 (+verification)'})
               with urllib.request.urlopen(req,timeout=30) as r:
                   body=r.read(); final=r.geturl(); host=(urlparse(final).hostname or '').lower()
                   if host!='www.taifex.com.tw': raise ValueError(f'unexpected TAIFEX host {host}')
                   return body.decode('utf-8','replace'),final,hashlib.sha256(body).hexdigest()
-          def num(s):
-              s=str(s or '').replace(',','').replace('▲','').replace('▼','').replace('%','').strip()
-              m=re.search(r'-?\d+(?:\.\d+)?',s)
+          def signed(s):
+              t=str(s or '').replace(',','').replace('%','').strip(); sign=-1 if ('▼' in t or t.startswith('-')) else 1
+              m=re.search(r'\d+(?:\.\d+)?',t)
+              return sign*float(m.group()) if m else None
+          def number(s):
+              t=str(s or '').replace(',','').strip(); m=re.search(r'-?\d+(?:\.\d+)?',t)
               return float(m.group()) if m else None
           def parse_page(text):
-              plain=re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',text))
+              plain=html.unescape(re.sub(r'<[^>]+>',' ',text)); plain=re.sub(r'\s+',' ',plain)
               dm=re.search(r'日期[:：]\s*(\d{4}/\d{2}/\d{2})',plain)
               if not dm: raise ValueError('TAIFEX trade date not found')
-              p=TableParser(); p.feed(text)
+              # Official monthly TX table fields:
+              # TX | YYYYMM | open | high | low | last | change | change% | after-hours vol | regular vol | total vol | settlement | OI
+              pat=re.compile(r'\bTX\s+(\d{6})\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([▲▼+\-]?\s*[\d,.]+)\s+([▲▼+\-]?\s*[\d.]+)%\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)')
               rows=[]
-              for r in p.rows:
-                  if len(r)>=10 and r[0].strip()=='TX' and re.fullmatch(r'\d{6}',r[1].strip()):
-                      last=num(r[5]); pct=num(r[7]); total=num(r[10] if len(r)>10 else r[9]); oi=num(r[12] if len(r)>12 else '')
-                      if last and total is not None: rows.append({'month':r[1].strip(),'last':last,'pct':pct,'total':total,'oi':oi,'raw':r})
+              for m in pat.finditer(plain):
+                  month,op,hi,lo,last,chg,pct,after,regular,total,settle,oi=m.groups()
+                  row={'month':month,'open':number(op),'high':number(hi),'low':number(lo),'last':number(last),'change':signed(chg),'pct':signed(pct),'after_volume':number(after),'regular_volume':number(regular),'total':number(total),'settlement':number(settle),'oi':number(oi)}
+                  if row['last'] and row['total'] is not None: rows.append(row)
               if not rows: raise ValueError('no monthly TX rows parsed')
               return dm.group(1),rows
           out={'schema_version':1,'generated_at':NOW.isoformat(),'status':'failed','source':'TAIFEX','contract':'TX','verified':False,'urls':URLS,'validation':[],'raw_sha256':{}}
@@ -78,10 +69,11 @@ jobs:
               if not common: raise ValueError('no common TX contract month across official pages')
               month=max(common,key=lambda m:a[m]['total'])
               x,y=a[month],b[month]
-              if abs(x['last']-y['last'])>0.001: raise ValueError(f'last-price conflict {x["last"]} vs {y["last"]}')
-              if x['pct'] is not None and y['pct'] is not None and abs(x['pct']-y['pct'])>0.02: raise ValueError('change-percent conflict')
+              for fld,tol in [('last',0.001),('pct',0.02),('total',0.001)]:
+                  if x[fld] is not None and y[fld] is not None and abs(x[fld]-y[fld])>tol: raise ValueError(f'{fld} conflict {x[fld]} vs {y[fld]}')
               if not (1000 < x['last'] < 100000): raise ValueError('TX price outside sanity bounds')
-              out.update({'status':'ok','verified':True,'trade_date':d1,'contract_month':month,'last_price':x['last'],'change_pct':x['pct'],'total_volume':x['total'],'open_interest':x['oi'],'selection_rule':'highest_total_volume_common_monthly_TX','cross_check':'matched','validation':['official_host','trade_date_match','contract_month_match','last_price_match','raw_sha256','price_bounds_ok']})
+              if x['high'] is not None and x['low'] is not None and not (x['low']<=x['last']<=x['high']): raise ValueError('TX last price outside daily high/low')
+              out.update({'status':'ok','verified':True,'trade_date':d1,'contract_month':month,'last_price':x['last'],'change':x['change'],'change_pct':x['pct'],'total_volume':x['total'],'open_interest':x['oi'],'selection_rule':'highest_total_volume_common_monthly_TX','cross_check':'matched','validation':['official_host','trade_date_match','contract_month_match','last_price_match','change_percent_match','volume_match','raw_sha256','price_bounds_ok','ohlc_consistency_ok']})
           except Exception as e:
               out['error']=str(e)[:300]
           with open('stock-lab/futures-data.json','w',encoding='utf-8') as f: json.dump(out,f,ensure_ascii=False,indent=2)
@@ -96,6 +88,7 @@ jobs:
               assert x.get('cross_check')=='matched'
               assert x.get('trade_date') and x.get('contract_month') and x.get('last_price')
               assert len(x.get('raw_sha256',{}).get('report',''))==64 and len(x.get('raw_sha256',{}).get('excel',''))==64
+              assert 'ohlc_consistency_ok' in x.get('validation',[])
           print('TAIFEX snapshot schema valid')
           PY
       - name: Commit snapshot if changed
