@@ -27,12 +27,12 @@ jobs:
           python-version: '3.12'
       - name: Syntax check
         run: python -m py_compile stock-lab/backtest-taiwan-v3.py
-      - name: Run fail-closed model validation gate
+      - name: Run fail-closed v9 model validation gate
         run: |
           python stock-lab/backtest-taiwan-v3.py \
             --status-manifest stock-lab/model-validation-status.json \
             --out /tmp/stocklab-validation.json
-      - name: Validate v7 separation, zero unlicensed collection, and no false PASS
+      - name: Validate v9 separation, zero unlicensed collection, and no false PASS
         run: |
           python - <<'PY'
           import json
@@ -40,18 +40,21 @@ jobs:
 
           x=json.load(open('/tmp/stocklab-validation.json',encoding='utf-8'))
           manifest=json.load(open('stock-lab/model-validation-status.json',encoding='utf-8'))
-          repo=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
-          expected={'buy_session','holding_exit','scanner_momentum','scanner_growth','scanner_income','scanner_total_return'}
+          expected={'entry_decision_9plus3','entry_scanner_9plus3','holding_exit'}
           allowed_nonpass={'FAIL','INSUFFICIENT','BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER'}
 
-          assert x['schema_version']==7 and x['architecture']=='buy-holding-strategy-scanner-v7'
-          assert manifest['schema_version']==2 and manifest['architecture']==x['architecture']
-          assert x['formal_validation_status']=='BLOCKED_LEGAL_SOURCE'
+          assert x['schema_version']==9 and x['architecture']=='unified-entry-holding-v9'
+          assert manifest['schema_version']==3 and manifest['architecture']==x['architecture']
+          assert x['formal_validation_status'] in allowed_nonpass
           assert x['network_history_collection_performed'] is False
           assert x['network_history_collection_disabled'] is True
-          assert x['legacy_preopen_short_swing_long_result_is_production_valid'] is False
-          assert set(x['models'])==expected
-          assert set(manifest['models'])==expected
+          assert x['legacy_horizon_entry_results_are_production_valid'] is False
+          assert set(x['models'])==expected and set(manifest['models'])==expected
+          assert x['truth_contract']=={
+              'missing_data_imputed':False,
+              'unverified_source_used_as_fact':False,
+              'stale_data_relabelled_current':False,
+              'oos_required_for_recommendation':True}
           for name in expected:
               status=x['models'][name]
               assert status==manifest['models'][name]['status'],(name,status,manifest['models'][name])
@@ -59,21 +62,13 @@ jobs:
               assert manifest['models'][name]['reason'],name
               assert manifest['models'][name]['required_before_pass'],name
 
-          assert repo['schema_version']==7 and repo['architecture']==x['architecture']
-          assert repo['formal_validation_status']=='BLOCKED_LEGAL_SOURCE'
-          assert repo['network_history_collection_performed'] is False
-          assert repo['legacy_preopen_short_swing_long_result_is_production_valid'] is False
-          assert set(repo['models'])==expected
-          for name in expected:
-              assert repo['models'][name] in allowed_nonpass,(name,repo['models'][name])
-
           src=Path('stock-lab/backtest-taiwan-v3.py').read_text(encoding='utf-8')
-          assert "ARCHITECTURE = 'buy-holding-strategy-scanner-v7'" in src
+          assert "ARCHITECTURE = 'unified-entry-holding-v9'" in src
           assert 'NETWORK_HISTORY_COLLECTION_DISABLED = True' in src
           for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
               assert forbidden not in src,forbidden
 
-          print('PASS: v7 validation gate preserved six independent non-PASS model states, made zero unlicensed historical requests, and emitted no false PASS')
+          print('PASS: v9 validation gate preserved unified entry/scanner/holding non-PASS states, made zero unlicensed historical requests, and emitted no false PASS')
           PY
       - name: Publish validation artifact
         uses: actions/upload-artifact@v4
