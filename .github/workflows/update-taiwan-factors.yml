@@ -21,27 +21,43 @@ jobs:
       - name: Build derived Taiwan factors
         run: |
           python - <<'PY'
-          import json,urllib.request,re,time
+          import json,urllib.request,re,time,csv,io
           from datetime import datetime,timezone
-          UA={'User-Agent':'StockLab-Taiwan-Factors/3.1','Accept':'application/json,text/html;q=0.8'}
-          def get(url):
+          UA={'User-Agent':'StockLab-Taiwan-Factors/3.2','Accept':'application/json,text/csv,text/plain,text/html;q=0.8'}
+          def raw(url):
             for i in range(4):
               try:
-                with urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=60) as r:return json.loads(r.read().decode())
-              except Exception as e:
+                with urllib.request.urlopen(urllib.request.Request(url,headers=UA),timeout=60) as r:return r.read()
+              except Exception:
                 if i==3:return None
                 time.sleep(i+1)
+          def get(url):
+            b=raw(url)
+            if not b:return None
+            for enc in ('utf-8-sig','utf-8','big5','cp950'):
+              try:return json.loads(b.decode(enc))
+              except:pass
+            return None
+          def text(url):
+            b=raw(url)
+            if not b:return None
+            for enc in ('utf-8-sig','utf-8','big5','cp950'):
+              try:return b.decode(enc)
+              except:pass
+            return b.decode('utf-8','replace')
           def val(o,ks):
             for k in ks:
               if isinstance(o,dict) and k in o and str(o[k]).strip()!='':return o[k]
           def num(v):
-            try:return float(str(v).replace(',','').replace('%',''))
+            try:return float(str(v).replace(',','').replace('%','').replace('=','').replace('"','').strip())
             except:return None
+          def clean(v):return str(v).strip().replace('="','').replace('"','').strip()
           def code(o):
             if isinstance(o,dict):return str(val(o,['公司代號','證券代號','SecuritiesCompanyCode','Code','股票代號']) or '').strip()
             if isinstance(o,list):
               for x in o:
-                if re.fullmatch(r'\d{4}',str(x).strip()):return str(x).strip()
+                s=clean(x)
+                if re.fullmatch(r'\d{4}',s):return s
             return ''
           def chg(p,c):return round((c/p-1)*100,3) if p not in (None,0) and c is not None else None
           stocks={};profiles={}
@@ -52,29 +68,45 @@ jobs:
               if not re.fullmatch(r'\d{4}',c):continue
               z=stocks.setdefault(c,{});z['market']=market;ind=str(val(x,['產業別','產業類別','Industry','IndustryName','產業別名稱']) or '').strip()
               if ind:z['industry']=ind
-          tw=get('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&selectType=ALL') or {}
-          for fk,fields in list(tw.items()):
-            if not fk.startswith('fields') or not isinstance(fields,list):continue
-            suffix=fk[6:];rows=tw.get('data'+suffix)
-            if not isinstance(rows,list):continue
-            heads=[re.sub('<[^>]+>','',str(x)).replace('\n','').replace(' ','') for x in fields]
-            if not any('代號' in x for x in heads) or not any('融資' in x for x in heads) or not any('融券' in x for x in heads):continue
-            for r in rows:
-              c=code(r)
-              if not re.fullmatch(r'\d{4}',c) or len(r)<14:continue
-              z=stocks.setdefault(c,{});mp,mc,sp,sc=num(r[5]),num(r[6]),num(r[11]),num(r[12]);a,b=chg(mp,mc),chg(sp,sc)
+          # TWSE official MI_MARGN CSV. Detailed row layout is stable:
+          # code,name,margin buy,sell,cash repayment,prev balance,current balance,limit,
+          # short cover,sell,stock repayment,prev balance,current balance,limit,offset,note.
+          twcsv=text('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=csv&selectType=ALL')
+          if twcsv:
+            for r in csv.reader(io.StringIO(twcsv)):
+              r=[clean(x) for x in r]
+              if len(r)<15 or not re.fullmatch(r'\d{4}',r[0]):continue
+              c=r[0];z=stocks.setdefault(c,{})
+              a=chg(num(r[5]),num(r[6]));b=chg(num(r[11]),num(r[12]))
               if a is not None:z['margin_change_pct']=a
               if b is not None:z['short_change_pct']=b
-              note=str(r[-1]) if r else ''
-              if any(k in note for k in ('O','X','!')):z['margin_suspended']=True
+              note=r[15] if len(r)>15 else r[-1]
+              if any(k in note for k in ('O','X','!','@','%')):z['margin_suspended']=True
+          # TPEx public OpenAPI. Retain only derived changes.
           tp=get('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_margin_balance') or []
           for x in tp:
             c=code(x)
             if not c:continue
-            z=stocks.setdefault(c,{});a=chg(num(val(x,['PreviousBalanceOfMarginPurchase','PreviousMarginPurchaseBalance','前日融資餘額','昨日融資餘額'])),num(val(x,['BalanceOfMarginPurchase','MarginPurchaseBalance','融資餘額','今日融資餘額','本日融資餘額'])));b=chg(num(val(x,['PreviousBalanceOfShortSale','PreviousShortSaleBalance','前日融券餘額','昨日融券餘額'])),num(val(x,['BalanceOfShortSale','ShortSaleBalance','融券餘額','今日融券餘額','本日融券餘額'])))
+            z=stocks.setdefault(c,{})
+            def fuzzy(tokens,exclude=()):
+              for k,v in x.items():
+                kk=re.sub(r'[^a-z0-9]','',str(k).lower())
+                if all(t in kk for t in tokens) and not any(e in kk for e in exclude):
+                  y=num(v)
+                  if y is not None:return y
+              return None
+            mp=num(val(x,['PreviousBalanceOfMarginPurchase','PreviousMarginPurchaseBalance','前日融資餘額','昨日融資餘額']))
+            mc=num(val(x,['BalanceOfMarginPurchase','MarginPurchaseBalance','融資餘額','今日融資餘額','本日融資餘額']))
+            sp=num(val(x,['PreviousBalanceOfShortSale','PreviousShortSaleBalance','前日融券餘額','昨日融券餘額']))
+            sc=num(val(x,['BalanceOfShortSale','ShortSaleBalance','融券餘額','今日融券餘額','本日融券餘額']))
+            if mp is None:mp=fuzzy(('margin','previous'))
+            if mc is None:mc=fuzzy(('margin','balance'),('previous',))
+            if sp is None:sp=fuzzy(('short','previous'))
+            if sc is None:sc=fuzzy(('short','balance'),('previous',))
+            a,b=chg(mp,mc),chg(sp,sc)
             if a is not None:z['margin_change_pct']=a
             if b is not None:z['short_change_pct']=b
-            if any(k in str(val(x,['Note','備註']) or '') for k in ('O','X','!')):z['margin_suspended']=True
+            if any(k in str(val(x,['Note','備註']) or '') for k in ('O','X','!','@','%')):z['margin_suspended']=True
           def mark(url,key):
             d=get(url)
             if isinstance(d,list):rows=d
@@ -83,10 +115,14 @@ jobs:
             for x in rows:
               c=code(x)
               if c:stocks.setdefault(c,{})[key]=True
-          mark('https://www.twse.com.tw/rwd/zh/announcement/notice?response=json','attention');mark('https://www.twse.com.tw/rwd/zh/announcement/punish?response=json','disposition');mark('https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information','attention');mark('https://www.tpex.org.tw/openapi/v1/tpex_disposal_information','disposition')
+          mark('https://www.twse.com.tw/rwd/zh/announcement/notice?response=json','attention')
+          mark('https://www.twse.com.tw/rwd/zh/announcement/punish?response=json','disposition')
+          mark('https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information','attention')
+          mark('https://www.tpex.org.tw/openapi/v1/tpex_disposal_information','disposition')
           otc=get('https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index') or [];market={'otc_state':'unavailable'}
           if otc:
-            x=otc[0];d=num(val(x,['ChangePercent','漲跌幅','漲跌百分比','Change']));market={'otc_state':'偏多' if d is not None and d>0 else '偏空' if d is not None and d<0 else '震盪' if d is not None else '已取得','otc_change':d,'otc_close':num(val(x,['Close','ClosingIndex','收盤指數','指數']))}
+            x=otc[0];d=num(val(x,['ChangePercent','漲跌幅','漲跌百分比','Change']))
+            market={'otc_state':'偏多' if d is not None and d>0 else '偏空' if d is not None and d<0 else '震盪' if d is not None else '已取得','otc_change':d,'otc_close':num(val(x,['Close','ClosingIndex','收盤指數','指數']))}
           coverage={'industry':sum('industry'in z for z in stocks.values()),'margin':sum('margin_change_pct'in z for z in stocks.values()),'short':sum('short_change_pct'in z for z in stocks.values()),'attention':sum(bool(z.get('attention')) for z in stocks.values()),'disposition':sum(bool(z.get('disposition')) for z in stocks.values())}
           out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'official-derived','profile_status':profiles,'market':market,'coverage':coverage,'stocks':stocks}
           json.dump(out,open('stock-lab/taiwan-factors.json','w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
