@@ -62,7 +62,10 @@ jobs:
           grep -q 'internationalEventFeed:false' /tmp/runtime-config.js
           grep -q 'nineFactorBlocked' /tmp/compliance-gate.js
           grep -q '完整判斷指定的九項因子＋美股＋台指期＋國際時事尚未全部驗證' /tmp/compliance-gate.js
-          grep -q "'trend','volume','movingAverages','institution','macd','rsi','kd','crossovers','candlestick'" /tmp/entry-decision.js
+          grep -q 'window.StockLabEntryDecision' /tmp/entry-decision.js
+          grep -q 'marketContexts' /tmp/entry-decision.js
+          grep -q "'trend','① 價格趨勢＋支撐／壓力'" /tmp/entry-decision.js
+          grep -q "'candlestick','⑨ K線型態'" /tmp/entry-decision.js
 
           python - <<'PY'
           import json
