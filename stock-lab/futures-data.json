@@ -1,18 +1,28 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-15T02:18:58.763209+00:00",
-  "status": "pending_sync",
+  "generated_at": "2026-09-15T13:27:49.282166+00:00",
+  "status": "ok",
   "source": "TAIFEX",
   "contract": "TX",
-  "verified": false,
+  "verified": true,
   "urls": {
     "report": "https://www.taifex.com.tw/cht/3/futDailyMarketReport?commodityId=TX",
     "excel": "https://www.taifex.com.tw/cht/3/futDailyMarketExcel?commodity_id=TX"
   },
-  "validation": [],
+  "validation": [
+    "official_host",
+    "trade_date_match",
+    "contract_month_match",
+    "last_price_match",
+    "change_percent_match",
+    "volume_match",
+    "raw_sha256",
+    "price_bounds_ok",
+    "ohlc_consistency_ok"
+  ],
   "raw_sha256": {
-    "report": "793560b02dd41a368c2584dfa241cb0996602ebcc502d1ce9ab570c41f07d34f",
-    "excel": "aea74a886accc2a4df28c2722376268eeda2e588276bfceb72d26c3bb092e2a1"
+    "report": "cd6e14fa8f07367242e89ae7ddbb364f2fa570cbbd7f9c8f0904e164b3a4a90b",
+    "excel": "c166416eac5a76d77bb1987b3eae7000c2a1629e75ec35e46fe79c571d1991d0"
   },
   "content_type": {
     "report": "text/html;charset=utf-8",
@@ -25,8 +35,15 @@
   },
   "source_dates": {
     "report": "2026/09/15",
-    "excel": "2026/09/14"
+    "excel": "2026/09/15"
   },
-  "sync_reason": "official TAIFEX pages are on different completed trade dates; later scheduled run will retry",
-  "error": "trade-date conflict report=2026/09/15 excel=2026/09/14"
+  "trade_date": "2026/09/15",
+  "contract_month": "202609",
+  "last_price": 45607.0,
+  "change": -170.0,
+  "change_pct": -0.37,
+  "total_volume": 104056.0,
+  "open_interest": 18797.0,
+  "selection_rule": "highest_total_volume_common_monthly_TX",
+  "cross_check": "matched"
 }
