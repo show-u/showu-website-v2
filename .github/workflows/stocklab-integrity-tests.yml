@@ -26,7 +26,7 @@ jobs:
 
       - name: Syntax checks
         run: |
-          for f in app tpex same-origin-cache taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate api-client runtime-config; do
+          for f in app tpex same-origin-cache taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config; do
             test -f "stock-lab/$f.js"
             node --check "stock-lab/$f.js"
           done
@@ -55,6 +55,7 @@ jobs:
           runtime=R('stock-lab/runtime-config.js')
           hard=R('stock-lab/hard-policy.js')
           compliance=R('stock-lab/compliance-gate.js')
+          public=R('stock-lab/public-output.js')
           backtest=R('stock-lab/backtest-taiwan-v3.py')
 
           # Absolute truth rules.
@@ -78,9 +79,10 @@ jobs:
           assert '9項入場因子' not in idx and '美股、台指期 TX、國際時事' not in idx
           for removed in ('./indicators-v2.js','./financials.js','./integrity.js'):
               assert removed not in idx,removed
-          assert './entry-decision.js' in idx and './position-input.js' in idx and './holding-model.js' in idx and './holding-router.js' in idx
-          assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js')
+          assert './entry-decision.js' in idx and './position-input.js' in idx and './holding-model.js' in idx and './holding-router.js' in idx and './public-output.js' in idx
+          assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js') < idx.rfind('./public-output.js')
           assert 'showSingle();' in ui
+          assert all(x in public for x in ('暫不提供進場區間與信心指數','暫不提供出場價格與信心指數','入場候選 TOP 10','不以舊值、0、平均值、其他網站或 AI 補值'))
 
           # Public API contract no longer exposes horizon-specific buy analysis.
           assert 'async function analyze(code)' in api and "strategy:'entry'" in api
@@ -121,11 +123,12 @@ jobs:
           assert 'btn.onclick=async' in hold_router and 'StockLabPositionInput?.collect' in hold_router and 'StockLabTickerResolver' in hold_router
           assert '暫不提供出場價格' in hold_router and "oosStatus:'PASS'" in hold_router
 
-          # Compliance gate remains final fail-closed authority while production gates are false.
+          # Compliance gate remains final fail-closed authority while final public layer keeps failure output concise.
           assert 'allowLocalFallback:false' in runtime and 'productionPredictionReady:false' in runtime
           for s in ('licensedHistoricalOHLC:false','securityMaster:false','tradingCalendar:false','corporateActions:false','taiwanRiskState:false','entryDecisionOosValidation:false','holdingExitValidation:false','entryScannerOosValidation:false'):
               assert s in runtime,s
           assert 'VERIFIED FACTS ONLY' in compliance and '不以 0、平均值、舊值或 AI 補齊' in compliance
+          assert "const ready=()=>window.StockLabAPI?.config?.enabled===true||rt.productionPredictionReady===true" in public
 
           # Validation contracts are v10/v4 and legacy network backtest code stays disabled.
           assert validation['schema_version']==4 and validation['architecture']=='unified-entry-holding-v10'
