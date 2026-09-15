@@ -92,7 +92,6 @@ jobs:
               try:
                   raw,final_url,ctype,sha=get(s['url'],key)
                   text=re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',raw))
-                  # Scope to the authoritative DATA AS OF headline instead of duplicated Summary HTML blocks.
                   m=re.search(r'DATA AS OF\s+(\d{1,2}/\d{1,2}/\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+\-]?[\d,]+(?:\.\d+)?)\s+([+\-]?[\d.]+)%',text,re.I)
                   if not m: raise ValueError('Nasdaq DATA AS OF headline not found')
                   date,value,chg,pct_page=m.groups(); d=parse_date(date); validate_date(d)
@@ -129,4 +128,10 @@ jobs:
       - name: Commit snapshot if changed
         run: |
           if git diff --quiet -- stock-lab/market-data.json; then echo 'No changes'; exit 0; fi
-          git config user.name 'stocklab-bot'; git config user.email 'stocklab-bot@users.noreply.github.com'; git add stock-lab/market-data.json; git commit -m 'update verified market snapshot'; git push
+          git config user.name 'stocklab-bot'
+          git config user.email 'stocklab-bot@users.noreply.github.com'
+          git add stock-lab/market-data.json
+          git commit -m 'update verified market snapshot'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
