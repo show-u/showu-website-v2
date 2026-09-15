@@ -25,6 +25,7 @@ jobs:
       - name: JavaScript syntax checks
         run: |
           for f in app indicators-v2 tpex financials integrity taiwan-model-v2 markets futures event-risk top10-gate market-router ui-patch; do node --check "stock-lab/$f.js"; done
+          python -m py_compile stock-lab/backtest-model.py stock-lab/backtest-taiwan-v3.py
       - name: Source policy and Taiwan-model checks
         run: |
           python - <<'PY'
@@ -36,6 +37,7 @@ jobs:
           tpex=R('stock-lab/tpex.js');fin=R('stock-lab/financials.js');integ=R('stock-lab/integrity.js')
           taiwan=R('stock-lab/taiwan-model-v2.js');markets=R('stock-lab/markets.js');futures=R('stock-lab/futures.js')
           events=R('stock-lab/event-risk.js');gate=R('stock-lab/top10-gate.js');router=R('stock-lab/market-router.js');ui=R('stock-lab/ui-patch.js')
+          backtest=R('stock-lab/backtest-taiwan-v3.py')
           policy=json.loads(R('stock-lab/verification-policy.json'))
           scripts=('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','taiwan-model-v2.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js','ui-patch.js')
           for script in scripts: assert f'./{script}' in idx, f'{script} not loaded by index'
@@ -48,9 +50,18 @@ jobs:
           assert 'entryLow:Math.max(lo,L.c*' not in app and 'entryHigh:L.c*' not in app and "h==='long'&&v?.pe" not in app
           assert 'adaptiveBand' in taiwan and 'TW-structure-volatility-v3' in taiwan
           assert all(x in taiwan for x in ('pctRank','sectorFamily',"s==='24'","s==='17'",'margin_change_pct','short_change_pct','riskBlocked','a.integrity?.valuation?.ok'))
-          assert 'riskBlocked' in router and 'data-five-price-matrix' in router and 'TW-day-structure-volatility-v4' in router
-          assert all(x in router for x in ('① 開盤前掛單價格','② 當日入場適合區間','③ 短線入場區間','④ 中期入場區間','⑤ 長期佈局區間','限價 ROD','ATR14','tickSize'))
+
+          # Pre-open must be an opening-auction model anchored to verified prior close, not a support-band alias.
+          assert 'riskBlocked' in router and 'data-five-price-matrix' in router and 'TW-empirical-open-pullback-v5' in router
+          assert all(x in router for x in ('① 開盤前掛單價格','② 當日入場適合區間','③ 短線入場區間','④ 中期入場區間','⑤ 長期佈局區間','限價 ROD','tickSize','openingGapStats','官方基準','09:00後'))
           assert "h==='preopen'" in router and 'StockLabTaiwan?.loadFactors' in router
+          assert 'orderPrice=roundTick(day.entryLow' not in router
+          assert 'mid=(day.entryLow+day.entryHigh)/2' not in router
+          assert "if(!a.riskBlocked&&a.score>=45)orderPrice=expectedMid" in router
+          assert 'prior official close + empirical overnight-gap median' in backtest
+          assert 'opening auction price <= order price' in backtest
+          assert "if nxt.open>order" in backtest
+
           # Fixed percentage entry heuristics must not return.
           forbidden=('L.c*.96','L.c*0.96','L.c*.92','L.c*0.92','L.c*.88','L.c*0.88','L.c*.985','L.c*0.985')
           for x in forbidden: assert x not in app+router+taiwan, f'fixed entry percentage returned: {x}'
