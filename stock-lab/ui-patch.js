@@ -10,7 +10,7 @@
     const showSingle=()=>{activate(singleBtn,singlePanel);input?.focus()};
     const showFind=()=>activate(findBtn,findPanel);
     const showHold=()=>{activate(holdBtn,holdPanel);holdInput?.focus()};
-    singleBtn.addEventListener('click',showSingle);findBtn.addEventListener('click',showFind);holdBtn.addEventListener('click',showHold);showFind();
+    singleBtn.addEventListener('click',showSingle);findBtn.addEventListener('click',showFind);holdBtn.addEventListener('click',showHold);showSingle();
   }
   let cachePromise=null;
   const norm=s=>String(s||'').trim().replace(/\s+/g,'').toLowerCase();
