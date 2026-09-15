@@ -7,6 +7,7 @@ on:
       - 'stock-lab/public-output.js'
       - 'stock-lab/holding-model.js'
       - 'stock-lab/holding-router.js'
+      - 'stock-lab/position-input.js'
       - 'stock-lab/hard-policy.js'
       - 'stock-lab/verification-policy.json'
       - 'stock-lab/index.html'
@@ -30,8 +31,9 @@ jobs:
           node --check stock-lab/public-output.js
           node --check stock-lab/holding-model.js
           node --check stock-lab/holding-router.js
+          node --check stock-lab/position-input.js
           node --check stock-lab/hard-policy.js
-      - name: Session and holding invariants
+      - name: Session and backend-only holding invariants
         run: |
           python - <<'PY'
           import json
@@ -42,10 +44,11 @@ jobs:
           public=R('stock-lab/public-output.js')
           hold=R('stock-lab/holding-model.js')
           router=R('stock-lab/holding-router.js')
+          pos=R('stock-lab/position-input.js')
           hard=R('stock-lab/hard-policy.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
 
-          # Session state is data-date driven, with Taiwan market phases used only for executability/labels.
+          # Session state is data-date driven; Taiwan market phases affect executability/labels only.
           assert './session-context.js' in idx
           assert idx.index('./licensed-history.js') < idx.index('./session-context.js') < idx.index('./market-router.js')
           for text in ('BEFORE_ORDERS','PREOPEN','CONTINUOUS','CLOSING_AUCTION','AFTER_CLOSE','WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE'):
@@ -58,23 +61,36 @@ jobs:
           assert 'StockLabSessionContext.resolve' in public
           assert '若今日已收盤但官方資料日尚未前進' in public
 
-          # Backend results must identify the data session and exact later trading session explicitly.
+          # Backend results identify the data session and exact later trading session explicitly.
           for text in ('validISODate','sessionPairOK','trading_calendar_verified','base_session_date','target_session_date','next_eligible_session_date'):
               assert text in hard,text
           assert "if(ctx.targetSessionVerified!==true)" in hard
           assert "if(ctx.nextExecutionSessionVerified!==true)" in hard
           assert "if(!sessionPairOK(base,target))" in hard
 
-          # Holding structure needs enough pre-entry context, while holding age remains exact from the user buy date.
+          # Holding research contract keeps enough history and exact user buy-date semantics.
           assert 'const MIN_BARS=120' in hold
           assert 'requiredBars:()=>MIN_BARS' in hold
           assert 'holdingTradingDays=bars.length-entryIndex' in hold
           assert '首次買入日不在目前合法且驗證通過的歷史交易日序列中' in hold
-          assert 'loader.load({code,market,minimumBars})' in router
-          assert 'from:p.buyDate' not in router
-          assert 'bars.some(x=>(x.iso||x.date)===p.buyDate)' in router
-
-          # Policy must keep the same 120-bar floor.
           assert int(policy['history_requirements']['holding_exit']['minimum_valid_bars']) == 120
-          print('PASS: target-session truth, backend session dates and holding-history contracts enforced')
+
+          # Executable holding output is backend-only; browser cannot promote the local research model.
+          executable='\n'.join(line for line in router.splitlines() if not line.lstrip().startswith('//'))
+          assert 'api.holding(code,p)' in router
+          assert "backendResult(j,'holding')" in router
+          assert '正式私有分析後端尚未啟用；瀏覽器本地持股出場預測已停用' in router
+          for forbidden in ('loader.load(','StockLabLicensedHistory','StockLabHolding?.analyze','localHolding(','bars.some('):
+              assert forbidden not in executable,forbidden
+          assert "oosStatus:'PASS'" not in executable
+          assert 'imputation_used===true' in router
+          assert 'position_audit?.user_input_verified!==true' in router
+          assert 'exit_execution_validated!==true' in router
+          assert 'confidence_calibrated===true' in router
+
+          # Position facts are user provenance only; missing values are not substituted.
+          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'):
+              assert text in pos,text
+
+          print('PASS: session truth, exact position provenance and backend-only holding execution enforced')
           PY
