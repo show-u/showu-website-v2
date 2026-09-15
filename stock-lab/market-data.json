@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-15T01:48:19.482117+00:00",
+  "generated_at": "2026-09-15T01:50:54.524842+00:00",
   "status": "partial",
   "policy": "official-primary; source/date/schema/value/history checks; invalid data display-blocked and never scored",
   "sources": {
@@ -8,7 +8,7 @@
       "verified": true,
       "source": "CBOE",
       "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
-      "fetched_at": "2026-09-15T01:48:19.482117+00:00",
+      "fetched_at": "2026-09-15T01:50:54.524842+00:00",
       "validation": [
         "official_host",
         "content_type_ok",
@@ -16,34 +16,38 @@
         "date_not_future",
         "chronology_ok",
         "value_bounds_ok",
-        "change_recomputed"
+        "change_recomputed",
+        "previous_snapshot_chronology_ok"
       ],
       "anomalies": [],
       "date": "09/14/2026",
       "value": 17.1,
+      "previous_close": 15.84,
       "change": 1.2600000000000016,
       "change_pct": 7.954545454545459,
       "raw_sha256": "9148183f463cb27743267d605a743241fa3e4c134eb1275e5871a41ce0837b8a",
       "content_type": "text/csv",
-      "final_url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+      "final_url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+      "previous_verified_date": "09/14/2026",
+      "previous_verified_value": 17.1
     },
     "sox": {
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/SOX",
-      "fetched_at": "2026-09-15T01:48:19.482117+00:00",
+      "fetched_at": "2026-09-15T01:50:54.524842+00:00",
       "validation": [],
       "anomalies": [],
-      "error": "change percent mismatch page=0.0, recomputed=-5.8585"
+      "error": "previous close mismatch page=11131.28, implied=11823.9900"
     },
     "nasdaq": {
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/COMP",
-      "fetched_at": "2026-09-15T01:48:19.482117+00:00",
+      "fetched_at": "2026-09-15T01:50:54.524842+00:00",
       "validation": [],
       "anomalies": [],
-      "error": "change percent mismatch page=0.0, recomputed=-0.5632"
+      "error": "previous close mismatch page=26186.41, implied=26334.7400"
     }
   }
 }
