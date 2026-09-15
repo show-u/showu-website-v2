@@ -1,0 +1,35 @@
+name: StockLab same-origin data smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'stock-lab/browser-data.json'
+      - 'stock-lab/same-origin-cache.js'
+      - 'stock-lab/index.html'
+      - '.github/workflows/stocklab-same-origin-smoke.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify same-origin adapter
+        run: |
+          node --check stock-lab/same-origin-cache.js
+          grep -q './same-origin-cache.js' stock-lab/index.html
+          grep -q 'browser-data.json' stock-lab/same-origin-cache.js
+      - name: Verify mirrored datasets
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('stock-lab/browser-data.json',encoding='utf-8'))
+          req={'twse_snapshot','twse_valuation','twse_revenue','twse_income','twse_balance','tpex_snapshot','tpex_valuation','tpex_institution','tpex_revenue','tpex_income','tpex_balance'}
+          assert x['schema_version']==1 and x['source']=='official-mirror'
+          assert set(x['datasets'])==req
+          assert all(isinstance(x['datasets'][k],list) and len(x['datasets'][k])>0 for k in req)
+          print('same-origin datasets verified')
+          PY
