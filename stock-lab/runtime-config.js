@@ -38,3 +38,5 @@ window.STOCKLAB_RUNTIME={
 window.STOCKLAB_HARD_READY=import('./hard-policy.js')
   .then(()=>window.StockLabHardPolicy.ready())
   .catch(e=>{console.error('StockLab hard policy unavailable',e);return null});
+// Facts-only status layer: shows the verified legal data cutoff and never infers readiness from the clock.
+import('./data-status.js').catch(e=>console.error('StockLab data status unavailable',e));
