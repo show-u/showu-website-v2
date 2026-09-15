@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -23,6 +23,8 @@
     "AUDITABILITY": "Model version, source status, data date and blockers/warnings must be visible or recoverable for every generated result.",
     "BUY_HOLDING_SEPARATION": "A buy-entry model and an existing-position exit model are different decisions. Short/mid/long structural support bands must never be shown as currently executable buy prices merely because they are below market.",
     "TARGET_SESSION_BY_DATA_DATE": "The model's target trading session is determined from the latest verified completed official session, not from the user's clock alone. Clock time only controls whether an order type is currently executable.",
+    "NEXT_SESSION_INPUT_COMPLETENESS": "A new next-session plan may be generated only after the latest completed official session has advanced and every input required by that model for the target session has independently passed legal-source, schema, date and integrity checks. A scheduled refresh time is never proof that data is ready.",
+    "NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED": "Without a legally licensed real-time or delayed market-data feed, StockLab must not create a revised same-day executable price after 09:00 or describe any stale/daily-close value as the current market price. The original plan may remain visible only as a labelled reference/audit record.",
     "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a wait/re-entry condition. It must not be labelled as a current buy recommendation unless the model can establish that the price is actionable for the target session.",
     "POSITION_INPUT_PROVENANCE": "Holding cost, shares and buy date are user-supplied facts. They must be labelled as user input and never inferred from market data.",
     "EXIT_MODEL_SEPARATION": "Exit timing must use the holder's cost basis, position size, holding duration, verified price structure and risk state. A former buy-entry band may not be renamed into an exit recommendation.",
@@ -79,8 +81,9 @@
   "workflow_contract": {
     "buy": {
       "purpose": "Decide whether and how to enter the next applicable trading session from the latest verified completed official session.",
-      "forbidden": ["short/mid/long deep support bands presented as current buy prices", "real-time wording without a licensed live feed", "automatic switch to tomorrow solely because clock passed 09:00 or 13:30"],
-      "time_rule": "08:30-09:00 controls whether limit ROD is currently executable. After 09:00 the same session plan may remain visible as a historical/reference plan, but must not be called a live executable quote. A new next-session plan is generated only after the official latest-session close has advanced and passed verification."
+      "forbidden": ["short/mid/long deep support bands presented as current buy prices", "real-time wording without a licensed live feed", "automatic switch to tomorrow solely because clock passed 09:00 or 13:30", "same-day repricing after 09:00 without a licensed live/delayed feed"],
+      "time_rule": "08:30-09:00 controls whether a pre-open limit ROD plan is in its execution window. After 09:00 the same plan may remain visible only as a labelled reference/audit record; without a licensed live/delayed feed StockLab must not create a revised same-day executable price. A new next-session plan is generated only after the official latest completed-session date has advanced AND every model-required target-session input has passed its legal-source, schema, freshness and integrity gates.",
+      "refresh_policy": {"attempts_taipei": ["14:20", "14:50", "15:20", "15:50"], "rule": "These are retrieval attempts, not promises of availability. Plan readiness is determined by verified data dates and required-input completeness, never by the scheduled job time."}
     },
     "holding": {
       "required_user_inputs": ["ticker", "average_cost", "shares"],
@@ -101,7 +104,7 @@
     }
   },
   "prediction_requirements": {
-    "buy_session": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known", "oos_validation_passed"], "order_rule": "08:30-09:00 limit ROD only. Outside that window, a stored/modelled pre-open value is reference-only, not an executable current quote."},
+    "buy_session": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known", "target_session_inputs_complete", "oos_validation_passed"], "order_rule": "08:30-09:00 limit ROD only. Outside that window, a stored/modelled pre-open value is reference-only. No same-day repricing is allowed after 09:00 without a licensed live/delayed feed."},
     "holding_exit": {"required": ["user_average_cost", "user_shares", "legal_source", "supported_security", "verified_latest_close", "sufficient_ohlc_history", "corporate_action_checked", "active_disposition_state_known", "holding_exit_oos_validation_passed"]},
     "scanner_momentum": {"required": ["legal_source", "supported_security", "verified_price", "technical_structure", "liquidity", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
     "scanner_growth": {"required": ["legal_source", "supported_security", "verified_price", "monthly_revenue", "quarterly_financials_supported_accounting_class", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
@@ -115,6 +118,8 @@
     "forbid_unverified_as_fact": true,
     "forbid_probability_without_calibration": true,
     "forbid_deep_support_as_current_buy": true,
+    "forbid_intraday_reprice_without_live_feed": true,
+    "next_session_requires_all_inputs_complete": true,
     "target_session_must_follow_verified_data_date": true,
     "score_is_probability": false,
     "recommendation_requires_oos_pass": true,
