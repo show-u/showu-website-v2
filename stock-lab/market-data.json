@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-15T02:14:36.569136+00:00",
+  "generated_at": "2026-09-15T02:18:38.348038+00:00",
   "status": "partial",
   "policy": "official-primary; Nasdaq current close cross-checked to FRED/Nasdaq prior close; invalid data display-blocked and never scored",
   "sources": {
@@ -8,7 +8,7 @@
       "verified": true,
       "source": "CBOE",
       "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
-      "fetched_at": "2026-09-15T02:14:36.569136+00:00",
+      "fetched_at": "2026-09-15T02:18:38.348038+00:00",
       "validation": [
         "official_host",
         "date_parsed",
@@ -27,6 +27,7 @@
       "raw_sha256": "9148183f463cb27743267d605a743241fa3e4c134eb1275e5871a41ce0837b8a",
       "content_type": "text/csv",
       "final_url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+      "download_attempt": 1,
       "previous_verified_date": "09/14/2026",
       "previous_verified_value": 17.1
     },
@@ -34,7 +35,7 @@
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/SOX",
-      "fetched_at": "2026-09-15T02:14:36.569136+00:00",
+      "fetched_at": "2026-09-15T02:18:38.348038+00:00",
       "validation": [],
       "anomalies": [],
       "error": "The read operation timed out"
@@ -43,7 +44,7 @@
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/COMP",
-      "fetched_at": "2026-09-15T02:14:36.569136+00:00",
+      "fetched_at": "2026-09-15T02:18:38.348038+00:00",
       "validation": [],
       "anomalies": [],
       "error": "The read operation timed out"
