@@ -32,9 +32,9 @@
       if(ctx.targetSessionVerified!==true)blockers.push('資料基準交易日／目標交易日尚未由合法交易日曆確認');
       if(ctx.targetInputsComplete!==true)blockers.push('目標交易時段必要資料尚未全部更新並通過驗證');
       if(ctx.entryFactorsComplete!==true)blockers.push('九項入場因子未全部完成驗證');
-      if(ctx.usMarketVerified!==true)blockers.push('美股市場背景未完成驗證');
-      if(ctx.txFuturesVerified!==true)blockers.push('台指期 TX 未完成驗證');
-      if(ctx.internationalEventsVerified!==true)blockers.push('國際時事資料未完成驗證');
+      if(ctx.usMarketVerified!==true)blockers.push('美股市場背景尚未完整');
+      if(ctx.txFuturesVerified!==true)blockers.push('台指期 TX 尚未完整');
+      if(ctx.internationalEventsVerified!==true)blockers.push('國際時事背景尚未完整');
       if(ctx.modelValidationStatus!=='PASS')blockers.push(`統一入場模型樣本外驗證未通過：${ctx.modelValidationStatus||'UNKNOWN'}`);
       if(ctx.entryRangeExecutionValidated!==true)blockers.push('進場區間尚未通過 OOS 觸價／成交可達性驗證');
       if(ctx.confidenceCalibrated!==true)blockers.push('入場信心指數尚未完成正式樣本外校準');
@@ -94,7 +94,8 @@
     if(kind==='scanner'){
       if(d.strategy!=='entry')blockers.push('選股結果不是統一入場模型');
       if(!validISODate(d.target_session_date))blockers.push('TOP10 缺少已驗證目標交易日');
-      if(!Array.isArray(d.items)||d.items.length<10)blockers.push('通過 Gate 的候選不足 10 檔，不得補滿');
+      if(!Array.isArray(d.items))blockers.push('TOP10 候選格式無效');
+      else if(d.items.length>10)blockers.push('TOP10 後端回傳超過 10 檔；必須只回傳實際最高順位的合格候選');
       for(const x of d.items||[]){
         const base=x?.base_session_date||x?.data_date,target=x?.target_session_date||d.target_session_date;
         if(!sessionPairOK(base,target))blockers.push(`候選 ${x?.ticker||'—'} 基準日／目標交易日無效`);
