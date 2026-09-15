@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
-  "generated_at": null,
-  "status": "pending",
+  "generated_at": "2026-09-15T02:07:05.031785+00:00",
+  "status": "failed",
   "verified": false,
   "source": "TPEx",
   "checks": {},
-  "policy": "TPEx official OpenAPI schema/date/count gate; unhealthy source is blocked from analysis and ranking"
+  "policy": "TPEx official OpenAPI schema/date/count gate; unhealthy source is blocked from analysis and ranking",
+  "error": "IncompleteRead(3407465 bytes read, 998282 more expected)"
 }
