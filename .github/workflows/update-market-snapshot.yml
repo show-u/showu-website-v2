@@ -2,6 +2,9 @@ name: Update market snapshot
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/update-market-snapshot.yml'
   schedule:
     - cron: '20 23 * * 1-5'
 
