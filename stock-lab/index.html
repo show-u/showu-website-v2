@@ -35,7 +35,7 @@
       <button id="singleBtn" class="ghost">想買這檔</button>
       <button id="holdBtn" class="ghost">已持有</button>
     </div>
-    <div class="section-lead">找標的、判斷是否入場、持股出場是三個不同問題；不再用短／中／長三套價格。</div>
+    <div class="section-lead">找標的、判斷是否入場、持股出場是三個不同問題，各自使用對應模型。</div>
   </section>
 
   <section id="singlePanel" class="card hidden">
@@ -60,7 +60,7 @@
       <label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label>
       <label>首次買入日（選填）<input id="holdBuyDate" type="date"></label>
     </div>
-    <p class="simple-rule">持股頁只分析你的成本、部位、買入時間、最新已驗證價格、九項市場訊號與風險狀態，目的是判斷續抱、減碼或出場，不再要求選短／中／長。</p>
+    <p class="simple-rule">持股頁只分析你的成本、部位、買入時間、最新已驗證價格、九項市場訊號與風險狀態，目的是判斷續抱、減碼或出場，不再要求選投資期間。</p>
     <button id="holdAnalyzeBtn">查看持股狀態與出場條件</button>
     <div id="holdLoad" class="loader hidden">正在驗證持股資料與市場訊號…</div>
     <div id="holdResult" class="source-note compact-note"><b>資料規則</b><div class="mini">成本、股數、買入日只採你的輸入；市場資料缺漏就標示未知，不推測、不補值。</div></div>
@@ -68,7 +68,7 @@
 
   <section id="findPanel" class="card">
     <h2 style="margin-top:0">目前最適合研究入場的 10 檔</h2>
-    <p class="muted">全市場候選都使用同一套「9項入場因子＋美股＋台指期＋國際時事」判斷。不是依投資期間分成不同排行榜，也不拿缺資料股票補滿十檔。</p>
+    <p class="muted">全市場候選都使用同一套「9項入場因子＋美股＋台指期＋國際時事」判斷。不依投資期間產生不同排行榜，也不拿缺資料股票補滿十檔。</p>
     <input id="scanObjective" type="hidden" value="entry">
     <button id="scanBtn">找出目前最適合入場的 10 檔</button>
     <div id="scanLoad" class="loader hidden">正在驗證候選股票的 9＋3 項資料…</div>
