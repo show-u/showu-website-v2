@@ -6,38 +6,11 @@
   function renderCached(html){const box=document.querySelector('#top10');box.innerHTML=html;box.classList.remove('hidden')}
   function blocked(reason){renderCached(`<div class=toprow><div><h2>入場候選 TOP 10</h2><div class=muted>FAIL CLOSED｜不以舊模型補排名</div></div></div><h3 class=bad>⛔ 暫不產生 TOP 10</h3><p>${reason}</p><div class=disclaimer><b>判定規則</b>每一檔都必須完成九項入場因子、美股、台指期 TX、國際時事、台股風險狀態、合法來源與正式 OOS 驗證。任何必要資料缺漏就排除；合格不足 10 檔也不補滿。</div>`)}
   function textArray(v){return Array.isArray(v)?v.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()):[]}
-  function factorAuditOK(x){
-    const f=x?.entry_factors;if(!f||typeof f!=='object')return false;
-    return FACTOR_KEYS.every(k=>f[k]?.verified===true&&['positive','neutral','negative'].includes(f[k]?.state));
-  }
+  function factorAuditOK(x){const f=x?.entry_factors;if(!f||typeof f!=='object')return false;return FACTOR_KEYS.every(k=>f[k]?.verified===true&&['positive','neutral','negative'].includes(f[k]?.state))}
   function contextAuditOK(x){const c=x?.market_context||{};return c.us?.verified===true&&c.tx?.verified===true&&c.events?.verified===true}
-  function validateItem(x){
-    const reasons=textArray(x?.reasons),risks=textArray(x?.risks),audit=x?.audit||{};
-    if(audit.legal_source_verified!==true||audit.price_verified!==true||audit.oos_validation_passed!==true||audit.active_risk_status_checked!==true)return`候選 ${x?.ticker||'—'} 未通過來源／價格／OOS／風險狀態稽核`;
-    if(x?.strategy!==STRATEGY)return`候選 ${x?.ticker||'—'} 不是統一入場模型結果`;
-    if(!factorAuditOK(x))return`候選 ${x?.ticker||'—'} 九項入場因子未全部驗證`;
-    if(!contextAuditOK(x))return`候選 ${x?.ticker||'—'} 美股／台指期／國際時事背景未全部驗證`;
-    if(reasons.length<2)return`候選 ${x?.ticker||'—'} 缺少可追溯的入榜理由`;
-    if(!risks.length)return`候選 ${x?.ticker||'—'} 缺少主要風險說明`;
-    return null;
-  }
+  function validateItem(x){const reasons=textArray(x?.reasons),risks=textArray(x?.risks),audit=x?.audit||{};if(audit.legal_source_verified!==true||audit.price_verified!==true||audit.oos_validation_passed!==true||audit.active_risk_status_checked!==true)return`候選 ${x?.ticker||'—'} 未通過來源／價格／OOS／風險狀態稽核`;if(x?.strategy!==STRATEGY)return`候選 ${x?.ticker||'—'} 不是統一入場模型結果`;if(!factorAuditOK(x))return`候選 ${x?.ticker||'—'} 九項入場因子未全部驗證`;if(!contextAuditOK(x))return`候選 ${x?.ticker||'—'} 美股／台指期／國際時事背景未全部驗證`;if(reasons.length<2)return`候選 ${x?.ticker||'—'} 缺少可追溯的入榜理由`;if(!risks.length)return`候選 ${x?.ticker||'—'} 缺少主要風險說明`;return null}
   function factorCounts(x){const f=x.entry_factors||{},vals=FACTOR_KEYS.map(k=>f[k]);return{positive:vals.filter(z=>z?.state==='positive').length,neutral:vals.filter(z=>z?.state==='neutral').length,negative:vals.filter(z=>z?.state==='negative').length}}
   function contextText(x){const c=x.market_context||{},one=(name,z)=>`${name}：${z?.state||'unknown'}${z?.reason?`（${z.reason}）`:''}`;return `${one('美股',c.us)}<br>${one('台指期',c.tx)}<br>${one('國際時事',c.events)}`}
-  function renderPrivate(j){
-    const d=j?.data||{},items=Array.isArray(d.items)?d.items:[];
-    if(j?.ok!==true||!j?.model_version||!d.data_date||d.strategy!==STRATEGY||d.audit?.legal_source_verified!==true||d.audit?.price_verified!==true||d.audit?.oos_validation_passed!==true)return blocked('後端 TOP10 稽核缺少合法來源、價格驗證、統一入場模型標籤或正式 OOS PASS。');
-    for(const x of items){const err=validateItem(x);if(err)return blocked(err)}
-    if(items.length<10)return blocked(`通過全部 Gate 的股票只有 ${items.length} 檔；不以不合格股票補滿 10 檔。`);
-    const html=`<div class=toprow><div><h2>目前最適合研究入場｜TOP 10</h2><div class=muted>資料日 ${d.data_date}｜模型 ${j.model_version}</div></div></div><div class=source-note><b>排名依據</b><div class=mini>九項入場因子＋美股＋台指期 TX＋國際時事。沒有短／中／長三套排行，也不把缺資料股票補進來。</div></div><div class=list>${items.slice(0,10).map((x,i)=>{const label=x.name?`${x.name}／${x.ticker||'—'}`:(x.ticker||'—'),reasons=textArray(x.reasons).slice(0,4),risks=textArray(x.risks).slice(0,3),c=factorCounts(x);return `<div class=item><div class=rank>#${i+1}</div><div><b>${label}</b><div class=mini>${x.exchange||'—'}｜${x.data_date||d.data_date}｜${x.action||'研究候選'}</div><div class=why><b>九項訊號</b><br>正向 ${c.positive}/9｜中性 ${c.neutral}/9｜負向 ${c.negative}/9</div><div class=why><b>美股／台指／國際時事</b><br>${contextText(x)}</div><div class=why><b>入榜理由</b><br>${reasons.map(z=>`• ${z}`).join('<br>')}</div><div class=why><b>主要風險</b><br>${risks.map(z=>`• ${z}`).join('<br>')}</div></div><div class=price>${c.positive}/9<br><span class=mini>正向因子<br>不是上漲機率</span></div></div>`}).join('')}</div><div class=disclaimer><b>TOP10 使用方式</b>這裡只找出「目前最值得進一步檢查入場條件」的股票。選定標的後，再進「想買這檔」查看完整九項證據與下一交易時段計畫。</div>`;
-    scanCache.set('private:entry',{at:Date.now(),html});renderCached(html);
-  }
-  btn.onclick=async()=>{
-    const api=window.StockLabAPI,key='private:entry',cached=scanCache.get(key);if(cached&&Date.now()-cached.at<CACHE_TTL){renderCached(cached.html);return;}
-    document.querySelector('#scanLoad').classList.remove('hidden');
-    try{
-      if(!api?.config?.enabled)return blocked('正式私有分析後端尚未啟用；瀏覽器本地排名已停用，避免用未驗證模型產生假 TOP10。');
-      const j=await api.scan(STRATEGY);renderPrivate(j);
-    }catch(e){blocked(`TOP10 稽核／資料取得失敗：${e.message||e}`)}
-    finally{document.querySelector('#scanLoad').classList.add('hidden')}
-  };
+  function renderPrivate(j){const d=j?.data||{},items=Array.isArray(d.items)?d.items:[];if(j?.ok!==true||!j?.model_version||!d.data_date||d.strategy!==STRATEGY||d.audit?.legal_source_verified!==true||d.audit?.price_verified!==true||d.audit?.oos_validation_passed!==true)return blocked('後端 TOP10 稽核缺少合法來源、價格驗證、統一入場模型標籤或正式 OOS PASS。');for(const x of items){const err=validateItem(x);if(err)return blocked(err)}if(items.length<10)return blocked(`通過全部 Gate 的股票只有 ${items.length} 檔；不以不合格股票補滿 10 檔。`);const html=`<div class=toprow><div><h2>目前最適合研究入場｜TOP 10</h2><div class=muted>資料日 ${d.data_date}｜模型 ${j.model_version}</div></div></div><div class=source-note><b>排名依據</b><div class=mini>九項入場因子＋美股＋台指期 TX＋國際時事。沒有短／中／長三套排行，也不把缺資料股票補進來。</div></div><div class=list>${items.slice(0,10).map((x,i)=>{const label=x.name?`${x.name}／${x.ticker||'—'}`:(x.ticker||'—'),reasons=textArray(x.reasons).slice(0,4),risks=textArray(x.risks).slice(0,3),c=factorCounts(x);return `<div class=item><div class=rank>#${i+1}</div><div><b>${label}</b><div class=mini>${x.exchange||'—'}｜${x.data_date||d.data_date}｜${x.action||'研究候選'}</div><div class=why><b>九項訊號</b><br>正向 ${c.positive}/9｜中性 ${c.neutral}/9｜負向 ${c.negative}/9</div><div class=why><b>美股／台指／國際時事</b><br>${contextText(x)}</div><div class=why><b>入榜理由</b><br>${reasons.map(z=>`• ${z}`).join('<br>')}</div><div class=why><b>主要風險</b><br>${risks.map(z=>`• ${z}`).join('<br>')}</div></div><div class=price>${c.positive}/9<br><span class=mini>正向因子<br>不是上漲機率</span></div></div>`}).join('')}</div><div class=disclaimer><b>TOP10 使用方式</b>這裡只找出「目前最值得進一步檢查入場條件」的股票。選定標的後，再進「想買這檔」查看完整九項證據與下一交易時段計畫。</div>`;scanCache.set('private:entry',{at:Date.now(),html});renderCached(html)}
+  btn.onclick=async()=>{const api=window.StockLabAPI,key='private:entry',cached=scanCache.get(key);if(cached&&Date.now()-cached.at<CACHE_TTL){renderCached(cached.html);return}document.querySelector('#scanLoad').classList.remove('hidden');try{if(!api?.config?.enabled)return blocked('正式私有分析後端尚未啟用；瀏覽器本地排名已停用，避免用未驗證模型產生假 TOP10。');const j=await api.scan();renderPrivate(j)}catch(e){blocked(`TOP10 稽核／資料取得失敗：${e.message||e}`)}finally{document.querySelector('#scanLoad').classList.add('hidden')}};
 })();
