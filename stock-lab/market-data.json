@@ -1,0 +1,9 @@
+{
+  "generated_at": null,
+  "status": "pending",
+  "sources": {
+    "vix": {"verified": false, "source": "CBOE", "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"},
+    "sox": {"verified": false, "source": "Nasdaq", "url": "https://indexes.nasdaq.com/Index/Overview/SOX"},
+    "nasdaq": {"verified": false, "source": "Nasdaq", "url": "https://indexes.nasdaq.com/Index/Overview/COMP"}
+  }
+}
