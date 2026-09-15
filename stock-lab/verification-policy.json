@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "principle": "No verified data, no score. Unverified values may be displayed only as explicitly unverified observations.",
+  "taiwan": {
+    "price": {"hosts": ["www.twse.com.tw", "openapi.twse.com.tw"], "cross_check_required": true, "max_age_calendar_days": 4, "scored": true},
+    "index": {"hosts": ["www.twse.com.tw"], "max_age_calendar_days": 4, "scored": true},
+    "institution": {"dataset": "T86", "hosts": ["www.twse.com.tw"], "must_match_stock_trade_date": true, "scored": true},
+    "valuation": {"dataset": "BWIBBU_ALL", "hosts": ["openapi.twse.com.tw"], "max_gap_from_stock_date_days": 7, "scored": true},
+    "monthly_revenue": {"dataset": "t187ap05_L", "hosts": ["openapi.twse.com.tw"], "period_validation_required": true, "scored": true},
+    "quarterly_income": {"dataset": "t187ap06_L_ci", "hosts": ["openapi.twse.com.tw"], "report_date_required": true, "scored": true},
+    "quarterly_balance": {"dataset": "t187ap07_L_ci", "hosts": ["openapi.twse.com.tw"], "report_date_required": true, "scored": true}
+  },
+  "external_market": {
+    "vix": {"source": "CBOE", "host": "cdn.cboe.com", "raw_sha256_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false},
+    "sox": {"source": "Nasdaq", "host": "indexes.nasdaq.com", "raw_sha256_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false},
+    "nasdaq": {"source": "Nasdaq", "host": "indexes.nasdaq.com", "raw_sha256_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false}
+  },
+  "news_events": {"scored": false, "rule": "Not implemented. A headline alone must never alter a stock score."}
+}
