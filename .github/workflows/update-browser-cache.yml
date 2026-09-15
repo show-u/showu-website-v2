@@ -16,7 +16,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,26 +25,41 @@ jobs:
       - name: Build licensed same-origin cache
         run: |
           python - <<'PY'
-          import json, urllib.request, hashlib, time, http.client
+          import csv, io, json, urllib.request, hashlib, time, http.client
           from datetime import datetime, timezone
           from urllib.parse import urlparse
-          UA={'User-Agent':'StockLab-browser-cache/2.0','Accept':'application/json'}
+          UA={'User-Agent':'StockLab-browser-cache/3.0','Accept':'application/json,text/csv,*/*'}
+          # Every dataset below has a dataset-specific OGDL-1.0 registration on data.gov.tw.
           DATASETS={
-            'twse_snapshot':('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',11549,'金融監督管理委員會證券期貨局／臺灣證券交易所'),
-            'twse_valuation':('https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL',11764,'金融監督管理委員會證券期貨局／臺灣證券交易所'),
-            'twse_revenue':('https://openapi.twse.com.tw/v1/opendata/t187ap05_L',18420,'金融監督管理委員會證券期貨局／臺灣證券交易所'),
-            'twse_income':('https://openapi.twse.com.tw/v1/opendata/t187ap06_L_ci',91998,'金融監督管理委員會證券期貨局／臺灣證券交易所'),
-            'twse_balance':('https://openapi.twse.com.tw/v1/opendata/t187ap07_L_ci',94831,'金融監督管理委員會證券期貨局／臺灣證券交易所'),
-            'tpex_snapshot':('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',11370,'金融監督管理委員會證券期貨局／證券櫃檯買賣中心'),
-            'tpex_valuation':('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis',11373,'金融監督管理委員會證券期貨局／證券櫃檯買賣中心'),
-            'tpex_institution':('https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading',11856,'金融監督管理委員會證券期貨局／證券櫃檯買賣中心'),
-            'tpex_revenue':('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O',56510,'金融監督管理委員會證券期貨局／證券櫃檯買賣中心'),
-            'tpex_income':('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci',94853,'金融監督管理委員會證券期貨局／證券櫃檯買賣中心'),
-            'tpex_balance':('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap07_O_ci',91967,'金融監督管理委員會證券期貨局／證券櫃檯買賣中心'),
+            'twse_snapshot':{'url':'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL','id':11549,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'json'},
+            'twse_valuation':{'url':'https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL','id':11764,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'json'},
+            'twse_revenue':{'url':'https://openapi.twse.com.tw/v1/opendata/t187ap05_L','id':18420,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'json'},
+            'twse_income':{'url':'https://openapi.twse.com.tw/v1/opendata/t187ap06_L_ci','id':91998,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'json'},
+            'twse_balance':{'url':'https://openapi.twse.com.tw/v1/opendata/t187ap07_L_ci','id':94831,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'json'},
+            'twse_dividend':{'url':'https://mopsfin.twse.com.tw/opendata/t187ap45_L.csv','id':31612,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'csv'},
+            'twse_exright_prepost':{'url':'https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL','id':89748,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'json'},
+            'tpex_snapshot':{'url':'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes','id':11370,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'},
+            'tpex_valuation':{'url':'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis','id':11373,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'},
+            'tpex_institution':{'url':'https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading','id':11856,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'},
+            'tpex_revenue':{'url':'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O','id':56510,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'},
+            'tpex_income':{'url':'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci','id':94853,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'},
+            'tpex_balance':{'url':'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap07_O_ci','id':91967,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'},
+            'tpex_dividend':{'url':'https://mopsfin.twse.com.tw/opendata/t187ap45_O.csv','id':58285,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'csv'},
+            'tpex_exright_prepost':{'url':'https://www.tpex.org.tw/openapi/v1/tpex_exright_prepost','id':11634,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'},
+            'tpex_exright_daily':{'url':'https://www.tpex.org.tw/openapi/v1/tpex_exright_daily','id':11633,'attr':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心','fmt':'json'}
           }
-          ALLOWED={'openapi.twse.com.tw','www.tpex.org.tw'}
-          def get(name,url):
-            last=None
+          ALLOWED={'openapi.twse.com.tw','www.tpex.org.tw','mopsfin.twse.com.tw'}
+          def parse(raw,fmt,name):
+            if fmt=='json':
+              data=json.loads(raw.decode('utf-8-sig'))
+            elif fmt=='csv':
+              text=raw.decode('utf-8-sig')
+              data=[dict(r) for r in csv.DictReader(io.StringIO(text)) if any(str(v or '').strip() for v in r.values())]
+            else: raise RuntimeError(f'{name}: unknown format {fmt}')
+            if not isinstance(data,list) or not data:raise RuntimeError(f'{name}: empty/non-list')
+            return data
+          def get(name,spec):
+            last=None;url=spec['url']
             for attempt in range(1,5):
               try:
                 req=urllib.request.Request(url,headers=UA)
@@ -53,8 +68,7 @@ jobs:
                   if host not in ALLOWED: raise RuntimeError(f'{name}: unexpected host {host}')
                   expected=r.headers.get('Content-Length');raw=r.read()
                   if expected and len(raw)!=int(expected):raise http.client.IncompleteRead(raw,int(expected)-len(raw))
-                  data=json.loads(raw.decode('utf-8'))
-                  if not isinstance(data,list) or not data:raise RuntimeError(f'{name}: empty/non-list')
+                  data=parse(raw,spec['fmt'],name)
                   return data,hashlib.sha256(raw).hexdigest(),r.geturl()
               except Exception as e:
                 last=e;print(f'{name}: attempt {attempt}/4 failed: {type(e).__name__}: {e}')
@@ -68,12 +82,12 @@ jobs:
             'licence_url':'https://data.gov.tw/license',
             'datasets':{},'meta':{}
           }
-          for name,(url,dataset_id,attribution) in DATASETS.items():
-            data,sha,final=get(name,url);out['datasets'][name]=data
+          for name,spec in DATASETS.items():
+            data,sha,final=get(name,spec);out['datasets'][name]=data
             out['meta'][name]={
-              'count':len(data),'sha256':sha,'url':url,'final_url':final,
-              'data_gov_dataset':dataset_id,'licence':'OGDL-1.0','licence_verified':True,
-              'attribution':attribution
+              'count':len(data),'sha256':sha,'url':spec['url'],'final_url':final,'format':spec['fmt'],
+              'data_gov_dataset':spec['id'],'licence':'OGDL-1.0','licence_verified':True,
+              'attribution':spec['attr']
             }
           with open('stock-lab/browser-data.json','w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,separators=(',',':'))
           print({k:v['count'] for k,v in out['meta'].items()})
@@ -85,15 +99,20 @@ jobs:
           x=json.load(open('stock-lab/browser-data.json',encoding='utf-8'))
           assert x['schema_version']==2 and x['source']=='licensed-open-data-cache'
           assert x['licence']=='政府資料開放授權條款-第1版 / OGDL-1.0'
-          req={'twse_snapshot','twse_valuation','twse_revenue','twse_income','twse_balance','tpex_snapshot','tpex_valuation','tpex_institution','tpex_revenue','tpex_income','tpex_balance'}
+          req={'twse_snapshot','twse_valuation','twse_revenue','twse_income','twse_balance','twse_dividend','twse_exright_prepost','tpex_snapshot','tpex_valuation','tpex_institution','tpex_revenue','tpex_income','tpex_balance','tpex_dividend','tpex_exright_prepost','tpex_exright_daily'}
           assert set(x['datasets'])==req
+          expected_ids={
+            'twse_dividend':31612,'twse_exright_prepost':89748,
+            'tpex_dividend':58285,'tpex_exright_prepost':11634,'tpex_exright_daily':11633
+          }
           for k in req:
             m=x['meta'][k]
             assert m['count']>0 and len(m['sha256'])==64
             assert m['licence_verified'] is True and m['licence']=='OGDL-1.0'
             assert isinstance(m['data_gov_dataset'],int) and m['data_gov_dataset']>0
-            assert m['attribution']
-          print('licensed browser cache validated')
+            assert m['attribution'] and m['format'] in ('json','csv')
+          for k,v in expected_ids.items():assert x['meta'][k]['data_gov_dataset']==v,(k,x['meta'][k])
+          print('licensed browser cache including dividend datasets validated')
           PY
       - name: Archive licensed daily OHLC without inference
         run: |
