@@ -1,4 +1,4 @@
-name: StockLab Taiwan backtest
+name: StockLab model validation gate
 
 on:
   workflow_dispatch:
@@ -6,98 +6,61 @@ on:
     - cron: '40 9 * * 6'
   push:
     paths:
-      - 'stock-lab/backtest-model.py'
       - 'stock-lab/backtest-taiwan-v3.py'
+      - 'stock-lab/model-validation-status.json'
+      - 'stock-lab/backtest-result.json'
+      - 'stock-lab/verification-policy.json'
+      - 'stock-lab/runtime-config.js'
       - '.github/workflows/stocklab-backtest.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  shard:
+  validation-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0,1,2,3,4,5,6,7]
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Syntax check
-        run: python -m py_compile stock-lab/backtest-model.py stock-lab/backtest-taiwan-v3.py
-      - name: Run Taiwan diagnostic shard
+        run: python -m py_compile stock-lab/backtest-taiwan-v3.py
+      - name: Run fail-closed model validation gate
         run: |
           python stock-lab/backtest-taiwan-v3.py \
-            --months 60 --twse 100 --tpex 60 --workers 3 \
-            --shard-index ${{ matrix.shard }} --shard-count 8 \
-            --out stock-lab/backtest-part-${{ matrix.shard }}.json
-      - name: Validate shard provenance state
-        run: |
-          python - <<'PY'
-          import glob,json
-          p=glob.glob('stock-lab/backtest-part-*.json');assert len(p)==1,p
-          x=json.load(open(p[0],encoding='utf-8'))
-          assert x['schema_version']==4 and x['partial'] is True
-          assert x['shard_count']==8 and x['shard_requested']>0
-          assert isinstance(x['stocks'],list) and len(x['stocks'])==x['shard_requested']
-          assert x['legal_history_provenance_verified'] is False
-          print('diagnostic shard valid; formal validation blocked on legal provenance',x['shard_index'])
-          PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: backtest-part-${{ matrix.shard }}
-          path: stock-lab/backtest-part-${{ matrix.shard }}.json
-          retention-days: 3
-
-  merge:
-    needs: shard
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: backtest-part-*
-          path: stock-lab/parts
-          merge-multiple: true
-      - name: Merge all 160-stock diagnostic shards
-        run: |
-          python stock-lab/backtest-taiwan-v3.py \
-            --months 60 --twse 100 --tpex 60 \
-            --merge-glob 'stock-lab/parts/backtest-part-*.json' \
-            --out stock-lab/backtest-result.json
-      - name: Validate diagnostic result cannot masquerade as formal OOS PASS
+            --status-manifest stock-lab/model-validation-status.json \
+            --out /tmp/stocklab-validation.json
+      - name: Validate no unlicensed history collection and no false PASS
         run: |
           python - <<'PY'
           import json
-          x=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
-          assert x['schema_version']==4 and x['market']=='TWSE+TPEx'
+          from pathlib import Path
+          x=json.load(open('/tmp/stocklab-validation.json',encoding='utf-8'))
+          repo=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
+          assert x['schema_version']==6 and x['architecture']=='buy-holding-separate-v6'
           assert x['formal_validation_status']=='BLOCKED_LEGAL_SOURCE'
-          assert x['legal_history_provenance_verified'] is False
-          assert x['legal_blocker']
-          assert x['universe_requested']>=120,x['universe_requested']
-          assert 'no fixed price-percentage entry bands' in x['method']
-          c=x['cost_assumptions'];assert all(c[k]>0 for k in ('commission_each_side_pct','normal_stock_sell_tax_pct','daytrade_sell_tax_pct','slippage_each_side_pct'))
-          for mode in ('preopen','short','swing','long'):
-              z=x['aggregate'][mode]
-              assert z['stress_status']=='BLOCKED_LEGAL_SOURCE',(mode,z)
-              assert z['statistical_status'] in ('PASS','FAIL','INSUFFICIENT')
-          print('Diagnostic OOS computed; formal validation correctly BLOCKED_LEGAL_SOURCE')
-          for mode,z in x['aggregate'].items():print(mode,'diagnostic=',z['statistical_status'],'formal=',z['stress_status'])
+          assert x['network_history_collection_performed'] is False
+          assert x['network_history_collection_disabled'] is True
+          assert x['legacy_preopen_short_swing_long_result_is_production_valid'] is False
+          assert set(x['models'])=={'buy_session','holding_exit','scanner'}
+          for name,item in x['models'].items():
+              assert item['status']=='BLOCKED_LEGAL_SOURCE',(name,item)
+              assert item['reason']
+          assert repo['schema_version']==6
+          assert repo['formal_validation_status']=='BLOCKED_LEGAL_SOURCE'
+          assert repo['network_history_collection_performed'] is False
+          assert repo['legacy_preopen_short_swing_long_result_is_production_valid'] is False
+          assert set(repo['models'].values())=={'BLOCKED_LEGAL_SOURCE'}
+          src=Path('stock-lab/backtest-taiwan-v3.py').read_text(encoding='utf-8')
+          for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
+              assert forbidden not in src,forbidden
+          print('PASS: validation gate made zero historical network requests and emitted no false model PASS')
           PY
-      - name: Persist diagnostic result when changed
-        run: |
-          if [ -n "$(git status --porcelain stock-lab/backtest-result.json)" ]; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add stock-lab/backtest-result.json
-            git commit -m 'update Taiwan diagnostic OOS result with legal-source gate'
-            git pull --rebase origin main
-            git push origin HEAD:main
-          else echo 'No backtest changes'; fi
+      - name: Publish validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stocklab-model-validation-gate
+          path: /tmp/stocklab-validation.json
+          retention-days: 7
