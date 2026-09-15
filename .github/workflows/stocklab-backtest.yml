@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - 'stock-lab/backtest-model.py'
+      - 'stock-lab/backtest-taiwan-v3.py'
       - '.github/workflows/stocklab-backtest.yml'
 
 permissions:
@@ -22,23 +23,21 @@ jobs:
         with:
           python-version: '3.12'
       - name: Syntax check
-        run: python -m py_compile stock-lab/backtest-model.py
-      - name: Run broad Taiwan stress test
-        run: python stock-lab/backtest-model.py --months 60 --twse 100 --tpex 60 --out stock-lab/backtest-result.json
+        run: python -m py_compile stock-lab/backtest-model.py stock-lab/backtest-taiwan-v3.py
+      - name: Run large Taiwan stress test
+        run: python stock-lab/backtest-taiwan-v3.py --months 60 --twse 100 --tpex 60 --out stock-lab/backtest-result.json
       - name: Validate result
         run: |
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
-          assert x['schema_version']>=2 and x['market']=='TWSE+TPEx'
-          assert x['universe_requested']>=120, x['universe_requested']
-          assert x['universe_ok']>=60, x['universe_ok']
-          c=x['cost_assumptions'];assert c['commission_each_side_pct']>0 and c['normal_stock_sell_tax_pct']>0 and c['daytrade_sell_tax_pct']>0
+          assert x['schema_version']==3 and x['market']=='TWSE+TPEx'
+          assert x['universe_requested']>=120,x['universe_requested'];assert x['universe_ok']>=60,x['universe_ok']
+          assert 'no fixed price-percentage entry bands' in x['method']
+          c=x['cost_assumptions'];assert all(c[k]>0 for k in ('commission_each_side_pct','normal_stock_sell_tax_pct','daytrade_sell_tax_pct','slippage_each_side_pct'))
           for mode in ('preopen','short','swing','long'):
-              z=x['aggregate'][mode]
-              assert z['all']['n']>0,(mode,z);assert z['oos']['n']>0,(mode,z)
-              assert z['stress_status'] in ('PASS','FAIL','INSUFFICIENT')
-          print('Large Taiwan OOS stress test validated',x['universe_ok'],x['aggregate'])
+              z=x['aggregate'][mode];assert z['all']['n']>0,(mode,z);assert z['oos']['n']>0,(mode,z);assert z['stress_status'] in ('PASS','FAIL','INSUFFICIENT')
+          print('Taiwan v3 large OOS stress validated',x['universe_ok'],x['aggregate'])
           PY
       - name: Persist result when changed
         run: |
@@ -46,9 +45,7 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add stock-lab/backtest-result.json
-            git commit -m 'update large Taiwan out-of-sample backtest result'
+            git commit -m 'update Taiwan v3 large OOS backtest result'
             git pull --rebase origin main
             git push origin HEAD:main
-          else
-            echo 'No backtest changes'
-          fi
+          else echo 'No backtest changes'; fi
