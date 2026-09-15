@@ -5,6 +5,7 @@ on:
     paths:
       - 'stock-lab/**'
       - '.github/workflows/update-market-snapshot.yml'
+      - '.github/workflows/update-taifex-tx.yml'
       - '.github/workflows/stocklab-integrity-tests.yml'
   workflow_dispatch:
 
@@ -25,10 +26,12 @@ jobs:
           node --check stock-lab/financials.js
           node --check stock-lab/integrity.js
           node --check stock-lab/markets.js
+          node --check stock-lab/futures.js
+          node --check stock-lab/event-risk.js
       - name: Source policy and snapshot checks
         run: |
           python - <<'PY'
-          import json,re
+          import json
           from pathlib import Path
           from urllib.parse import urlparse
           idx=Path('stock-lab/index.html').read_text(encoding='utf-8')
@@ -36,12 +39,21 @@ jobs:
           fin=Path('stock-lab/financials.js').read_text(encoding='utf-8')
           integ=Path('stock-lab/integrity.js').read_text(encoding='utf-8')
           markets=Path('stock-lab/markets.js').read_text(encoding='utf-8')
-          for script in ('app.js','financials.js','integrity.js','markets.js'):
+          futures=Path('stock-lab/futures.js').read_text(encoding='utf-8')
+          events=Path('stock-lab/event-risk.js').read_text(encoding='utf-8')
+          policy=json.loads(Path('stock-lab/verification-policy.json').read_text(encoding='utf-8'))
+          for script in ('app.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js'):
               assert f'./{script}' in idx, f'{script} not loaded by index'
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
           assert 't187ap06_L_ci' in fin and 't187ap07_L_ci' in fin
           assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
           assert 'schema_version!==3' in markets
+          assert 'cross_check' in futures and 'TAIFEX' in futures
+          assert "scored" in json.dumps(policy) and policy['taiwan']['taiex_futures']['scored'] is False
+          assert policy['news_events']['scored'] is False
+          assert set(policy['news_events']['levels'])=={'A','B','C','D'}
+          assert 'headline' in policy['news_events']['rule'].lower()
+          assert 'D｜排除' in events
           snap=json.loads(Path('stock-lab/market-data.json').read_text(encoding='utf-8'))
           assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
@@ -49,12 +61,14 @@ jobs:
               x=snap['sources'][k]
               assert x.get('source')==src
               assert urlparse(x.get('url','')).hostname==host
+          tx=json.loads(Path('stock-lab/futures-data.json').read_text(encoding='utf-8'))
+          assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
+          for u in tx.get('urls',{}).values(): assert urlparse(u).hostname=='www.taifex.com.tw'
           print('source-policy checks passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
           python - <<'PY'
-          from datetime import datetime, timezone, timedelta
           def rollback(new_date,old_date): return new_date < old_date
           def same_date_change(old,new): return abs(new/old-1)*100 if old else 999
           assert rollback('2026-09-14','2026-09-15') is True
@@ -65,5 +79,11 @@ jobs:
           assert abs(30)>25
           assert abs(40)<60
           assert abs(70)>60
-          print('anomaly fixtures passed')
+          # TX double-source fixture: same date/month/last => matched; any difference => reject.
+          a={'date':'2026/09/14','month':'202609','last':45780}
+          b={'date':'2026/09/14','month':'202609','last':45780}
+          assert a==b
+          b['last']=45781
+          assert a!=b
+          print('anomaly and TAIFEX cross-check fixtures passed')
           PY
