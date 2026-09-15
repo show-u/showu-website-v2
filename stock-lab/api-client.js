@@ -7,7 +7,7 @@
     enabled:/^https:\/\//i.test(base),
     allowLocalFallback:rt.allowLocalFallback!==false,
     timeoutMs:12000,
-    version:'2026.09-api-v1'
+    version:'2026.09-api-v2'
   };
   async function request(path,payload){
     if(!CFG.enabled)throw Object.assign(new Error('private backend not configured'),{code:'BACKEND_DISABLED'});
@@ -24,7 +24,7 @@
     }finally{clearTimeout(timer)}
   }
   async function analyze(code,horizon){return request('/v1/analyze',{ticker:String(code),horizon});}
-  async function scan(horizon){return request('/v1/scan',{horizon});}
+  async function scan(strategy){return request('/v1/scan',{strategy:String(strategy)});}
   function mode(){return CFG.enabled?'private-backend':'local-fallback'}
   window.StockLabAPI={config:CFG,request,analyze,scan,mode};
 })();
