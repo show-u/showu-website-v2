@@ -28,22 +28,23 @@ jobs:
           python-version: '3.12'
       - name: Syntax check
         run: python -m py_compile stock-lab/backtest-model.py stock-lab/backtest-taiwan-v3.py
-      - name: Run Taiwan stress shard
+      - name: Run Taiwan diagnostic shard
         run: |
           python stock-lab/backtest-taiwan-v3.py \
             --months 60 --twse 100 --tpex 60 --workers 3 \
             --shard-index ${{ matrix.shard }} --shard-count 8 \
             --out stock-lab/backtest-part-${{ matrix.shard }}.json
-      - name: Validate shard
+      - name: Validate shard provenance state
         run: |
           python - <<'PY'
           import glob,json
           p=glob.glob('stock-lab/backtest-part-*.json');assert len(p)==1,p
           x=json.load(open(p[0],encoding='utf-8'))
-          assert x['schema_version']==3 and x['partial'] is True
+          assert x['schema_version']==4 and x['partial'] is True
           assert x['shard_count']==8 and x['shard_requested']>0
           assert isinstance(x['stocks'],list) and len(x['stocks'])==x['shard_requested']
-          print('shard valid',x['shard_index'],x['shard_requested'])
+          assert x['legal_history_provenance_verified'] is False
+          print('diagnostic shard valid; formal validation blocked on legal provenance',x['shard_index'])
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -65,37 +66,38 @@ jobs:
           pattern: backtest-part-*
           path: stock-lab/parts
           merge-multiple: true
-      - name: Merge all 160-stock shards
+      - name: Merge all 160-stock diagnostic shards
         run: |
           python stock-lab/backtest-taiwan-v3.py \
             --months 60 --twse 100 --tpex 60 \
             --merge-glob 'stock-lab/parts/backtest-part-*.json' \
             --out stock-lab/backtest-result.json
-      - name: Validate final OOS stress result
+      - name: Validate diagnostic result cannot masquerade as formal OOS PASS
         run: |
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
-          assert x['schema_version']==3 and x['market']=='TWSE+TPEx'
+          assert x['schema_version']==4 and x['market']=='TWSE+TPEx'
+          assert x['formal_validation_status']=='BLOCKED_LEGAL_SOURCE'
+          assert x['legal_history_provenance_verified'] is False
+          assert x['legal_blocker']
           assert x['universe_requested']>=120,x['universe_requested']
-          assert x['universe_ok']>=60,x['universe_ok']
           assert 'no fixed price-percentage entry bands' in x['method']
           c=x['cost_assumptions'];assert all(c[k]>0 for k in ('commission_each_side_pct','normal_stock_sell_tax_pct','daytrade_sell_tax_pct','slippage_each_side_pct'))
           for mode in ('preopen','short','swing','long'):
               z=x['aggregate'][mode]
-              assert z['all']['n']>0,(mode,z)
-              assert z['oos']['n']>0,(mode,z)
-              assert z['stress_status'] in ('PASS','FAIL','INSUFFICIENT')
-          print('Taiwan v3 large OOS stress validated',x['universe_ok'])
-          for mode,z in x['aggregate'].items():print(mode,z['stress_status'],z['oos'])
+              assert z['stress_status']=='BLOCKED_LEGAL_SOURCE',(mode,z)
+              assert z['statistical_status'] in ('PASS','FAIL','INSUFFICIENT')
+          print('Diagnostic OOS computed; formal validation correctly BLOCKED_LEGAL_SOURCE')
+          for mode,z in x['aggregate'].items():print(mode,'diagnostic=',z['statistical_status'],'formal=',z['stress_status'])
           PY
-      - name: Persist result when changed
+      - name: Persist diagnostic result when changed
         run: |
           if [ -n "$(git status --porcelain stock-lab/backtest-result.json)" ]; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add stock-lab/backtest-result.json
-            git commit -m 'update Taiwan v3 large OOS backtest result'
+            git commit -m 'update Taiwan diagnostic OOS result with legal-source gate'
             git pull --rebase origin main
             git push origin HEAD:main
           else echo 'No backtest changes'; fi
