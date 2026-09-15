@@ -2,21 +2,21 @@
   "schema_version": 1,
   "source_class": "ogdl_daily_archive",
   "licence": "OGDL-1.0",
-  "generated_at": "2026-09-15T07:47:19.137971+00:00",
+  "generated_at": "2026-09-15T13:27:23.448108+00:00",
   "markets": [
     "TPEx",
     "TWSE"
   ],
   "first_date": "2026-09-14",
-  "last_date": "2026-09-14",
-  "rows": 6654,
+  "last_date": "2026-09-15",
+  "rows": 12091,
   "files": [
     {
       "file": "2026-09.jsonl",
-      "rows": 6654,
+      "rows": 12091,
       "first_date": "2026-09-14",
-      "last_date": "2026-09-14",
-      "sha256": "0bd4a258803938056211e1dcd4ac1a6ffd50747a304690343f5df2c6ba06ed7c"
+      "last_date": "2026-09-15",
+      "sha256": "0458083539cc9b652d0a17dd829c919bfed099661cc4e5a077b4bf0ed2d5646e"
     }
   ],
   "latest_ingest": {
@@ -29,11 +29,11 @@
       "source_schema": "twse_stock_day_all_v1"
     },
     "TPEx": {
-      "date": "2026-09-14",
-      "accepted": 5290,
-      "rejected": 5999,
+      "date": "2026-09-15",
+      "accepted": 5437,
+      "rejected": 5921,
       "data_gov_dataset": 11370,
-      "raw_sha256": "17b5ca054bd68cf96caf7306fe423822624d2293b0ed17b7a91e0494a59dda55",
+      "raw_sha256": "60e0f0a4a09aed06383e66f064c3fa81ecc69bc806a628fab6d61a13fd5685d5",
       "source_schema": "tpex_mainboard_daily_close_quotes_v1"
     }
   },
@@ -119,18 +119,8 @@
       ]
     },
     "TPEx": {
-      "count": 5999,
+      "count": 5921,
       "sample": [
-        {
-          "index": 71,
-          "ticker": "00867B",
-          "reason": "missing_or_invalid_numeric_observation"
-        },
-        {
-          "index": 111,
-          "ticker": "00986B",
-          "reason": "missing_or_invalid_numeric_observation"
-        },
         {
           "index": 119,
           "ticker": "020001",
@@ -147,13 +137,18 @@
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
-          "index": 153,
-          "ticker": "2035",
+          "index": 126,
+          "ticker": "1259",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
-          "index": 192,
-          "ticker": "2949",
+          "index": 170,
+          "ticker": "2719",
+          "reason": "missing_or_invalid_numeric_observation"
+        },
+        {
+          "index": 189,
+          "ticker": "2941",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
@@ -167,33 +162,33 @@
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
-          "index": 201,
-          "ticker": "3085",
+          "index": 313,
+          "ticker": "3531",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
-          "index": 205,
-          "ticker": "3095",
+          "index": 396,
+          "ticker": "4192",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
-          "index": 251,
-          "ticker": "3285",
+          "index": 466,
+          "ticker": "4806",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
-          "index": 406,
-          "ticker": "4413",
-          "reason": "missing_or_invalid_numeric_observation"
-        },
-        {
-          "index": 515,
-          "ticker": "5276",
+          "index": 585,
+          "ticker": "5601",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
           "index": 590,
           "ticker": "5703",
+          "reason": "missing_or_invalid_numeric_observation"
+        },
+        {
+          "index": 655,
+          "ticker": "6198",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
@@ -212,13 +207,18 @@
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
+          "index": 784,
+          "ticker": "6692",
+          "reason": "missing_or_invalid_numeric_observation"
+        },
+        {
           "index": 805,
           "ticker": "6762",
           "reason": "missing_or_invalid_numeric_observation"
         },
         {
-          "index": 823,
-          "ticker": "6856",
+          "index": 855,
+          "ticker": "700019",
           "reason": "missing_or_invalid_numeric_observation"
         }
       ]
