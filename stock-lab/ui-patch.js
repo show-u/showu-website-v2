@@ -1,4 +1,4 @@
-// UX patch: allow ticker or company-name search and standardize price labels.
+// UX patch: ticker/company-name search plus explicit price presentation.
 (function(){
   const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn');
   if(!input||!btn)return;
@@ -29,10 +29,30 @@
     try{input.value=await resolveQuery(input.value);}catch(e){alert(e.message);return;}
     return original&&original.call(this,ev);
   };
-  function relabel(root=document){
-    root.querySelectorAll('.source-note b').forEach(el=>{if(el.textContent.trim()==='入場價格區間')el.textContent='建議入場價格區間';});
-    root.querySelectorAll('.kpi span').forEach(el=>{const t=el.textContent.trim();if(t==='收盤')el.textContent='現在價格';else if(t==='進場區')el.textContent='建議入場價格區間';});
-    root.querySelectorAll('.mini').forEach(el=>{if(el.textContent.includes('收盤 '))el.textContent=el.textContent.replace('收盤 ','現在價格 ');});
+  function ensureSinglePriceSummary(){
+    const box=document.querySelector('#result');
+    if(!box||box.classList.contains('hidden')||box.querySelector('.bad'))return;
+    let summary=box.querySelector('[data-price-summary]');
+    const entryNode=[...box.querySelectorAll('.source-note b')].find(el=>/入場價格區間/.test(el.textContent));
+    const entry=entryNode?.parentElement?.querySelector('div')?.textContent?.trim()||'—';
+    const kpis=[...box.querySelectorAll('.kpi')];
+    const closeKpi=kpis.find(k=>/^(收盤|現在價格|最新官方收盤價)$/.test(k.querySelector('span')?.textContent?.trim()||''));
+    const close=closeKpi?.querySelector('b')?.textContent?.trim()||'—';
+    const date=(box.querySelector('.sourceitem .mini')?.textContent||box.querySelector('.toprow .muted')?.textContent||'').trim();
+    if(!summary){
+      summary=document.createElement('div');summary.dataset.priceSummary='1';summary.className='sourcegrid';summary.style.marginTop='14px';
+      const top=box.querySelector('.toprow');(top||box.firstChild)?.after?.(summary);if(!summary.parentNode)box.prepend(summary);
+    }
+    summary.innerHTML=`<div class="sourceitem"><b>現在價格</b><div style="font-size:24px;font-weight:900;margin-top:4px">—</div><span class="mini">即時行情尚未接入，避免以昨日收盤價冒充現在價格</span></div><div class="sourceitem"><b>建議入場價格區間</b><div style="font-size:24px;font-weight:900;margin-top:4px">${entry}</div><span class="mini">依最新已驗證日線、支撐壓力與投資週期計算</span></div><div class="sourceitem"><b>最新官方收盤價</b><div style="font-size:20px;font-weight:900;margin-top:4px">${close}</div><span class="mini">${date||'最近交易日'}</span></div>`;
+    if(entryNode)entryNode.textContent='建議入場價格區間';
+    if(closeKpi){const s=closeKpi.querySelector('span');if(s)s.textContent='最新官方收盤價';}
   }
+  function relabelTop10(){
+    document.querySelectorAll('#top10 .item').forEach(item=>{
+      item.querySelectorAll('b').forEach(el=>{if(el.textContent.includes('入場價格區間：'))el.textContent=el.textContent.replace('入場價格區間：','建議入場價格區間：');});
+      item.querySelectorAll('.mini').forEach(el=>{if(el.textContent.includes('收盤 '))el.textContent=el.textContent.replace('收盤 ','最新官方收盤價 ');});
+    });
+  }
+  function relabel(){ensureSinglePriceSummary();relabelTop10();}
   const observer=new MutationObserver(()=>relabel());observer.observe(document.body,{subtree:true,childList:true});relabel();
 })();
