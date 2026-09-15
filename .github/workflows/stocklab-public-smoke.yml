@@ -17,22 +17,26 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
       - name: Verify public StockLab deployment
         shell: bash
         run: |
           set -euo pipefail
           base='https://www.showujapan.com/stock-lab'
-          curl -fsSL --retry 6 --retry-delay 10 --retry-all-errors --max-time 20 "$base/" -o /tmp/index.html
+          ready=0
+          for i in 1 2 3 4 5 6 7 8; do
+            curl -fsSL --max-time 20 "$base/?smoke=$RANDOM" -o /tmp/index.html || true
+            if grep -q './runtime-config.js' /tmp/index.html 2>/dev/null && grep -q './api-client.js' /tmp/index.html 2>/dev/null; then ready=1; break; fi
+            sleep 10
+          done
+          test "$ready" = 1
           grep -q 'StockLab 台股投資分析器' /tmp/index.html
-          grep -q './runtime-config.js' /tmp/index.html
-          grep -q './api-client.js' /tmp/index.html
           grep -q './health.js' /tmp/index.html
           grep -q './top10-gate.js' /tmp/index.html
           grep -q './market-router.js' /tmp/index.html
           for f in runtime-config.js api-client.js health.js top10-gate.js market-router.js tpex-health.json market-data.json futures-data.json; do
-            curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors --max-time 20 "$base/$f" -o "/tmp/$f"
+            curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors --max-time 20 "$base/$f?smoke=$RANDOM" -o "/tmp/$f"
             test -s "/tmp/$f"
           done
           python - <<'PY'
