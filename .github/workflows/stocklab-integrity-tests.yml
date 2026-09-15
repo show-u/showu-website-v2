@@ -26,13 +26,13 @@ jobs:
 
       - name: Syntax checks
         run: |
-          for f in app tpex same-origin-cache taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config; do
+          for f in app tpex same-origin-cache licensed-history taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config; do
             test -f "stock-lab/$f.js"
             node --check "stock-lab/$f.js"
           done
-          python -m py_compile stock-lab/backtest-taiwan-v3.py
+          python -m py_compile stock-lab/backtest-taiwan-v3.py stock-lab/validate-licensed-bundle.py
 
-      - name: Truth, execution, no-imputation, calibrated-confidence and UX invariants
+      - name: Truth, execution, licensed-data, no-imputation, calibrated-confidence and UX invariants
         run: |
           python - <<'PY'
           import json
@@ -43,6 +43,7 @@ jobs:
           validation=json.loads(R('stock-lab/model-validation-status.json'))
           entry_protocol=json.loads(R('stock-lab/entry-validation-protocol.json'))
           holding_protocol=json.loads(R('stock-lab/holding-exit-validation-protocol.json'))
+          licensed_contract=json.loads(R('stock-lab/licensed-data-contract.json'))
           idx=R('stock-lab/index.html')
           api=R('stock-lab/api-client.js')
           ui=R('stock-lab/ui-patch.js')
@@ -58,6 +59,8 @@ jobs:
           hard_doc=R('stock-lab/HARD_POLICY.md')
           compliance=R('stock-lab/compliance-gate.js')
           public=R('stock-lab/public-output.js')
+          licensed=R('stock-lab/licensed-history.js')
+          validator=R('stock-lab/validate-licensed-bundle.py')
           backtest=R('stock-lab/backtest-taiwan-v3.py')
 
           # Absolute truth rules.
@@ -70,6 +73,25 @@ jobs:
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices','recommendation_requires_oos_pass'):
               assert oc[k] is True,k
+
+          # Licensed historical-data contract is mandatory and fail-closed.
+          assert licensed_contract['schema_version']==1 and licensed_contract['contract_name']=='StockLab Licensed Taiwan Market Data Bundle'
+          nr=licensed_contract['non_negotiable_rules']
+          for k in ('no_network_fallback','no_unlicensed_website_scraping','no_missing_dataset_imputation','no_stale_data_relabelled_current','no_raw_redistribution_without_permission','every_payload_file_requires_sha256','every_observation_requires_source_provenance','license_must_allow_automated_processing','license_must_allow_derived_outputs','production_and_oos_use_same_normalization_rules'):
+              assert nr[k] is True,k
+          assert set(licensed_contract['required_datasets'])=={'security_master','trading_calendar','daily_ohlc','corporate_actions','risk_states'}
+          assert 'sources' in licensed_contract['required_manifest_fields']
+          assert licensed_contract['source_registry_contract']['required_provenance_class']=='observed'
+          assert './licensed-history.js' in idx
+          assert idx.rfind('./same-origin-cache.js') < idx.rfind('./licensed-history.js') < idx.rfind('./market-router.js')
+          for text in ('licensed-data/manifest.json','no-store','crypto.subtle.digest','SHA-256','禁止跨網域 payload','合法歷史資料 bundle 尚未提供','networkFallback:false','imputation:false','StockLabLicensedHistory'):
+              assert text in licensed,text
+          assert 'remoteJget' not in licensed and 'www.twse.com.tw' not in licensed and 'www.tpex.org.tw' not in licensed
+          for text in ('No network requests are permitted here','sha256 mismatch','license.evidence_reference','source_id','imputation_used'):
+              assert text in validator,text
+          for forbidden in ('urllib.request','requests.get','http://','https://'):
+              assert forbidden not in validator,forbidden
+          assert not Path('stock-lab/licensed-data/manifest.json').exists(), 'Do not commit a fake production licensed-data manifest'
 
           # Public UX has only the three real decisions and is deliberately concise.
           for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','信心指數','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
@@ -172,7 +194,7 @@ jobs:
           for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor'):
               assert forbidden not in backtest,forbidden
 
-          print('PASS: concise StockLab entry/holding UX is fail-closed, executable by contract, and confidence-calibrated')
+          print('PASS: StockLab truth rules, licensed-data contract, entry/holding UX and fail-closed gates hold')
           PY
 
       - name: No-imputation and confidence fixtures
@@ -199,7 +221,6 @@ jobs:
           signals=100;fills=18
           fill_rate=fills/signals
           assert fill_rate==0.18 and signals>fills
-          # An apparently profitable 18 fills may not erase the other 82 unreachable signals.
           assert (signals-fills)==82
           print('PASS: missing values stay missing; confidence and execution reachability are separate gates')
           PY
