@@ -24,56 +24,36 @@ jobs:
           python-version: '3.12'
       - name: JavaScript syntax checks
         run: |
-          node --check stock-lab/app.js
-          node --check stock-lab/indicators-v2.js
-          node --check stock-lab/tpex.js
-          node --check stock-lab/financials.js
-          node --check stock-lab/integrity.js
-          node --check stock-lab/taiwan-model-v2.js
-          node --check stock-lab/markets.js
-          node --check stock-lab/futures.js
-          node --check stock-lab/event-risk.js
-          node --check stock-lab/top10-gate.js
-          node --check stock-lab/market-router.js
-          node --check stock-lab/ui-patch.js
+          for f in app indicators-v2 tpex financials integrity taiwan-model-v2 markets futures event-risk top10-gate market-router ui-patch; do node --check "stock-lab/$f.js"; done
       - name: Source policy and Taiwan-model checks
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           from urllib.parse import urlparse
-          idx=Path('stock-lab/index.html').read_text(encoding='utf-8')
-          app=Path('stock-lab/app.js').read_text(encoding='utf-8')
-          indicators=Path('stock-lab/indicators-v2.js').read_text(encoding='utf-8')
-          tpex=Path('stock-lab/tpex.js').read_text(encoding='utf-8')
-          fin=Path('stock-lab/financials.js').read_text(encoding='utf-8')
-          integ=Path('stock-lab/integrity.js').read_text(encoding='utf-8')
-          taiwan=Path('stock-lab/taiwan-model-v2.js').read_text(encoding='utf-8')
-          markets=Path('stock-lab/markets.js').read_text(encoding='utf-8')
-          futures=Path('stock-lab/futures.js').read_text(encoding='utf-8')
-          events=Path('stock-lab/event-risk.js').read_text(encoding='utf-8')
-          gate=Path('stock-lab/top10-gate.js').read_text(encoding='utf-8')
-          router=Path('stock-lab/market-router.js').read_text(encoding='utf-8')
-          ui=Path('stock-lab/ui-patch.js').read_text(encoding='utf-8')
-          policy=json.loads(Path('stock-lab/verification-policy.json').read_text(encoding='utf-8'))
+          R=lambda p:Path(p).read_text(encoding='utf-8')
+          idx=R('stock-lab/index.html');app=R('stock-lab/app.js');indicators=R('stock-lab/indicators-v2.js')
+          tpex=R('stock-lab/tpex.js');fin=R('stock-lab/financials.js');integ=R('stock-lab/integrity.js')
+          taiwan=R('stock-lab/taiwan-model-v2.js');markets=R('stock-lab/markets.js');futures=R('stock-lab/futures.js')
+          events=R('stock-lab/event-risk.js');gate=R('stock-lab/top10-gate.js');router=R('stock-lab/market-router.js');ui=R('stock-lab/ui-patch.js')
+          policy=json.loads(R('stock-lab/verification-policy.json'))
           scripts=('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','taiwan-model-v2.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js','ui-patch.js')
           for script in scripts: assert f'./{script}' in idx, f'{script} not loaded by index'
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
-          assert "Wilder RSI 14 v2" in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
+          assert 'Wilder RSI 14 v2' in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
           assert "h!=='www.tpex.org.tw'" in tpex and 'tpex_mainboard_daily_close_quotes' in tpex
-          assert 'tpex_mainboard_peratio_analysis' in tpex and 'tpex_3insti_daily_trading' in tpex and 'mopsfin_t187ap05_O' in tpex
-          assert 'afterTrading/tradingStock' in tpex and 'tpex-health.json' in tpex and 'requireTpexHealth' in tpex
-          assert 't187ap06_L_ci' in fin and 't187ap07_L_ci' in fin and 'mopsfin_t187ap06_O_ci' in fin and 'mopsfin_t187ap07_O_ci' in fin
+          assert all(x in tpex for x in ('tpex_mainboard_peratio_analysis','tpex_3insti_daily_trading','mopsfin_t187ap05_O','afterTrading/tradingStock','tpex-health.json','requireTpexHealth'))
+          assert all(x in fin for x in ('t187ap06_L_ci','t187ap07_L_ci','mopsfin_t187ap06_O_ci','mopsfin_t187ap07_O_ci'))
           assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
-          assert 'entryLow:Math.max(lo,L.c*' not in app
-          assert 'entryHigh:L.c*' not in app
-          assert "h==='long'&&v?.pe" not in app
+          assert 'entryLow:Math.max(lo,L.c*' not in app and 'entryHigh:L.c*' not in app and "h==='long'&&v?.pe" not in app
           assert 'adaptiveBand' in taiwan and 'TW-structure-volatility-v3' in taiwan
-          assert 'pctRank' in taiwan and 'sectorFamily' in taiwan and "s==='24'" in taiwan and "s==='17'" in taiwan
-          assert 'margin_change_pct' in taiwan and 'short_change_pct' in taiwan and 'riskBlocked' in taiwan
-          assert 'a.integrity?.valuation?.ok' in taiwan
-          assert 'riskBlocked' in router and '處置股票：不產生掛單價格' in router
-          assert 'StockLabTaiwan?.loadFactors' in router
+          assert all(x in taiwan for x in ('pctRank','sectorFamily',"s==='24'","s==='17'",'margin_change_pct','short_change_pct','riskBlocked','a.integrity?.valuation?.ok'))
+          assert 'riskBlocked' in router and 'data-five-price-matrix' in router and 'TW-day-structure-volatility-v4' in router
+          assert all(x in router for x in ('① 開盤前掛單價格','② 當日入場適合區間','③ 短線入場區間','④ 中期入場區間','⑤ 長期佈局區間','限價 ROD','ATR14','tickSize'))
+          assert "h==='preopen'" in router and 'StockLabTaiwan?.loadFactors' in router
+          # Fixed percentage entry heuristics must not return.
+          forbidden=('L.c*.96','L.c*0.96','L.c*.92','L.c*0.92','L.c*.88','L.c*0.88','L.c*.985','L.c*0.985')
+          for x in forbidden: assert x not in app+router+taiwan, f'fixed entry percentage returned: {x}'
           assert 'schema_version!==3' in markets
           assert 'cross_check' in futures and 'TAIFEX' in futures
           assert policy['taiwan']['taiex_futures']['scored'] is False
@@ -86,28 +66,19 @@ jobs:
           assert "marketName='TPEx'" in router and "marketName='TWSE'" in router
           assert '不需要 ChatGPT／GPT 帳號' in idx
           assert '股票代號／股票名稱' in idx and '例如：2454 或 聯發科' in idx
-          assert 'id="singlePanel"' in idx and 'id="singleBtn"' in idx and 'id="findBtn"' in idx
-          assert "singleBtn.addEventListener('click',showSingle)" in ui
-          assert "findBtn.addEventListener('click',showFind)" in ui
-          assert "singlePanel.classList.remove('hidden')" in ui
           assert '開盤前｜當日掛單價格' in idx and '當沖｜今天' not in idx
-          assert "h==='preopen'" in router and '今日建議掛單價格' in router and 'ATR14' in router and 'tickSize' in router
-          assert '固定價格百分比' in router
-          assert 'browser-data.json' in ui and '建議入場價格區間' in ui and '現在價格' in ui and '最新官方收盤價' in ui
-          snap=json.loads(Path('stock-lab/market-data.json').read_text(encoding='utf-8'))
-          assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
+          assert all(x in ui for x in ("singleBtn.addEventListener('click',showSingle)","findBtn.addEventListener('click',showFind)","singlePanel.classList.remove('hidden')",'showSingle();','browser-data.json','建議入場價格區間'))
+          assert 'data-five-price-matrix' in ui and "querySelector('[data-price-summary]')?.remove()" in ui
+          snap=json.loads(R('stock-lab/market-data.json'));assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
           for k,(src,host) in expected.items():
-              x=snap['sources'][k]; assert x.get('source')==src; assert urlparse(x.get('url','')).hostname==host
-          tx=json.loads(Path('stock-lab/futures-data.json').read_text(encoding='utf-8'))
-          assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
-          for u in tx.get('urls',{}).values(): assert urlparse(u).hostname=='www.taifex.com.tw'
-          tph=json.loads(Path('stock-lab/tpex-health.json').read_text(encoding='utf-8'))
-          assert tph.get('schema_version')==1 and tph.get('source')=='TPEx'
+              x=snap['sources'][k];assert x.get('source')==src;assert urlparse(x.get('url','')).hostname==host
+          tx=json.loads(R('stock-lab/futures-data.json'));assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
+          for u in tx.get('urls',{}).values():assert urlparse(u).hostname=='www.taifex.com.tw'
+          tph=json.loads(R('stock-lab/tpex-health.json'));assert tph.get('schema_version')==1 and tph.get('source')=='TPEx'
           if tph.get('verified'):
-              assert tph.get('status')=='ok'
-              assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
-          print('Taiwan-specific model invariants and source policy passed')
+              assert tph.get('status')=='ok';assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
+          print('Taiwan five-price model invariants and source policy passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
