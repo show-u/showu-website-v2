@@ -26,7 +26,7 @@ jobs:
 
       - name: Syntax checks
         run: |
-          for f in app tpex same-origin-cache licensed-history taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config; do
+          for f in app tpex same-origin-cache licensed-history session-context taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config; do
             test -f "stock-lab/$f.js"
             node --check "stock-lab/$f.js"
           done
@@ -60,6 +60,7 @@ jobs:
           compliance=R('stock-lab/compliance-gate.js')
           public=R('stock-lab/public-output.js')
           licensed=R('stock-lab/licensed-history.js')
+          session=R('stock-lab/session-context.js')
           validator=R('stock-lab/validate-licensed-bundle.py')
           backtest=R('stock-lab/backtest-taiwan-v3.py')
 
@@ -82,8 +83,8 @@ jobs:
           assert set(licensed_contract['required_datasets'])=={'security_master','trading_calendar','daily_ohlc','corporate_actions','risk_states'}
           assert 'sources' in licensed_contract['required_manifest_fields']
           assert licensed_contract['source_registry_contract']['required_provenance_class']=='observed'
-          assert './licensed-history.js' in idx
-          assert idx.rfind('./same-origin-cache.js') < idx.rfind('./licensed-history.js') < idx.rfind('./market-router.js')
+          assert './licensed-history.js' in idx and './session-context.js' in idx and './hard-policy.js' in idx
+          assert idx.rfind('./same-origin-cache.js') < idx.rfind('./licensed-history.js') < idx.rfind('./session-context.js') < idx.rfind('./hard-policy.js') < idx.rfind('./market-router.js')
           for text in ('licensed-data/manifest.json','no-store','crypto.subtle.digest','SHA-256','禁止跨網域 payload','合法歷史資料 bundle 尚未提供','networkFallback:false','imputation:false','StockLabLicensedHistory'):
               assert text in licensed,text
           assert 'remoteJget' not in licensed and 'www.twse.com.tw' not in licensed and 'www.tpex.org.tw' not in licensed
@@ -108,8 +109,9 @@ jobs:
           assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js') < idx.rfind('./public-output.js')
           assert 'showSingle();' in ui
           assert all(x in public for x in ('暫不提供進場區間與信心指數','暫不提供出場時機／觸發價格／信心指數','入場候選 TOP 10','不以舊值、0、平均值、其他網站或 AI 補值','持倉總成本','依該收盤估算市值','依該收盤估算損益','非盤中即時價'))
-          assert all(x in public for x in ('normalizeTradeDate','dateAgeDays','收盤資料日期過舊或異常'))
+          assert all(x in public for x in ('normalizeTradeDate','dateAgeDays','收盤資料日期過舊或異常','StockLabSessionContext.resolve'))
           assert all(x in hold_router for x in ('依該收盤估算市值','依該收盤估算損益','完成交易日收盤，不是盤中即時價'))
+          assert all(x in session for x in ('WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE','盤中僅供參考，不以昨日資料重算現在價格'))
 
           # Public API contract no longer exposes horizon-specific buy analysis.
           assert 'async function analyze(code)' in api and "strategy:'entry'" in api
@@ -118,21 +120,26 @@ jobs:
           assert 'analyze(code,horizon)' not in api and 'scan(strategy)' not in api
           assert 'StockLabTickerResolver' in ui and "horizon=document.querySelector" not in ui
 
-          # Internal entry engine still uses the complete 9+3 contract; public result does not dump it.
+          # Browser keeps factor definitions for diagnostics/audit, but executable entry output is backend-only.
           factor_keys=('trend','volume','movingAverages','institution','macd','rsi','kd','crossovers','candlestick')
           for k in factor_keys: assert f"'{k}'" in entry,k
-          assert 'StockLabEntryDecision.evaluate' in router
           assert "STRATEGY='entry'" in top10
           assert 'adaptiveBand' not in tw
           for legacy in ("h==='1m'","h==='3m'","h==='long'",'TW-structure-volatility-v4','短線入場區間','中期入場區間','長期佈局區間'):
               assert legacy not in router+tw,legacy
+          assert 'StockLabEntryDecision.evaluate' not in router
+          assert 'openingGapStats' not in router and 'intradayPullbackStats' not in router and 'buildBuyPlan' not in router
+          assert 'StockLabLicensedHistory' not in router
+          assert '正式私有分析後端尚未啟用；瀏覽器本地預測已停用' in router
+          assert "api.analyze(code)" in router
+          assert "backendResult(j,'analysis')" in router
           assert '<h3>九項入場判斷</h3>' not in router
           assert '<h3>美股／台指期／國際時事</h3>' not in router
           assert '<b>九項訊號</b>' not in top10
           assert 'contextText(' not in top10
           assert 'entry_low' in router and 'entry_high' in router
 
-          # Actionable price ranges require OOS reachability/execution validation.
+          # Actionable price ranges require OOS reachability/execution validation in the backend hard gate.
           assert entry_protocol['schema_version']==1 and entry_protocol['protocol_name']=='StockLab TW-entry-9plus3-v1 OOS Protocol'
           assert entry_protocol['non_negotiable_rules']['unfilled_signals_must_remain_in_denominator'] is True
           assert entry_protocol['non_negotiable_rules']['confidence_requires_separate_oos_calibration'] is True
@@ -143,7 +150,6 @@ jobs:
           assert 'OOS entry-range touch/fill/reachability validation' in validation['models']['entry_decision_9plus3']['required_before_pass']
           assert 'OOS entry-range touch/fill/reachability validation' in validation['models']['entry_scanner_9plus3']['required_before_pass']
           assert 'entryRangeExecutionValidation:false' in runtime
-          assert 'entryRangeExecutionValidation' in router
           assert 'entry_range_execution_validated' in hard and 'entry_range_execution_validated' in top10
           assert '觸價／成交可達性' in hard_doc and '未成交率' in hard_doc
 
@@ -155,11 +161,11 @@ jobs:
           assert 'holdingExitExecutionValidation' in hold_router
           assert 'exit_execution_validated' in hard and 'exit_execution_validated' in hold_router
 
-          # Confidence can never be a heuristic relabel. Calibration is a separate hard gate.
+          # Confidence can never be a heuristic relabel. Buy/scanner confidence is accepted only after backend audit calibration.
           for s in ('entryConfidenceCalibration:false','holdingConfidenceCalibration:false','scannerConfidenceCalibration:false'):
               assert s in runtime,s
           assert 'validConfidence' in hard and 'confidence_calibrated===true' in hard
-          assert 'entryConfidenceCalibration' in router and 'confidenceCalibrated===true' in router
+          assert 'confidence_index' in router and 'backendResult(j,\'analysis\')' in router
           assert 'holdingConfidenceCalibration' in hold_router and 'confidenceCalibrated!==true' in hold_router
           assert 'scannerConfidenceCalibration' in top10 and 'confidence_calibrated' in top10
           assert 'untouched OOS confidence calibration' in validation['models']['entry_decision_9plus3']['required_before_pass']
@@ -194,7 +200,7 @@ jobs:
           for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor'):
               assert forbidden not in backtest,forbidden
 
-          print('PASS: StockLab truth rules, licensed-data contract, entry/holding UX and fail-closed gates hold')
+          print('PASS: StockLab truth rules, licensed-data contract, backend-only entry, holding UX and fail-closed gates hold')
           PY
 
       - name: No-imputation and confidence fixtures
