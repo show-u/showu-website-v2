@@ -31,7 +31,7 @@ jobs:
           done
           python -m py_compile stock-lab/backtest-taiwan-v3.py
 
-      - name: Truth, no-imputation, and architecture invariants
+      - name: Truth, no-imputation, calibrated-confidence and UX invariants
         run: |
           python - <<'PY'
           import json
@@ -52,12 +52,13 @@ jobs:
           hold_router=R('stock-lab/holding-router.js')
           tw=R('stock-lab/taiwan-model-v2.js')
           runtime=R('stock-lab/runtime-config.js')
+          hard=R('stock-lab/hard-policy.js')
           compliance=R('stock-lab/compliance-gate.js')
           backtest=R('stock-lab/backtest-taiwan-v3.py')
 
           # Absolute truth rules.
           assert policy['version']==9 and policy['policy_name']=='StockLab Taiwan Truth Rules'
-          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION'):
+          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','NO_FAKE_CONFIDENCE'):
               assert k in policy['absolute_invariants'],k
           assert set(policy['provenance_classes'])=={'observed','user_observed','derived','model_estimate','unavailable'}
           assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
@@ -66,13 +67,16 @@ jobs:
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices','recommendation_requires_oos_pass'):
               assert oc[k] is True,k
 
-          # Three workflows only; obsolete horizon/objective selectors are physically gone, not hidden.
-          for text in ('不知道買什麼','想買這檔','已持有','判斷是否適合入場','評估續抱／減碼／出場條件','目前總量成本均價','目前持有股數','首次買入日'):
+          # Public UX has only the three real decisions and is deliberately concise.
+          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','建議進場區間','信心指數','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
               assert text in idx,text
-          for legacy in ('id="horizon"','id="scanObjective"','holdHorizon','<option value="1m"','<option value="3m"','<option value="long"'):
+          assert 'internal-only' in idx
+          for legacy in ('id="horizon"','id="scanObjective"','holdHorizon','<option value="1m"','<option value="3m"','<option value="long"','短線｜約1個月','波段｜約3個月','長期｜1年以上'):
               assert legacy not in idx,legacy
+          assert '9項入場因子' not in idx and '美股、台指期 TX、國際時事' not in idx
           assert './entry-decision.js' in idx and './position-input.js' in idx and './holding-model.js' in idx and './holding-router.js' in idx
           assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js')
+          assert 'showSingle();' in ui
 
           # Public API contract no longer exposes horizon-specific buy analysis.
           assert 'async function analyze(code)' in api and "strategy:'entry'" in api
@@ -81,22 +85,38 @@ jobs:
           assert 'analyze(code,horizon)' not in api and 'scan(strategy)' not in api
           assert 'StockLabTickerResolver' in ui and "horizon=document.querySelector" not in ui
 
-          # Entry and scanner use one 9+3 contract; no short/mid/long price bands.
+          # Internal entry engine still uses the complete 9+3 contract; public result does not dump it.
           factor_keys=('trend','volume','movingAverages','institution','macd','rsi','kd','crossovers','candlestick')
           for k in factor_keys: assert f"'{k}'" in entry,k
           assert 'StockLabEntryDecision.evaluate' in router
           assert "STRATEGY='entry'" in top10
-          assert '短／中／長買入價' in router
+          assert '短／中／長' in router  # comment explicitly forbids old architecture
           assert 'adaptiveBand' not in tw
-          for legacy in ("h==='1m'","h==='3m'","h==='long'",'entryLow:roundTick','entryHigh:roundTick','TW-structure-volatility-v4'):
+          for legacy in ("h==='1m'","h==='3m'","h==='long'",'TW-structure-volatility-v4'):
               assert legacy not in tw,legacy
+          assert '<h3>九項入場判斷</h3>' not in router
+          assert '<h3>美股／台指期／國際時事</h3>' not in router
+          assert '<b>九項訊號</b>' not in top10
+          assert 'contextText(' not in top10
+          assert 'entry_low' in router and 'entry_high' in router
+
+          # Confidence can never be a heuristic relabel. Calibration is a separate hard gate.
+          for s in ('entryConfidenceCalibration:false','holdingConfidenceCalibration:false','scannerConfidenceCalibration:false'):
+              assert s in runtime,s
+          assert 'validConfidence' in hard and 'confidence_calibrated===true' in hard
+          assert 'entryConfidenceCalibration' in router and 'confidenceCalibrated===true' in router
+          assert 'holdingConfidenceCalibration' in hold_router and 'confidenceCalibrated!==true' in hold_router
+          assert 'scannerConfidenceCalibration' in top10 and 'confidence_calibrated' in top10
+          assert 'untouched OOS confidence calibration' in validation['models']['entry_decision_9plus3']['required_before_pass']
+          assert 'untouched OOS confidence calibration' in validation['models']['entry_scanner_9plus3']['required_before_pass']
+          assert 'untouched OOS confidence calibration' in validation['models']['holding_exit']['required_before_pass']
 
           # Position facts originate only from the user; holding uses exact verified trading sessions.
           assert all(x in pos for x in ('StockLabPositionInput','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'))
           assert all(x in hold for x in ('TW-holding-exit-v4','holdingTradingDays','正式出場模型需要有效首次買入日','首次買入日不在目前合法且驗證通過的歷史交易日序列中','sharesAffectSignal:false'))
           assert 'estimatedTradingDays' not in hold and 'horizonConfig' not in hold
           assert 'btn.onclick=async' in hold_router and 'StockLabPositionInput?.collect' in hold_router and 'StockLabTickerResolver' in hold_router
-          assert 'NO IMPUTATION' in hold_router and "oosStatus:'PASS'" in hold_router
+          assert '暫不提供出場價格' in hold_router and "oosStatus:'PASS'" in hold_router
 
           # Compliance gate remains final fail-closed authority while production gates are false.
           assert 'allowLocalFallback:false' in runtime and 'productionPredictionReady:false' in runtime
@@ -104,7 +124,7 @@ jobs:
               assert s in runtime,s
           assert 'VERIFIED FACTS ONLY' in compliance and '不以 0、平均值、舊值或 AI 補齊' in compliance
 
-          # Validation contracts are v10/v4 and legacy horizon backtest code stays deleted.
+          # Validation contracts are v10/v4 and legacy network backtest code stays disabled.
           assert validation['schema_version']==4 and validation['architecture']=='unified-entry-holding-v10'
           assert validation['legacy_horizon_entry_results_are_production_valid'] is False
           assert validation['models']['holding_exit']['candidate_formula']=='TW-holding-exit-v4'
@@ -117,7 +137,7 @@ jobs:
           for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor'):
               assert forbidden not in backtest,forbidden
 
-          print('PASS: StockLab unified-entry + actual-position holding architecture is clean and fail-closed')
+          print('PASS: concise StockLab buy/holding UX is fail-closed and confidence-calibrated by contract')
           PY
 
       - name: No-imputation behavior fixtures
@@ -134,7 +154,14 @@ jobs:
           assert strict_num('0')==0 and strict_num('1,234.5')==1234.5
           provenance={'official_close':'observed','position_cost':'user_observed','holding_days':'derived','exit_decision':'model_estimate','missing':'unavailable'}
           assert len(set(provenance.values()))==5
+          def valid_confidence(v,calibrated):
+              try:x=float(v)
+              except:return False
+              return calibrated is True and 0<=x<=100
+          assert valid_confidence(62,False) is False
+          assert valid_confidence(62,True) is True
+          assert valid_confidence(101,True) is False
           def lookback(actual_trading_days):return max(20,min(240,actual_trading_days))
           assert lookback(14)==20 and lookback(90)==90 and lookback(365)==240
-          print('PASS: missing values remain missing; holding-age derivation is explicit')
+          print('PASS: missing values stay missing and confidence requires calibration')
           PY
