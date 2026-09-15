@@ -6,7 +6,7 @@
   const blockedReasons=()=>Array.isArray(rt.blockers)&&rt.blockers.length?rt.blockers:['預測必要 Gate 尚未全部通過'];
   const gateList=()=>Object.entries(rt.gates||{}).filter(([,v])=>v!==true).map(([k])=>k);
   const missing='資料未取得／未通過驗證';
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   function num(v){if(v==null)return null;const s=String(v).trim();if(!s||['-','--','—','N/A','NA','null','undefined'].includes(s))return null;const x=Number(s.replace(/,/g,''));return Number.isFinite(x)?x:null}
   const money=x=>x==null?'—':Number(x).toLocaleString('zh-TW',{maximumFractionDigits:2});
   function rocDate(v){const s=String(v||'').replace(/\D/g,'');if(/^\d{7}$/.test(s))return `${+s.slice(0,3)+1911}-${s.slice(3,5)}-${s.slice(5,7)}`;if(/^\d{8}$/.test(s))return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;return String(v||'')||null}
@@ -32,7 +32,10 @@
   function blockedHtml(title){return `<div class=toprow><div><h2>${esc(title)}</h2><div class=muted>StockLab Hard Policy v${rt.hardPolicyVersion||'—'}｜VERIFIED FACTS ONLY</div></div></div><h3 class=bad>預測功能暫未通過完整 Gate</h3><p>網站仍可查詢已授權且已驗證的市場基本資料；只有預測價格、推薦與勝率保持 fail-closed。</p>${predictionBlockedHtml(title)}`}
   function renderBlock(target,title){const box=document.querySelector(target);if(!box)return;box.innerHTML=blockedHtml(title);box.classList.remove('hidden')}
   async function hardReady(){const p=await window.STOCKLAB_HARD_READY;if(!p||!window.StockLabHardPolicy)throw Error('Hard Policy 無法載入');return window.StockLabHardPolicy}
-  async function renderFacts(target,q,kind='買入分析'){const box=document.querySelector(target);if(!box)return;const c=await licensedCache(),x=resolveObs(c,q);box.innerHTML=factCard(x,c)+`<div class=source-note><b>買入模型的資料時間</b><div class=mini>目前只確認資料日 ${esc(x.date||'—')} 的官方收盤事實。StockLab 不因現在已過 09:00 或 13:30 就自行假設下一交易日資料；要等官方最新完成交易日真的更新後才重算。</div></div>`+predictionBlockedHtml(kind);box.classList.remove('hidden')}
+  async function renderFacts(target,q,kind='買入分析'){
+    const box=document.querySelector(target);if(!box)return;const c=await licensedCache(),x=resolveObs(c,q);
+    box.innerHTML=factCard(x,c)+`<div class=source-note><b>買入模型的資料時間</b><div class=mini>目前只確認資料日 ${esc(x.date||'—')} 的官方收盤事實。08:30–09:00 是盤前限價 ROD 的執行窗口；09:00 後若沒有合法即時／延遲行情，StockLab 不重算一個假裝是「現在可買」的盤中價格。<br><br>收盤後也不以 13:30 或某個固定時鐘直接切換成明日價格。公開資料會於台灣時間 14:20、14:50、15:20、15:50 嘗試更新，但這些只是抓取時間；只有官方資料日期真的前進，而且所有目標交易時段必要資料都通過合法性、schema、日期與完整性 Gate，才會建立新的下一交易時段計畫。</div></div>`+predictionBlockedHtml(kind);box.classList.remove('hidden')
+  }
   async function renderMarketFacts(){const box=document.querySelector('#top10');if(!box)return;const c=await licensedCache(),rows=allObs(c).filter(x=>x.tradeValue!=null).sort((a,b)=>b.tradeValue-a.tradeValue).slice(0,10);box.innerHTML=`<h2>市場成交金額前 10｜事實瀏覽</h2><p class=muted>這是最新合法公開資料依成交金額排序，不是 TOP10 推薦、不是上漲預測，也不代表適合買入。</p><div class=list>${rows.map((x,i)=>`<div class=item><div class=rank>#${i+1}</div><div><b>${esc(x.name)}／${esc(x.code)}</b><div class=mini>${x.market}｜${esc(x.date||'—')}</div></div><div class=price>${money(x.close)}<br><span class=mini>${money(x.tradeValue)}</span></div></div>`).join('')}</div>${predictionBlockedHtml('TOP10 推薦')}`;box.classList.remove('hidden')}
   async function renderHoldingFacts(){
     const box=document.querySelector('#holdResult');if(!box)return;
@@ -48,7 +51,7 @@
 
   if(analyze){const original=analyze.onclick;analyze.onclick=async function(ev){try{await hardReady();const apiReady=window.StockLabAPI?.config?.enabled===true;if(apiReady||rt.productionPredictionReady===true)return original?.call(this,ev);await renderFacts('#result',document.querySelector('#ticker')?.value,'下一交易時段買入計畫')}catch(e){const box=document.querySelector('#result');box.innerHTML=`<h3 class=bad>查詢失敗</h3><p>${esc(e.message)}</p>`;box.classList.remove('hidden')}}}
   if(scan){const original=scan.onclick;scan.onclick=async function(ev){try{await hardReady();const apiReady=window.StockLabAPI?.config?.enabled===true;if(apiReady||rt.productionPredictionReady===true)return original?.call(this,ev);await renderMarketFacts()}catch(e){const box=document.querySelector('#top10');box.innerHTML=`<h3 class=bad>查詢失敗</h3><p>${esc(e.message)}</p>`;box.classList.remove('hidden')}}}
-  if(hold){hold.disabled=false;hold.textContent='分析持股與出場條件';hold.onclick=async function(){try{await hardReady();await renderHoldingFacts()}catch(e){const box=document.querySelector('#holdResult');box.innerHTML=`<h3 class=bad>查詢失敗</h3><p>${esc(e.message)}</p>`;box.classList.remove('hidden')}}}
+  if(hold){hold.disabled=false;hold.textContent='查看持股狀態與出場條件';hold.onclick=async function(){try{await hardReady();await renderHoldingFacts()}catch(e){const box=document.querySelector('#holdResult');box.innerHTML=`<h3 class=bad>查詢失敗</h3><p>${esc(e.message)}</p>`;box.classList.remove('hidden')}}}
 
   window.StockLabCompliance={productionReady:()=>rt.productionPredictionReady===true,unresolvedGates:gateList,blockers:blockedReasons,renderBlock,licensedCache};
 })();
