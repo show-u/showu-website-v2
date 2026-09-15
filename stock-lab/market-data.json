@@ -1,17 +1,16 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-15T01:55:04.837831+00:00",
+  "generated_at": "2026-09-15T02:14:36.569136+00:00",
   "status": "partial",
-  "policy": "official-primary; source/date/schema/value/history checks; invalid data display-blocked and never scored",
+  "policy": "official-primary; Nasdaq current close cross-checked to FRED/Nasdaq prior close; invalid data display-blocked and never scored",
   "sources": {
     "vix": {
       "verified": true,
       "source": "CBOE",
       "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
-      "fetched_at": "2026-09-15T01:55:04.837831+00:00",
+      "fetched_at": "2026-09-15T02:14:36.569136+00:00",
       "validation": [
         "official_host",
-        "content_type_ok",
         "date_parsed",
         "date_not_future",
         "chronology_ok",
@@ -35,19 +34,19 @@
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/SOX",
-      "fetched_at": "2026-09-15T01:55:04.837831+00:00",
+      "fetched_at": "2026-09-15T02:14:36.569136+00:00",
       "validation": [],
       "anomalies": [],
-      "error": "Summary arithmetic mismatch last-change=11823.9900, previous=11131.28"
+      "error": "The read operation timed out"
     },
     "nasdaq": {
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/COMP",
-      "fetched_at": "2026-09-15T01:55:04.837831+00:00",
+      "fetched_at": "2026-09-15T02:14:36.569136+00:00",
       "validation": [],
       "anomalies": [],
-      "error": "Summary arithmetic mismatch last-change=26334.7400, previous=26186.41"
+      "error": "The read operation timed out"
     }
   }
 }
