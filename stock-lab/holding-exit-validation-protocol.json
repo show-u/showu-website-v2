@@ -2,7 +2,7 @@
   "schema_version": 2,
   "protocol_name": "StockLab TW-holding-exit-v4 OOS Protocol",
   "frozen_before_historical_oos": true,
-  "purpose": "Evaluate whether the actual-position holding model improves hold/reduce/exit decisions without future information, horizon labels or fabricated inputs.",
+  "purpose": "Evaluate whether the actual-position holding model improves hold/reduce/exit decisions without future information, horizon labels, fabricated inputs or hindsight execution prices.",
   "non_negotiable_rules": {
     "no_horizon_selector": true,
     "holding_age_uses_exact_verified_trading_sessions": true,
@@ -14,7 +14,9 @@
     "active_taiwan_risk_state_must_be_known": true,
     "production_formula_must_equal_test_formula": true,
     "chronological_oos_required": true,
-    "oos_parameters_may_not_be_tuned_after_viewing_results": true
+    "oos_parameters_may_not_be_tuned_after_viewing_results": true,
+    "no_hindsight_high_low_execution": true,
+    "confidence_requires_separate_oos_calibration": true
   },
   "required_position_input": {
     "manual": ["current_average_cost", "current_shares", "first_buy_date"],
@@ -45,10 +47,16 @@
   },
   "evaluation": {
     "decision_frequency": "once per completed official trading session; no intraday information unless a separately licensed production feed exists",
-    "execution": "an exit condition observed at completed-session close may execute no earlier than the next legally tradable session using the frozen execution rule",
+    "execution": "an exit condition observed at completed-session close may execute no earlier than the next legally tradable session using a frozen deterministic rule based only on information that would then be available",
+    "execution_validation": [
+      "report signals, executable signals, executed exits, execution rate and delayed/non-executed exits",
+      "daily-bar tests may not choose the more favorable intraday high or low after seeing the full bar",
+      "gap-through stops/targets must use the frozen next-session rule rather than assume fill at the desired threshold",
+      "Taiwan tick size, price limits, reference price and known restrictions must be applied"
+    ],
     "costs": ["broker commission on executed exit", "applicable Taiwan stock transaction tax", "slippage assumption frozen before OOS"],
     "comparators": ["hold-to-fixed-horizon baseline", "simple MA-based trailing exit baseline", "buy-and-hold through the episode evaluation window"],
-    "metrics": ["net return after costs", "max drawdown while held", "drawdown from peak before exit", "profit capture ratio", "false-exit rate followed by recovery", "time in market", "exit frequency", "worst-tail outcomes", "benchmark-relative return"]
+    "metrics": ["net return after costs", "max drawdown while held", "drawdown from peak before exit", "profit capture ratio", "false-exit rate followed by recovery", "time in market", "exit frequency", "execution rate", "delay-to-exit distribution", "worst-tail outcomes", "benchmark-relative return"]
   },
   "split_and_statistics": {
     "split": "chronological development period followed by untouched OOS period",
@@ -61,7 +69,7 @@
   },
   "pass_rule": {
     "status_before_requirements_met": "INSUFFICIENT",
-    "required": ["all legal/provenance gates pass", "minimum OOS episode and security counts pass", "all required market regimes represented", "no material look-ahead or survivorship defect found", "production formula hash/version matches tested formula", "net-of-cost outcome is not materially worse than both frozen baselines on primary risk-adjusted measures", "no catastrophic tail-risk deterioration relative to baselines"],
-    "prohibited": ["declaring PASS from win rate alone", "retuning thresholds on the untouched OOS set", "dropping losing securities/episodes after seeing results", "converting INSUFFICIENT to PASS because the UI needs a recommendation"]
+    "required": ["all legal/provenance gates pass", "minimum OOS episode and security counts pass", "all required market regimes represented", "no material look-ahead or survivorship defect found", "production formula hash/version matches tested formula", "exit execution logic passes the pre-frozen OOS executability checks", "net-of-cost outcome is not materially worse than both frozen baselines on primary risk-adjusted measures", "no catastrophic tail-risk deterioration relative to baselines", "confidence index calibration passes on untouched OOS data"],
+    "prohibited": ["declaring PASS from win rate alone", "retuning thresholds on the untouched OOS set", "dropping losing securities/episodes after seeing results", "using future session high/low to manufacture an executable exit", "converting INSUFFICIENT to PASS because the UI needs a recommendation"]
   }
 }
