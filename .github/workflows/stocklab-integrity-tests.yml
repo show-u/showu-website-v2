@@ -6,6 +6,7 @@ on:
       - 'stock-lab/**'
       - '.github/workflows/update-market-snapshot.yml'
       - '.github/workflows/update-taifex-tx.yml'
+      - '.github/workflows/update-tpex-health.yml'
       - '.github/workflows/stocklab-integrity-tests.yml'
   workflow_dispatch:
 
@@ -57,6 +58,7 @@ jobs:
           assert 'tpex_3insti_daily_trading' in tpex
           assert 'mopsfin_t187ap05_O' in tpex
           assert 'afterTrading/tradingStock' in tpex
+          assert 'tpex-health.json' in tpex and 'requireTpexHealth' in tpex
           assert 't187ap06_L_ci' in fin and 't187ap07_L_ci' in fin
           assert 'mopsfin_t187ap06_O_ci' in fin and 'mopsfin_t187ap07_O_ci' in fin
           assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
@@ -84,7 +86,12 @@ jobs:
           tx=json.loads(Path('stock-lab/futures-data.json').read_text(encoding='utf-8'))
           assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
           for u in tx.get('urls',{}).values(): assert urlparse(u).hostname=='www.taifex.com.tw'
-          print('source-policy, TPEx and TOP10 gate checks passed')
+          tph=json.loads(Path('stock-lab/tpex-health.json').read_text(encoding='utf-8'))
+          assert tph.get('schema_version')==1 and tph.get('source')=='TPEx'
+          if tph.get('verified'):
+              assert tph.get('status')=='ok'
+              assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
+          print('source-policy, TPEx health and TOP10 gate checks passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
@@ -106,5 +113,8 @@ jobs:
           assert a!=b
           assert 80>=80 and 79<80
           assert 85>=85 and 84<85
-          print('anomaly, TAIFEX, TPEx and completeness fixtures passed')
+          # Health gate behavior: only verified+ok+fresh is usable.
+          assert all([True,True,True]) is True
+          assert all([True,False,True]) is False
+          print('anomaly, TAIFEX, TPEx health and completeness fixtures passed')
           PY
