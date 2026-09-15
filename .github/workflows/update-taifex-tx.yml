@@ -2,6 +2,9 @@ name: Update TAIFEX TX snapshot
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/update-taifex-tx.yml'
   schedule:
     - cron: '30 6 * * 1-5'
 
@@ -19,7 +22,7 @@ jobs:
       - name: Fetch and cross-check official TAIFEX TX pages
         run: |
           python - <<'PY'
-          import hashlib, html, json, re, urllib.request
+          import hashlib, json, re, urllib.request
           from datetime import datetime, timezone
           from html.parser import HTMLParser
           from urllib.parse import urlparse
@@ -66,9 +69,9 @@ jobs:
               return dm.group(1),rows
           out={'schema_version':1,'generated_at':NOW.isoformat(),'status':'failed','source':'TAIFEX','contract':'TX','verified':False,'urls':URLS,'validation':[],'raw_sha256':{}}
           try:
-              pages={}; parsed={}
+              parsed={}
               for k,u in URLS.items():
-                  text,final,sha=get(u); pages[k]=(text,final,sha); parsed[k]=parse_page(text); out['raw_sha256'][k]=sha
+                  text,final,sha=get(u); parsed[k]=parse_page(text); out['raw_sha256'][k]=sha
               d1,r1=parsed['report']; d2,r2=parsed['excel']
               if d1!=d2: raise ValueError(f'trade-date conflict report={d1} excel={d2}')
               a={x['month']:x for x in r1}; b={x['month']:x for x in r2}; common=set(a)&set(b)
