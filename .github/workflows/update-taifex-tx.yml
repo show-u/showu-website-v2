@@ -1,0 +1,105 @@
+name: Update TAIFEX TX snapshot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 6 * * 1-5'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch and cross-check official TAIFEX TX pages
+        run: |
+          python - <<'PY'
+          import hashlib, html, json, re, urllib.request
+          from datetime import datetime, timezone
+          from html.parser import HTMLParser
+          from urllib.parse import urlparse
+
+          NOW=datetime.now(timezone.utc)
+          URLS={
+            'report':'https://www.taifex.com.tw/cht/3/futDailyMarketReport?commodityId=TX',
+            'excel':'https://www.taifex.com.tw/cht/3/futDailyMarketExcel?commodity_id=TX'
+          }
+          class TableParser(HTMLParser):
+              def __init__(self): super().__init__(); self.rows=[]; self.row=None; self.cell=None
+              def handle_starttag(self,tag,attrs):
+                  if tag=='tr': self.row=[]
+                  elif tag in ('td','th') and self.row is not None: self.cell=[]
+              def handle_data(self,data):
+                  if self.cell is not None: self.cell.append(data)
+              def handle_endtag(self,tag):
+                  if tag in ('td','th') and self.cell is not None and self.row is not None:
+                      self.row.append(re.sub(r'\s+',' ',''.join(self.cell)).strip()); self.cell=None
+                  elif tag=='tr' and self.row is not None:
+                      if self.row: self.rows.append(self.row)
+                      self.row=None
+          def get(url):
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 StockLab/1.0 (+verification)'})
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  body=r.read(); final=r.geturl(); host=(urlparse(final).hostname or '').lower()
+                  if host!='www.taifex.com.tw': raise ValueError(f'unexpected TAIFEX host {host}')
+                  return body.decode('utf-8','replace'),final,hashlib.sha256(body).hexdigest()
+          def num(s):
+              s=str(s or '').replace(',','').replace('▲','').replace('▼','').replace('%','').strip()
+              m=re.search(r'-?\d+(?:\.\d+)?',s)
+              return float(m.group()) if m else None
+          def parse_page(text):
+              plain=re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',text))
+              dm=re.search(r'日期[:：]\s*(\d{4}/\d{2}/\d{2})',plain)
+              if not dm: raise ValueError('TAIFEX trade date not found')
+              p=TableParser(); p.feed(text)
+              rows=[]
+              for r in p.rows:
+                  if len(r)>=10 and r[0].strip()=='TX' and re.fullmatch(r'\d{6}',r[1].strip()):
+                      last=num(r[5]); pct=num(r[7]); total=num(r[10] if len(r)>10 else r[9]); oi=num(r[12] if len(r)>12 else '')
+                      if last and total is not None: rows.append({'month':r[1].strip(),'last':last,'pct':pct,'total':total,'oi':oi,'raw':r})
+              if not rows: raise ValueError('no monthly TX rows parsed')
+              return dm.group(1),rows
+          out={'schema_version':1,'generated_at':NOW.isoformat(),'status':'failed','source':'TAIFEX','contract':'TX','verified':False,'urls':URLS,'validation':[],'raw_sha256':{}}
+          try:
+              pages={}; parsed={}
+              for k,u in URLS.items():
+                  text,final,sha=get(u); pages[k]=(text,final,sha); parsed[k]=parse_page(text); out['raw_sha256'][k]=sha
+              d1,r1=parsed['report']; d2,r2=parsed['excel']
+              if d1!=d2: raise ValueError(f'trade-date conflict report={d1} excel={d2}')
+              a={x['month']:x for x in r1}; b={x['month']:x for x in r2}; common=set(a)&set(b)
+              if not common: raise ValueError('no common TX contract month across official pages')
+              month=max(common,key=lambda m:a[m]['total'])
+              x,y=a[month],b[month]
+              if abs(x['last']-y['last'])>0.001: raise ValueError(f'last-price conflict {x["last"]} vs {y["last"]}')
+              if x['pct'] is not None and y['pct'] is not None and abs(x['pct']-y['pct'])>0.02: raise ValueError('change-percent conflict')
+              if not (1000 < x['last'] < 100000): raise ValueError('TX price outside sanity bounds')
+              out.update({'status':'ok','verified':True,'trade_date':d1,'contract_month':month,'last_price':x['last'],'change_pct':x['pct'],'total_volume':x['total'],'open_interest':x['oi'],'selection_rule':'highest_total_volume_common_monthly_TX','cross_check':'matched','validation':['official_host','trade_date_match','contract_month_match','last_price_match','raw_sha256','price_bounds_ok']})
+          except Exception as e:
+              out['error']=str(e)[:300]
+          with open('stock-lab/futures-data.json','w',encoding='utf-8') as f: json.dump(out,f,ensure_ascii=False,indent=2)
+          PY
+      - name: Validate TX snapshot schema
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('stock-lab/futures-data.json',encoding='utf-8'))
+          assert x.get('schema_version')==1 and x.get('source')=='TAIFEX' and x.get('contract')=='TX'
+          if x.get('verified'):
+              assert x.get('cross_check')=='matched'
+              assert x.get('trade_date') and x.get('contract_month') and x.get('last_price')
+              assert len(x.get('raw_sha256',{}).get('report',''))==64 and len(x.get('raw_sha256',{}).get('excel',''))==64
+          print('TAIFEX snapshot schema valid')
+          PY
+      - name: Commit snapshot if changed
+        run: |
+          if git diff --quiet -- stock-lab/futures-data.json; then echo 'No changes'; exit 0; fi
+          git config user.name 'stocklab-bot'
+          git config user.email 'stocklab-bot@users.noreply.github.com'
+          git add stock-lab/futures-data.json
+          git commit -m 'update verified TAIFEX TX snapshot'
+          git push
