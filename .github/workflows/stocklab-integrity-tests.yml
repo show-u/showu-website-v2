@@ -28,7 +28,7 @@ jobs:
         run: |
           for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk top10-gate market-router ui-patch hard-policy compliance-gate; do node --check "stock-lab/$f.js"; done
           python -m py_compile stock-lab/backtest-model.py stock-lab/backtest-taiwan-v3.py
-      - name: Hard Policy v4 and Taiwan-model invariants
+      - name: StockLab Truth Rules v5 and Taiwan-model invariants
         run: |
           python - <<'PY'
           import json,re
@@ -44,16 +44,32 @@ jobs:
           policy=json.loads(R('stock-lab/verification-policy.json'))
 
           # Absolute policy: missing/unverified/unlicensed data can never be filled or turned into a prediction.
-          assert policy['version']==4
-          required={'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FRESHNESS','PRICE_CROSS_CHECK','NO_FAKE_CONFIDENCE','TAIWAN_MICROSTRUCTURE','CORPORATE_ACTION_GATE','MODEL_VALIDATION_GATE','FAIL_CLOSED','RAW_REDISTRIBUTION','AUDITABILITY'}
+          assert policy['version']==5 and policy['policy_name']=='StockLab Taiwan Truth Rules'
+          required={
+            'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY',
+            'EXACT_SCHEMA_ONLY','FRESHNESS','PRICE_CROSS_CHECK','HISTORY_COMPLETENESS','NO_FAKE_CONFIDENCE',
+            'TAIWAN_MICROSTRUCTURE','CORPORATE_ACTION_GATE','ACTIVE_RISK_STATUS','ACCOUNTING_CLASS_GATE',
+            'MODEL_VALIDATION_GATE','FAIL_CLOSED','RAW_REDISTRIBUTION','AUDITABILITY'}
           assert set(policy['absolute_invariants'])==required
+          assert set(policy['provenance_classes'])=={'observed','derived','model_estimate','unavailable'}
           oc=policy['output_contract']
           assert oc['missing_text']=='資料未取得／未通過驗證'
           assert all(oc[k] is True for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','recommendation_requires_oos_pass'))
           assert oc['score_is_probability'] is False
           assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
           assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
-          assert all(x['licence']=='OGDL-1.0' for x in policy['licensed_dataset_registry'].values())
+          registry=policy['licensed_dataset_registry']
+          for name,x in registry.items():
+              if x.get('scoring',True) is not False:
+                  assert x.get('licence')=='OGDL-1.0',(name,x)
+          t86=registry['twse_t86_stock_institution']
+          assert t86['licence']=='unverified' and t86['automated_collection'] is False and t86['scoring'] is False
+
+          # Formal backtest standards are stricter than merely producing trades.
+          bt=policy['backtest_validation']
+          assert bt['requested_universe']==160 and bt['minimum_valid_universe']>=120
+          assert bt['minimum_oos_trades_per_mode']>=100 and bt['minimum_oos_unique_stocks_per_mode']>=30
+          assert bt['costs_required'] and bt['chronological_oos_required'] and bt['oos_parameter_freeze_required']
 
           # Production is deliberately fail-closed until all unresolved Taiwan gates are explicitly completed.
           assert "allowLocalFallback:false" in runtime
@@ -99,7 +115,7 @@ jobs:
           assert 'opening auction price <= order price' in backtest
           assert "if nxt.open>order" in backtest
 
-          # Existing source/date integrity controls remain mandatory.
+          # Existing source/date/schema integrity controls remain mandatory.
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
           assert 'Wilder RSI 14 v2' in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
           assert "h!=='www.tpex.org.tw'" in tpex and 'tpex_mainboard_daily_close_quotes' in tpex
@@ -128,7 +144,7 @@ jobs:
               x=snap['sources'][k];assert x.get('source')==src;assert urlparse(x.get('url','')).hostname==host
           tx=json.loads(R('stock-lab/futures-data.json'));assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
           for u in tx.get('urls',{}).values():assert urlparse(u).hostname=='www.taifex.com.tw'
-          print('StockLab Hard Policy v4 invariants passed')
+          print('StockLab Taiwan Truth Rules v5 invariants passed')
           PY
       - name: Fail-closed behavior fixtures
         run: |
@@ -152,7 +168,7 @@ jobs:
           assert strict_num('0')==0 and strict_num(0)==0
           assert strict_num('0.00')==0 and strict_num('1,234.5')==1234.5
           # Regression guard: pre-open anchor follows prior close + empirical opening-gap median.
-          prior_close=4560.0;gaps=[-0.01,-0.005,0.0,0.0,0.0,0.005,0.01]*4
+          prior_close=4560.0;gaps=[-0.01,-0.005,0.0,0.0,0.005,0.01]*5
           expected_open=prior_close*(1+statistics.median(gaps))
           assert expected_open==4560.0 and expected_open!=4200.0
           print('fail-closed, null-safe numeric parsing and preopen anchoring fixtures passed')
