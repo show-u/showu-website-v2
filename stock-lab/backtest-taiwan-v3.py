@@ -6,11 +6,14 @@ spec=importlib.util.spec_from_file_location('legacy','stock-lab/backtest-model.p
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 SLIPPAGE_EACH_SIDE=0.0005
 MODES=('preopen','short','swing','long')
+# Current legacy history loader reaches TWSE/TPEx website historical endpoints. Those are official,
+# but official website terms do not by themselves grant automated collection/reuse rights.
+# Until a dataset-specific licensed historical feed is wired in, results are diagnostic only.
+LEGAL_HISTORY_PROVENANCE_VERIFIED=False
+LEGAL_HISTORY_BLOCKER='historical OHLC source has no dataset-specific automated-use licence/authorisation recorded'
 
 
 def structure_band(b,i,mode):
-    # Short/swing/long remain structure + volatility pullback models.
-    # Pre-open is handled separately as an opening-auction model below.
     if mode=='preopen':return None
     c=[x.close for x in b];L=b[i];a=m.atr(b,i)
     if a is None:return None
@@ -30,8 +33,7 @@ def realistic_costs(mode):
 
 
 def empirical_gap_stats(b,i,look=60):
-    z=[]
-    start=max(1,i-look+1)
+    z=[];start=max(1,i-look+1)
     for j in range(start,i+1):
         pc=b[j-1].close;o=b[j].open
         if pc and pc>0 and o and o>0:z.append(o/pc-1)
@@ -45,11 +47,7 @@ def empirical_intraday_stats(b,i,look=60):
         if x.open and x.open>0:
             lows.append(x.low/x.open-1);highs.append(x.high/x.open-1)
     if len(lows)<20:return None
-    return {
-      'n':len(lows),
-      'low10':m.qtile(lows,.10),'low25':m.qtile(lows,.25),'low50':m.qtile(lows,.50),
-      'high50':m.qtile(highs,.50),'high75':m.qtile(highs,.75)
-    }
+    return {'n':len(lows),'low10':m.qtile(lows,.10),'low25':m.qtile(lows,.25),'low50':m.qtile(lows,.50),'high50':m.qtile(highs,.50),'high75':m.qtile(highs,.75)}
 
 
 _legacy_evaluate=m.evaluate
@@ -59,39 +57,16 @@ def evaluate_taiwan(b,signal_i,mode):
     if signal_i+1>=len(b):return None,signal_i+1
     gap=empirical_gap_stats(b,signal_i);exc=empirical_intraday_stats(b,signal_i)
     if not gap or not exc:return None,signal_i+1
-
-    prior_close=b[signal_i].close
-    order=m.rt(prior_close*(1+gap['q50']),'nearest')
-    nxt=b[signal_i+1]
-
-    # A pre-open ROD buy limit participates in the 09:00 opening auction.
-    # It fills only when the auction opening price is at or below the limit.
-    # We do NOT treat an intraday touch of a deep support price as a pre-open fill.
+    prior_close=b[signal_i].close;order=m.rt(prior_close*(1+gap['q50']),'nearest');nxt=b[signal_i+1]
     if nxt.open>order:
-        return {
-          'filled':False,'signal_date':b[signal_i].date,'order_price':order,
-          'prior_close':prior_close,'actual_open':nxt.open,'gap_sample_n':gap['n']
-        },signal_i+1
-
-    entry=nxt.open
-    expected_open=prior_close*(1+gap['q50'])
-    stop=m.rt(max(.01,expected_open*(1+exc['low10'])),'down')
-    exitp=nxt.close;exit_i=signal_i+1
+        return {'filled':False,'signal_date':b[signal_i].date,'order_price':order,'prior_close':prior_close,'actual_open':nxt.open,'gap_sample_n':gap['n']},signal_i+1
+    entry=nxt.open;expected_open=prior_close*(1+gap['q50']);stop=m.rt(max(.01,expected_open*(1+exc['low10'])),'down');exitp=nxt.close;exit_i=signal_i+1
     if nxt.low<=stop:exitp=stop
-    gross=exitp/entry-1;net=gross-realistic_costs(mode)
-    mfe=nxt.high/entry-1;mae=nxt.low/entry-1
-    return {
-      'filled':True,'signal_date':b[signal_i].date,'entry_date':nxt.date,'exit_date':nxt.date,
-      'entry':entry,'exit':exitp,'order_price':order,'prior_close':prior_close,
-      'expected_open':m.rt(expected_open),'actual_open':nxt.open,'gap_sample_n':gap['n'],
-      'net_return_pct':net*100,'gross_return_pct':gross*100,
-      'mfe_pct':mfe*100,'mae_pct':mae*100,'cost_pct':realistic_costs(mode)*100
-    },signal_i+2
+    gross=exitp/entry-1;net=gross-realistic_costs(mode);mfe=nxt.high/entry-1;mae=nxt.low/entry-1
+    return {'filled':True,'signal_date':b[signal_i].date,'entry_date':nxt.date,'exit_date':nxt.date,'entry':entry,'exit':exitp,'order_price':order,'prior_close':prior_close,'expected_open':m.rt(expected_open),'actual_open':nxt.open,'gap_sample_n':gap['n'],'net_return_pct':net*100,'gross_return_pct':gross*100,'mfe_pct':mfe*100,'mae_pct':mae*100,'cost_pct':realistic_costs(mode)*100},signal_i+2
 
 
-m.band=structure_band
-m.costs=realistic_costs
-m.evaluate=evaluate_taiwan
+m.band=structure_band;m.costs=realistic_costs;m.evaluate=evaluate_taiwan
 
 
 def run_stocks(universe,months,workers=4):
@@ -110,7 +85,9 @@ def aggregate_result(results):
     agg={}
     for mode in MODES:
         agg[mode]={s:m.aggregate(results,mode,s) for s in ('all','insample','oos')}
-        agg[mode]['stress_status']=m.stress_status(agg[mode]['oos'])
+        statistical=m.stress_status(agg[mode]['oos'])
+        agg[mode]['statistical_status']=statistical
+        agg[mode]['stress_status']=statistical if LEGAL_HISTORY_PROVENANCE_VERIFIED else 'BLOCKED_LEGAL_SOURCE'
     return agg
 
 
@@ -119,52 +96,38 @@ def final_payload(results,requested,months):
     for x in results:unique[(x.get('market',''),x.get('ticker',''))]=x
     results=list(unique.values());agg=aggregate_result(results)
     return {
-      'schema_version':3,
+      'schema_version':4,
       'generated_at':dt.datetime.now(dt.timezone.utc).isoformat(),
       'market':'TWSE+TPEx',
+      'formal_validation_status':'ELIGIBLE' if LEGAL_HISTORY_PROVENANCE_VERIFIED else 'BLOCKED_LEGAL_SOURCE',
+      'legal_history_provenance_verified':LEGAL_HISTORY_PROVENANCE_VERIFIED,
+      'legal_blocker':None if LEGAL_HISTORY_PROVENANCE_VERIFIED else LEGAL_HISTORY_BLOCKER,
+      'history_source_note':'Current diagnostic loader uses official website historical endpoints; official does not equal licensed automated use. These results cannot certify the production model until a dataset-specific permitted historical feed is used.',
       'method':'Taiwan model: preopen uses verified prior close plus rolling empirical overnight-gap median and opening-auction fill logic; short/swing/long use structure/quantile/MA/ATR pullback bands; no fixed price-percentage entry bands; 70/30 chronological OOS; non-overlapping trades; transaction tax, commission and slippage included.',
       'preopen_semantics':'Buy limit ROD is filled only when next-session opening auction price <= order price; intraday support touches do not count as pre-open fills.',
-      'cost_assumptions':{
-        'commission_each_side_pct':m.COMMISSION*100,
-        'normal_stock_sell_tax_pct':m.TAX_NORMAL*100,
-        'daytrade_sell_tax_pct':m.TAX_DAYTRADE*100,
-        'slippage_each_side_pct':SLIPPAGE_EACH_SIDE*100},
-      'universe_requested':requested,
-      'universe_ok':sum('error' not in x for x in results),
-      'months':months,
-      'aggregate':agg,
+      'cost_assumptions':{'commission_each_side_pct':m.COMMISSION*100,'normal_stock_sell_tax_pct':m.TAX_NORMAL*100,'daytrade_sell_tax_pct':m.TAX_DAYTRADE*100,'slippage_each_side_pct':SLIPPAGE_EACH_SIDE*100},
+      'universe_requested':requested,'universe_ok':sum('error' not in x for x in results),'months':months,'aggregate':agg,
       'stocks':sorted(results,key=lambda x:(x.get('market',''),x.get('ticker','')))}
 
 
 def main():
-    ap=argparse.ArgumentParser()
-    ap.add_argument('--months',type=int,default=60);ap.add_argument('--twse',type=int,default=100);ap.add_argument('--tpex',type=int,default=60)
-    ap.add_argument('--out',default='stock-lab/backtest-result.json');ap.add_argument('--workers',type=int,default=4)
-    ap.add_argument('--shard-index',type=int);ap.add_argument('--shard-count',type=int,default=1)
-    ap.add_argument('--merge-glob')
-    args=ap.parse_args()
-
+    ap=argparse.ArgumentParser();ap.add_argument('--months',type=int,default=60);ap.add_argument('--twse',type=int,default=100);ap.add_argument('--tpex',type=int,default=60)
+    ap.add_argument('--out',default='stock-lab/backtest-result.json');ap.add_argument('--workers',type=int,default=4);ap.add_argument('--shard-index',type=int);ap.add_argument('--shard-count',type=int,default=1);ap.add_argument('--merge-glob');args=ap.parse_args()
     if args.merge_glob:
-        files=sorted(glob.glob(args.merge_glob));assert files,'no shard results found'
-        results=[];requested=0;months=args.months
+        files=sorted(glob.glob(args.merge_glob));assert files,'no shard results found';results=[];requested=0;months=args.months
         for path in files:
-            x=json.load(open(path,encoding='utf-8'))
-            assert x.get('schema_version')==3 and x.get('partial') is True,path
+            x=json.load(open(path,encoding='utf-8'));assert x.get('partial') is True,path
             results.extend(x.get('stocks',[]));requested=max(requested,int(x.get('universe_requested_total',0)));months=int(x.get('months',months))
         out=final_payload(results,requested,months)
         with open(args.out,'w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,indent=2)
-        print(json.dumps({'universe_ok':out['universe_ok'],'universe_requested':out['universe_requested'],'aggregate':out['aggregate']},ensure_ascii=False,indent=2))
-        return
-
+        print(json.dumps({'formal_validation_status':out['formal_validation_status'],'universe_ok':out['universe_ok'],'universe_requested':out['universe_requested'],'aggregate':out['aggregate']},ensure_ascii=False,indent=2));return
     universe=m.load_universe(args.twse,args.tpex);total=len(universe)
     if args.shard_index is not None:
-        assert 0<=args.shard_index<args.shard_count
-        selected=universe[args.shard_index::args.shard_count]
-        results=run_stocks(selected,args.months,args.workers)
-        out={'schema_version':3,'partial':True,'generated_at':dt.datetime.now(dt.timezone.utc).isoformat(),'shard_index':args.shard_index,'shard_count':args.shard_count,'universe_requested_total':total,'shard_requested':len(selected),'months':args.months,'stocks':results}
+        assert 0<=args.shard_index<args.shard_count;selected=universe[args.shard_index::args.shard_count];results=run_stocks(selected,args.months,args.workers)
+        out={'schema_version':4,'partial':True,'generated_at':dt.datetime.now(dt.timezone.utc).isoformat(),'shard_index':args.shard_index,'shard_count':args.shard_count,'universe_requested_total':total,'shard_requested':len(selected),'months':args.months,'legal_history_provenance_verified':LEGAL_HISTORY_PROVENANCE_VERIFIED,'stocks':results}
     else:
         results=run_stocks(universe,args.months,args.workers);out=final_payload(results,total,args.months)
     with open(args.out,'w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,indent=2)
-    print(json.dumps({'requested':len(selected) if args.shard_index is not None else total,'ok':sum('error' not in x for x in results)},ensure_ascii=False),flush=True)
+    print(json.dumps({'requested':len(selected) if args.shard_index is not None else total,'ok':sum('error' not in x for x in results),'legal_history_provenance_verified':LEGAL_HISTORY_PROVENANCE_VERIFIED},ensure_ascii=False),flush=True)
 
 if __name__=='__main__':main()
