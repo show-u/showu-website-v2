@@ -15,17 +15,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify backend-first client boundary
+      - name: Verify backend-only executable entry boundary
         run: |
           node --check stock-lab/api-client.js
           node --check stock-lab/market-router.js
           node --check stock-lab/top10-gate.js
+          node --check stock-lab/hard-policy.js
           grep -q './api-client.js' stock-lab/index.html
+          grep -q './hard-policy.js' stock-lab/index.html
           grep -q "api.analyze" stock-lab/market-router.js
+          grep -q "backendResult(j,'analysis')" stock-lab/market-router.js
           grep -q "api.scan" stock-lab/top10-gate.js
-          grep -q "allowLocalFallback" stock-lab/api-client.js
+          grep -q "allowLocalFallback:false" stock-lab/runtime-config.js
           grep -q "credentials:'omit'" stock-lab/api-client.js
           grep -q "cache:'no-store'" stock-lab/api-client.js
+          ! grep -q 'openingGapStats' stock-lab/market-router.js
+          ! grep -q 'intradayPullbackStats' stock-lab/market-router.js
+          ! grep -q 'buildBuyPlan' stock-lab/market-router.js
+          ! grep -q 'StockLabLicensedHistory' stock-lab/market-router.js
+          ! grep -q 'StockLabEntryDecision.evaluate' stock-lab/market-router.js
       - name: Reject obvious client-side secrets
         run: |
           python - <<'PY'
