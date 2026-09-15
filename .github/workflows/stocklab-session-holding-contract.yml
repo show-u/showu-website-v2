@@ -1,0 +1,70 @@
+name: StockLab session holding contract
+
+on:
+  push:
+    paths:
+      - 'stock-lab/session-context.js'
+      - 'stock-lab/public-output.js'
+      - 'stock-lab/holding-model.js'
+      - 'stock-lab/holding-router.js'
+      - 'stock-lab/verification-policy.json'
+      - 'stock-lab/index.html'
+      - '.github/workflows/stocklab-session-holding-contract.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax checks
+        run: |
+          node --check stock-lab/session-context.js
+          node --check stock-lab/public-output.js
+          node --check stock-lab/holding-model.js
+          node --check stock-lab/holding-router.js
+      - name: Session and holding invariants
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          R=lambda p:Path(p).read_text(encoding='utf-8')
+          idx=R('stock-lab/index.html')
+          sess=R('stock-lab/session-context.js')
+          public=R('stock-lab/public-output.js')
+          hold=R('stock-lab/holding-model.js')
+          router=R('stock-lab/holding-router.js')
+          policy=json.loads(R('stock-lab/verification-policy.json'))
+
+          # Session state is data-date driven, with Taiwan market phases used only for executability/labels.
+          assert './session-context.js' in idx
+          assert idx.index('./licensed-history.js') < idx.index('./session-context.js') < idx.index('./market-router.js')
+          for text in ('BEFORE_ORDERS','PREOPEN','CONTINUOUS','CLOSING_AUCTION','AFTER_CLOSE','WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE'):
+              assert text in sess,text
+          for minute in ('mins<510','mins<540','mins<805','mins<810'):
+              assert minute in sess,minute
+          assert 'displayNumericPlan:false' in sess
+          assert '今日已收盤；等待今日官方收盤與必要資料全部驗證後，才建立下一交易日計畫' in sess
+          assert '盤中僅供參考，不以昨日資料重算現在價格' in sess
+          assert 'StockLabSessionContext.resolve' in public
+          assert '若今日已收盤但官方資料日尚未前進' in public
+
+          # Holding structure needs enough pre-entry context, while holding age remains exact from the user buy date.
+          assert 'const MIN_BARS=120' in hold
+          assert 'requiredBars:()=>MIN_BARS' in hold
+          assert 'holdingTradingDays=bars.length-entryIndex' in hold
+          assert '首次買入日不在目前合法且驗證通過的歷史交易日序列中' in hold
+          assert 'loader.load({code,market,minimumBars})' in router
+          assert 'from:p.buyDate' not in router
+          assert 'bars.some(x=>(x.iso||x.date)===p.buyDate)' in router
+
+          # Policy must keep the same 120-bar floor.
+          assert int(policy['history_requirements']['holding_exit']['minimum_valid_bars']) == 120
+          print('PASS: target-session truth and holding-history contracts enforced')
+          PY
