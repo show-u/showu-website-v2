@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source_class": "ogdl_daily_archive",
   "licence": "OGDL-1.0",
-  "generated_at": "2026-09-15T13:27:23.448108+00:00",
+  "generated_at": "2026-09-15T15:25:52.295477+00:00",
   "markets": [
     "TPEx",
     "TWSE"
@@ -224,7 +224,36 @@
       ]
     }
   },
+  "coverage_metrics": {
+    "entry_minimum_valid_bars": 60,
+    "holding_exit_minimum_valid_bars": 120,
+    "overall": {
+      "distinct_trading_dates": 2,
+      "securities": 7714,
+      "max_valid_bars_per_security": 2,
+      "securities_at_least_60_bars": 0,
+      "securities_at_least_120_bars": 0
+    },
+    "by_market": {
+      "TPEx": {
+        "distinct_trading_dates": 2,
+        "securities": 6350,
+        "max_valid_bars_per_security": 2,
+        "securities_at_least_60_bars": 0,
+        "securities_at_least_120_bars": 0
+      },
+      "TWSE": {
+        "distinct_trading_dates": 1,
+        "securities": 1364,
+        "max_valid_bars_per_security": 1,
+        "securities_at_least_60_bars": 0,
+        "securities_at_least_120_bars": 0
+      }
+    },
+    "thresholds_are_history_only": true,
+    "does_not_imply_model_oos_pass": true
+  },
   "no_imputation": true,
   "network_collection_performed_by_archiver": false,
-  "note": "History begins when StockLab starts legally archiving licensed daily snapshots; missing earlier dates remain missing until an authorised historical source is ingested."
+  "note": "History begins when StockLab starts legally archiving licensed daily snapshots; missing earlier dates remain missing until an authorised historical source is ingested. Bar-count thresholds describe history availability only and never mean a model has passed OOS, execution validation or confidence calibration."
 }
