@@ -1,5 +1,6 @@
 name: Update StockLab Taiwan factors
 
+# v2 factor pipeline: industry codes, margin/short balance changes, warning/disposition flags, OTC regime.
 on:
   workflow_dispatch:
   push:
@@ -67,7 +68,6 @@ jobs:
               if not re.fullmatch(r'\d{4}',c):continue
               ind=str(val(x,['產業別','產業類別','Industry','IndustryName','產業別名稱']) or '').strip();stocks.setdefault(c,{})['market']=market
               if ind:stocks[c]['industry']=ind
-          # TWSE credit balances: use field names, never positional guesses.
           twm=fetch_json('https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&selectType=ALL',False)
           if isinstance(twm,dict) and isinstance(twm.get('fields'),list):
             fields=twm['fields'];ix={str(k):i for i,k in enumerate(fields)}
