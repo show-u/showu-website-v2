@@ -1,79 +1,80 @@
 {
-  "version": 4,
-  "principle": "No legally usable, source-identified, fresh and verified data => no numeric prediction or recommendation. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
+  "version": 5,
+  "policy_name": "StockLab Taiwan Truth Rules",
+  "principle": "No legally usable, source-identified, fresh and verified data => no scored factor or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
     "TW_MARKET_SCOPE": "Only instruments and rules explicitly supported by the Taiwan model may be analysed. Unsupported security types, special trading states or market-rule exceptions must be blocked rather than forced through the common-stock model.",
-    "LEGAL_SOURCE_ONLY": "Every scored or predictive input must come from a source whose access and intended use are explicitly permitted. A public URL is not by itself a licence. Website scraping, raw redistribution and real-time quote use require separate permission when the source terms require it.",
+    "LEGAL_SOURCE_ONLY": "Every scored or predictive input must come from a source whose access and intended use are explicitly permitted. A public URL is not by itself a licence.",
     "NO_IMPUTATION": "A missing, failed, stale, mismatched or legally-unusable source remains null/unavailable. Never replace it with zero, a guessed value, another provider's unverified value, the previous period, a synthetic value, or a model estimate pretending to be observed data.",
-    "FACT_ESTIMATE_SEPARATION": "Observed facts and model estimates must be labelled separately. A model output must never be displayed as an observed market fact.",
-    "TRACEABILITY": "Every observed number used in scoring or prediction must be traceable to source, dataset, data date/period and retrieval/verification status.",
-    "FRESHNESS": "Current-state outputs require the latest completed official trading session or the latest required reporting period. Calendar-age tolerance must never turn an older session into 'current' data.",
+    "FACT_ESTIMATE_SEPARATION": "Observed facts, deterministic derived values and model estimates must be separately identified. A model output must never be displayed as an observed market fact.",
+    "TRACEABILITY": "Every observed number used in scoring or prediction must be traceable to source, dataset, data date/period and verification status.",
+    "EXACT_SCHEMA_ONLY": "Scored structured data may be parsed only through registered exact field names/versioned schemas. Semantic guessing of unknown field names is forbidden.",
+    "FRESHNESS": "Current-state outputs require the latest completed official trading session or latest required reporting period. Calendar-age tolerance must never relabel an old session as current.",
     "PRICE_CROSS_CHECK": "Price-based prediction requires same-security, same-session official close cross-check. Any mismatch blocks the prediction.",
-    "NO_FAKE_CONFIDENCE": "Do not display confidence, probability, win probability or success rate unless it is calibrated from a statistically valid out-of-sample test with sample size and method disclosed. Heuristic scores are not probabilities.",
-    "TAIWAN_MICROSTRUCTURE": "All executable prices must obey Taiwan tick size, price-limit/reference-price rules, trading-session rules, and attention/disposition/suspension restrictions applicable to that security.",
-    "CORPORATE_ACTION_GATE": "Ex-right/ex-dividend, capital reduction, split, new listing/no-limit periods or other reference-price discontinuities require explicit adjustment or the price prediction must be blocked.",
-    "MODEL_VALIDATION_GATE": "A horizon whose out-of-sample status is FAIL or INSUFFICIENT must not be presented as a validated recommendation. It may only be shown as an explicitly unvalidated research estimate.",
+    "HISTORY_COMPLETENESS": "Partial historical downloads cannot silently become a valid series. Each horizon has a minimum valid-bar requirement and abnormal gaps block the prediction.",
+    "NO_FAKE_CONFIDENCE": "Do not display confidence, probability, win probability or success rate unless calibrated from a statistically valid out-of-sample test with sample size and method disclosed.",
+    "TAIWAN_MICROSTRUCTURE": "All executable prices must obey Taiwan tick size, reference-price/price-limit rules, trading-session rules and active restrictions applicable to that security.",
+    "CORPORATE_ACTION_GATE": "Ex-right/ex-dividend, capital reduction, split, new listing/no-limit periods or other reference-price discontinuities require explicit official adjustment or the price prediction is blocked.",
+    "ACTIVE_RISK_STATUS": "Attention/disposition/suspension states must be valid for the target trading date. Unknown status is not a clean status.",
+    "ACCOUNTING_CLASS_GATE": "General, financial, insurance, securities/futures, holding-company and mixed-industry statements may not be treated as interchangeable. Unknown class receives no sector-financial score.",
+    "MODEL_VALIDATION_GATE": "A horizon whose out-of-sample status is FAIL or INSUFFICIENT must not be presented as a validated recommendation; at most it may be an explicitly unvalidated research estimate.",
     "FAIL_CLOSED": "When a required gate cannot be evaluated, the result is blocked. Unknown is never treated as pass.",
-    "RAW_REDISTRIBUTION": "Raw official datasets may be mirrored or redistributed publicly only when the specific dataset licence/authorisation permits it and attribution obligations are satisfied.",
-    "AUDITABILITY": "The model version, source status, data date and any blocker/warning must be visible or recoverable for every generated result."
+    "RAW_REDISTRIBUTION": "Raw official datasets may be mirrored publicly only when the specific dataset licence/authorisation permits redistribution and attribution obligations are satisfied.",
+    "AUDITABILITY": "Model version, source status, data date and blockers/warnings must be visible or recoverable for every generated result."
+  },
+  "provenance_classes": {
+    "observed": "Direct field from a legally permitted source after schema/date validation.",
+    "derived": "Deterministic calculation from identified observed inputs; formula and input dates must be known.",
+    "model_estimate": "Forecast/decision output from verified inputs; never labelled as official data.",
+    "unavailable": "Missing, stale, legally blocked, schema-unknown or failed validation; never converted to a numeric factor."
   },
   "legal_use": {
-    "open_government_data": {
-      "licence": "政府資料開放授權條款-第1版 / Open Government Data License v1.0",
-      "allowed": true,
-      "requirements": ["dataset-specific licence verified", "source attribution", "data integrity preserved"]
-    },
-    "official_website_only": {
-      "allowed_for_automated_collection": false,
-      "rule": "Do not automate-download or mirror website data unless the provider terms, an open-data listing, or a written agreement explicitly permits it."
-    },
-    "real_time_or_delayed_trading_information": {
-      "allowed": false,
-      "rule": "Do not ingest or redistribute real-time/delayed trading information without the required exchange/provider agreement."
-    },
-    "user_supplied_screenshot": {
-      "allowed_as_observation": true,
-      "scored": false,
-      "rule": "May be used to diagnose discrepancies, but must not silently replace official model inputs."
-    }
+    "open_government_data": {"licence": "政府資料開放授權條款-第1版 / Open Government Data License v1.0", "allowed": true, "requirements": ["dataset-specific licence verified", "source attribution", "data integrity preserved"]},
+    "official_website_only": {"allowed_for_automated_collection": false, "rule": "Do not automate-download or mirror website data unless the provider terms, an open-data listing, or a written agreement explicitly permits it."},
+    "real_time_or_delayed_trading_information": {"allowed": false, "rule": "Do not ingest or redistribute real-time/delayed trading information without the required exchange/provider agreement."},
+    "user_supplied_screenshot": {"allowed_as_observation": true, "scored": false, "rule": "May diagnose discrepancies, but must not silently replace official model inputs."}
   },
   "licensed_dataset_registry": {
-    "twse_daily_close": {"data_gov_dataset": 11549, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所"},
-    "twse_valuation": {"data_gov_dataset": 11764, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所"},
-    "twse_revenue": {"data_gov_dataset": 18420, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所"},
-    "twse_income_general": {"data_gov_dataset": 91998, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所"},
-    "twse_balance_general": {"data_gov_dataset": 94831, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所"},
-    "tpex_daily_close": {"data_gov_dataset": 11370, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心"},
-    "tpex_valuation": {"data_gov_dataset": 11373, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心"},
-    "tpex_institution": {"data_gov_dataset": 11856, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心"},
-    "tpex_revenue": {"data_gov_dataset": 56510, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心"},
-    "tpex_income_general": {"data_gov_dataset": 94853, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心"},
-    "tpex_balance_general": {"data_gov_dataset": 91967, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心"},
-    "taifex_institution_contract": {"data_gov_dataset": 11596, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣期貨交易所"}
+    "twse_daily_close": {"data_gov_dataset": 11549, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_valuation": {"data_gov_dataset": 11764, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_revenue": {"data_gov_dataset": 18420, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_income_general": {"data_gov_dataset": 91998, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_balance_general": {"data_gov_dataset": 94831, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_margin_short": {"data_gov_dataset": 11680, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_disposition": {"data_gov_dataset": 29082, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_attention_cumulative": {"data_gov_dataset": 33999, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true, "scoring": false},
+    "twse_t86_stock_institution": {"licence": "unverified", "redistribution": false, "automated_collection": false, "scoring": false, "status": "blocked_pending_explicit_licence_or_contract"},
+    "tpex_daily_close": {"data_gov_dataset": 11370, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_valuation": {"data_gov_dataset": 11373, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_institution": {"data_gov_dataset": 11856, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_attention": {"data_gov_dataset": 11395, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_disposition": {"data_gov_dataset": 11396, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_revenue": {"data_gov_dataset": 56510, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_income_general": {"data_gov_dataset": 94853, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_balance_general": {"data_gov_dataset": 91967, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "taifex_institution_contract": {"data_gov_dataset": 11596, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣期貨交易所", "redistribution": true}
+  },
+  "history_requirements": {
+    "preopen": {"minimum_valid_bars": 60, "minimum_gap_pairs": 40, "max_latest_age_calendar_days": 4},
+    "day": {"minimum_valid_bars": 60, "max_latest_age_calendar_days": 4},
+    "1m": {"minimum_valid_bars": 80, "max_latest_age_calendar_days": 4},
+    "3m": {"minimum_valid_bars": 120, "max_latest_age_calendar_days": 4},
+    "long": {"minimum_valid_bars": 220, "max_latest_age_calendar_days": 4},
+    "max_unexplained_calendar_gap_days": 15
   },
   "prediction_requirements": {
-    "preopen": {
-      "required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "taiwan_tick_rule", "risk_state_known"],
-      "session_rule": "08:30-09:00 limit ROD only; after 09:00 the pre-open order output is expired and must not be presented as executable.",
-      "missing_event_feed": "must be disclosed; never invent an all-clear event status"
-    },
-    "day_entry": {"required": ["legal_source", "supported_security", "verified_latest_close", "sufficient_intraday-or-defined-daily-model_inputs", "risk_state_known"]},
-    "short": {"required": ["legal_source", "supported_security", "verified_price", "institution", "monthly_revenue", "risk_state_known"]},
-    "swing": {"required": ["legal_source", "supported_security", "verified_price", "institution", "monthly_revenue", "quarterly_financials", "risk_state_known"]},
-    "long": {"required": ["legal_source", "supported_security", "verified_price", "valuation", "monthly_revenue", "quarterly_financials", "risk_state_known"]}
+    "preopen": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known"], "session_rule": "08:30-09:00 limit ROD only; after 09:00 the pre-open output is expired.", "missing_event_feed": "must be disclosed; never invent an all-clear event status"},
+    "day_entry": {"required": ["legal_source", "supported_security", "verified_latest_close", "sufficient_history", "active_disposition_state_known"]},
+    "short": {"required": ["legal_source", "supported_security", "verified_price", "sufficient_history", "monthly_revenue", "active_disposition_state_known"], "institution": "optional only when legal/source/date validated; missing factor stays missing"},
+    "swing": {"required": ["legal_source", "supported_security", "verified_price", "sufficient_history", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known"]},
+    "long": {"required": ["legal_source", "supported_security", "verified_price", "sufficient_history", "valuation", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known"]}
   },
-  "output_contract": {
-    "missing_text": "資料未取得／未通過驗證",
-    "forbid_synthetic_fill": true,
-    "forbid_stale_as_current": true,
-    "forbid_unverified_as_fact": true,
-    "forbid_probability_without_calibration": true,
-    "score_is_probability": false,
-    "recommendation_requires_oos_pass": true
-  },
+  "output_contract": {"missing_text": "資料未取得／未通過驗證", "forbid_synthetic_fill": true, "forbid_stale_as_current": true, "forbid_unverified_as_fact": true, "forbid_probability_without_calibration": true, "score_is_probability": false, "recommendation_requires_oos_pass": true},
+  "backtest_validation": {"requested_universe": 160, "minimum_valid_universe": 120, "minimum_valid_universe_ratio": 0.75, "minimum_oos_trades_per_mode": 100, "minimum_oos_unique_stocks_per_mode": 30, "costs_required": true, "chronological_oos_required": true, "oos_parameter_freeze_required": true, "insufficient_result_label": "INSUFFICIENT"},
   "taiwan": {
     "price": {"hosts": ["www.twse.com.tw", "openapi.twse.com.tw", "www.tpex.org.tw"], "cross_check_required": true, "latest_completed_session_required": true, "scored": true},
-    "institution": {"must_match_stock_trade_date": true, "scored": true},
+    "twse_institution": {"source": "T86", "legal_status": "blocked_pending_explicit_licence_or_contract", "scored": false},
+    "tpex_institution": {"must_match_stock_trade_date": true, "legal_status": "OGDL-1.0", "scored": true},
     "valuation": {"max_gap_from_stock_date_days": 7, "scored": true},
     "monthly_revenue": {"period_validation_required": true, "scored": true},
     "quarterly_income": {"report_date_required": true, "industry_schema_required": true, "scored": true},
@@ -85,9 +86,5 @@
     "sox": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_host": "fred.stlouisfed.org", "scored": false},
     "nasdaq": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_host": "fred.stlouisfed.org", "scored": false}
   },
-  "news_events": {
-    "scored": false,
-    "levels": {"A": "official filing/rule", "B": "company IR or two independent quality sources", "C": "single reputable media observation", "D": "excluded"},
-    "rule": "A headline alone must never alter a stock score. Missing event data must never be converted into 'no event'."
-  }
+  "news_events": {"scored": false, "levels": {"A": "official filing/rule", "B": "company IR or two independent quality sources", "C": "single reputable media observation", "D": "excluded"}, "rule": "A headline alone must never alter a stock score. Missing event data must never be converted into 'no event'."}
 }
