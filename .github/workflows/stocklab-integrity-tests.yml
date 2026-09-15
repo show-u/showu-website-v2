@@ -85,7 +85,9 @@ jobs:
           assert './entry-decision.js' in idx and './position-input.js' in idx and './holding-model.js' in idx and './holding-router.js' in idx and './public-output.js' in idx
           assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js') < idx.rfind('./public-output.js')
           assert 'showSingle();' in ui
-          assert all(x in public for x in ('暫不提供進場區間與信心指數','暫不提供出場時機／觸發價格／信心指數','入場候選 TOP 10','不以舊值、0、平均值、其他網站或 AI 補值','持倉總成本','目前市值'))
+          assert all(x in public for x in ('暫不提供進場區間與信心指數','暫不提供出場時機／觸發價格／信心指數','入場候選 TOP 10','不以舊值、0、平均值、其他網站或 AI 補值','持倉總成本','依該收盤估算市值','依該收盤估算損益','非盤中即時價'))
+          assert all(x in public for x in ('normalizeTradeDate','dateAgeDays','收盤資料日期過舊或異常'))
+          assert all(x in hold_router for x in ('依該收盤估算市值','依該收盤估算損益','完成交易日收盤，不是盤中即時價'))
 
           # Public API contract no longer exposes horizon-specific buy analysis.
           assert 'async function analyze(code)' in api and "strategy:'entry'" in api
