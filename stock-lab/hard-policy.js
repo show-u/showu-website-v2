@@ -33,6 +33,7 @@
       if(ctx.txFuturesVerified!==true)blockers.push('台指期 TX 未完成驗證');
       if(ctx.internationalEventsVerified!==true)blockers.push('國際時事資料未完成驗證');
       if(ctx.modelValidationStatus!=='PASS')blockers.push(`統一入場模型樣本外驗證未通過：${ctx.modelValidationStatus||'UNKNOWN'}`);
+      if(ctx.entryRangeExecutionValidated!==true)blockers.push('進場區間尚未通過 OOS 觸價／成交可達性驗證');
       if(ctx.confidenceCalibrated!==true)blockers.push('入場信心指數尚未完成正式樣本外校準');
       if(ctx.requestKind==='intraday_reprice'&&ctx.liveFeed!==true)blockers.push('沒有合法即時／延遲行情授權，禁止 09:00 後重算當日可執行價格');
       if(ctx.preopenSessionValid===false)warnings.push('目前不是 08:30–09:00；盤前 ROD 計畫只能作參考／稽核紀錄，不是目前即時報價');
@@ -43,11 +44,13 @@
       if(ctx.corporateActionKnown!==true)blockers.push('公司行動／參考價事件尚未完整驗證');
       if(ctx.entryContextComplete!==true)blockers.push('九項市場訊號／美股／台指期／國際時事未完整驗證');
       if(ctx.holdingExitValidationStatus!=='PASS')blockers.push(`持股出場模型樣本外驗證未通過：${ctx.holdingExitValidationStatus||'UNKNOWN'}`);
+      if(ctx.exitExecutionValidated!==true)blockers.push('出場價格／條件尚未通過 OOS 可執行性驗證');
       if(ctx.confidenceCalibrated!==true)blockers.push('持股信心指數尚未完成正式樣本外校準');
     }else if(mode==='scanner_entry'){
       if(ctx.entryFactorsComplete!==true)blockers.push('選股候選九項入場因子未全部驗證');
       if(ctx.usMarketVerified!==true||ctx.txFuturesVerified!==true||ctx.internationalEventsVerified!==true)blockers.push('選股市場背景（美股／台指期／國際時事）未全部驗證');
       if(ctx.modelValidationStatus!=='PASS')blockers.push(`入場 TOP10 模型樣本外驗證未通過：${ctx.modelValidationStatus||'UNKNOWN'}`);
+      if(ctx.entryRangeExecutionValidated!==true)blockers.push('TOP10 進場區間尚未通過 OOS 觸價／成交可達性驗證');
       if(ctx.confidenceCalibrated!==true)blockers.push('TOP10 信心指數尚未完成正式樣本外校準');
     }
     return{ok:blockers.length===0,blockers,warnings,mode};
@@ -64,6 +67,7 @@
     if(d?.audit?.active_risk_status_checked===false)blockers.push('注意／處置／特殊交易狀態未完成檢查');
     if(kind==='analysis'){
       if(d?.audit?.target_session_inputs_complete!==true)blockers.push('目標交易時段必要資料未完成');
+      if(d?.audit?.entry_range_execution_validated!==true)blockers.push('進場區間未通過 OOS 觸價／成交可達性驗證');
       if(d?.audit?.intraday_reprice===true&&d?.audit?.licensed_live_feed!==true)blockers.push('無合法即時／延遲行情卻進行盤中重算');
       if(!d.ticker)blockers.push('買入分析缺少股票代號');
       if(!entryFactorSetOK(d.entry_factors))blockers.push('九項入場因子未全部驗證');
@@ -73,6 +77,7 @@
     }
     if(kind==='holding'){
       if(!d.ticker||!d.position_audit||d.position_audit.user_input_verified!==true)blockers.push('持股分析缺少使用者持倉稽核');
+      if(d?.audit?.exit_execution_validated!==true)blockers.push('出場價格／條件未通過 OOS 可執行性驗證');
       if(!validConfidence(d.confidence_index,d.audit))blockers.push('持股信心指數未完成正式樣本外校準');
       if(!validRange(d.exit_low,d.exit_high)&&!validPositive(d.exit_price))blockers.push('持股分析缺少有效出場價格／區間');
     }
@@ -83,6 +88,7 @@
         if(x?.strategy!=='entry')blockers.push(`候選 ${x?.ticker||'—'} 模型標籤不一致`);
         if(!entryFactorSetOK(x?.entry_factors))blockers.push(`候選 ${x?.ticker||'—'} 九項入場因子未完整驗證`);
         if(!marketContextOK(x?.market_context))blockers.push(`候選 ${x?.ticker||'—'} 市場背景未完整驗證`);
+        if(x?.audit?.entry_range_execution_validated!==true)blockers.push(`候選 ${x?.ticker||'—'} 進場區間未通過 OOS 可達性驗證`);
         if(!validRange(x?.entry_low,x?.entry_high))blockers.push(`候選 ${x?.ticker||'—'} 缺少有效進場區間`);
         if(!validConfidence(x?.confidence_index,x?.audit))blockers.push(`候選 ${x?.ticker||'—'} 信心指數未完成正式樣本外校準`);
         if(!Array.isArray(x?.reasons)||x.reasons.filter(Boolean).length<2)blockers.push(`候選 ${x?.ticker||'—'} 缺少入榜理由`);
