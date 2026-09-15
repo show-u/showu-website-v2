@@ -74,7 +74,8 @@ jobs:
           # Public UX has only the three real decisions and is deliberately concise.
           for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','信心指數','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
               assert text in idx,text
-          assert '建議進場區間' in router and '建議出場價格' in hold_router
+          assert '建議進場區間' in router and '出場觸發參考價' in hold_router
+          assert '目前建議狀態' in hold_router and '持倉總成本' in hold_router
           assert 'internal-only' in idx
           for legacy in ('id="horizon"','id="scanObjective"','holdHorizon','<option value="1m"','<option value="3m"','<option value="long"','短線｜約1個月','波段｜約3個月','長期｜1年以上'):
               assert legacy not in idx,legacy
@@ -84,7 +85,7 @@ jobs:
           assert './entry-decision.js' in idx and './position-input.js' in idx and './holding-model.js' in idx and './holding-router.js' in idx and './public-output.js' in idx
           assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js') < idx.rfind('./public-output.js')
           assert 'showSingle();' in ui
-          assert all(x in public for x in ('暫不提供進場區間與信心指數','暫不提供出場價格與信心指數','入場候選 TOP 10','不以舊值、0、平均值、其他網站或 AI 補值'))
+          assert all(x in public for x in ('暫不提供進場區間與信心指數','暫不提供出場時機／觸發價格／信心指數','入場候選 TOP 10','不以舊值、0、平均值、其他網站或 AI 補值','持倉總成本','目前市值'))
 
           # Public API contract no longer exposes horizon-specific buy analysis.
           assert 'async function analyze(code)' in api and "strategy:'entry'" in api
@@ -146,7 +147,8 @@ jobs:
           assert all(x in hold for x in ('TW-holding-exit-v4','holdingTradingDays','正式出場模型需要有效首次買入日','首次買入日不在目前合法且驗證通過的歷史交易日序列中','sharesAffectSignal:false'))
           assert 'estimatedTradingDays' not in hold and 'horizonConfig' not in hold
           assert 'btn.onclick=async' in hold_router and 'StockLabPositionInput?.collect' in hold_router and 'StockLabTickerResolver' in hold_router
-          assert '暫不提供出場價格' in hold_router and "oosStatus:'PASS'" in hold_router
+          assert '暫不提供出場時機／觸發價格' in hold_router and "oosStatus:'PASS'" in hold_router
+          assert '條件優先，價格次之' in hold_router and '事後高低點' in hold_router
 
           # Compliance gate remains final fail-closed authority while final public layer keeps failure output concise.
           assert 'allowLocalFallback:false' in runtime and 'productionPredictionReady:false' in runtime
