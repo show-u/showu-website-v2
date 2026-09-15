@@ -58,7 +58,7 @@ jobs:
           # Production is deliberately fail-closed until all unresolved Taiwan gates are explicitly completed.
           assert "allowLocalFallback:false" in runtime
           assert "productionPredictionReady:false" in runtime
-          for s in ('licensedHistoricalOHLC:false','securityMaster:false','corporateActions:false','financialSchemaCoverage:false','oosValidation:false'):
+          for s in ('licensedHistoricalOHLC:false','securityMaster:false','corporateActions:false','financialSchemaCoverage:false','taiwanRiskState:false','oosValidation:false'):
               assert s in runtime,s
           assert 'STOCKLAB_HARD_READY' in runtime and "import('./hard-policy.js')" in runtime
           assert 'api.config.allowLocalFallback=false' in compliance
@@ -67,6 +67,14 @@ jobs:
           assert 'legal_source_verified' in compliance and 'price_verified' in compliance
           assert './compliance-gate.js' in idx and idx.rfind('./compliance-gate.js')>idx.rfind('./health.js')
           assert '不可違反的資料規則' in idx and '不得以 0、平均值、舊期資料' in idx
+
+          # Numeric parsing: missing/blank/sentinel values must remain null; explicit zero remains valid zero.
+          assert "if(v==null)return null" in app
+          assert "if(v==null)return null" in taiwan
+          assert "['-','--','—','N/A','NA','null','undefined']" in app
+          assert "['-','--','—','N/A','NA','null','undefined']" in taiwan
+          assert "Number(String(v??'')" not in app
+          assert "function num(v){const x=Number(v)" not in taiwan
 
           # Open-data mirror must carry explicit dataset-level legal provenance and attribution.
           assert "schema_version!==2" in cache and "licensed-open-data-cache" in cache and "OGDL-1.0" in cache
@@ -97,7 +105,8 @@ jobs:
           assert "h!=='www.tpex.org.tw'" in tpex and 'tpex_mainboard_daily_close_quotes' in tpex
           assert all(x in tpex for x in ('tpex_mainboard_peratio_analysis','tpex_3insti_daily_trading','mopsfin_t187ap05_O','tpex-health.json','requireTpexHealth'))
           assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
-          assert 'adaptiveBand' in taiwan and 'TW-structure-volatility-v3' in taiwan
+          assert 'adaptiveBand' in taiwan and 'TW-structure-volatility-v4' in taiwan
+          assert "schema_version!==3" in taiwan and 'official-derived-no-imputation' in taiwan
           assert all(x in taiwan for x in ('pctRank','sectorFamily','margin_change_pct','short_change_pct','riskBlocked'))
           forbidden=('L.c*.96','L.c*0.96','L.c*.92','L.c*0.92','L.c*.88','L.c*0.88','L.c*.985','L.c*0.985')
           for x in forbidden:assert x not in app+router+taiwan,f'fixed entry percentage returned: {x}'
@@ -132,11 +141,19 @@ jobs:
           assert prediction_allowed(legal=True,fresh=True,verified=False,supported=True,oos=True) is False
           assert prediction_allowed(legal=True,fresh=True,verified=True,supported=True,oos=False) is False
           # Missing observed value stays missing; zero is not a substitute.
-          observed=None
-          assert observed is None and observed!=0
+          def strict_num(v):
+              if v is None:return None
+              s=str(v).strip()
+              if not s or s in {'-','--','—','N/A','NA','null','undefined'}:return None
+              try:return float(s.replace(',','').removesuffix('%'))
+              except:return None
+          for v in (None,'',' ','-','--','—','N/A','NA','null','undefined'):
+              assert strict_num(v) is None,(v,strict_num(v))
+          assert strict_num('0')==0 and strict_num(0)==0
+          assert strict_num('0.00')==0 and strict_num('1,234.5')==1234.5
           # Regression guard: pre-open anchor follows prior close + empirical opening-gap median.
           prior_close=4560.0;gaps=[-0.01,-0.005,0.0,0.0,0.0,0.005,0.01]*4
           expected_open=prior_close*(1+statistics.median(gaps))
           assert expected_open==4560.0 and expected_open!=4200.0
-          print('fail-closed, no-imputation and preopen anchoring fixtures passed')
+          print('fail-closed, null-safe numeric parsing and preopen anchoring fixtures passed')
           PY
