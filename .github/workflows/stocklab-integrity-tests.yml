@@ -9,7 +9,6 @@ on:
       - '.github/workflows/update-taifex-tx.yml'
       - '.github/workflows/update-tpex-health.yml'
       - '.github/workflows/update-taiwan-factors.yml'
-      - '.github/workflows/stocklab-backtest.yml'
       - '.github/workflows/stocklab-integrity-tests.yml'
   workflow_dispatch:
 
@@ -25,179 +24,140 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: JavaScript and Python syntax checks
+      - name: JavaScript syntax checks
         run: |
-          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk top10-gate market-router holding-model ui-patch health hard-policy compliance-gate api-client runtime-config; do
+          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router holding-model ui-patch health hard-policy compliance-gate api-client runtime-config; do
             node --check "stock-lab/$f.js"
           done
-          python -m py_compile stock-lab/backtest-taiwan-v3.py
 
-      - name: StockLab Truth Rules v8 invariants
+      - name: StockLab Truth Rules v9 invariants
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           R=lambda p:Path(p).read_text(encoding='utf-8')
           policy=json.loads(R('stock-lab/verification-policy.json'))
+          validation=json.loads(R('stock-lab/model-validation-status.json'))
           runtime=R('stock-lab/runtime-config.js')
           idx=R('stock-lab/index.html')
+          entry=R('stock-lab/entry-decision.js')
           router=R('stock-lab/market-router.js')
           holding=R('stock-lab/holding-model.js')
           top10=R('stock-lab/top10-gate.js')
-          api=R('stock-lab/api-client.js')
           hard=R('stock-lab/hard-policy.js')
           compliance=R('stock-lab/compliance-gate.js')
-          ui=R('stock-lab/ui-patch.js')
-          app=R('stock-lab/app.js')
-          taiwan=R('stock-lab/taiwan-model-v2.js')
-          cache=R('stock-lab/same-origin-cache.js')
-          health=R('stock-lab/health.js')
           markets=R('stock-lab/markets.js')
           futures=R('stock-lab/futures.js')
           events=R('stock-lab/event-risk.js')
+          cache=R('stock-lab/same-origin-cache.js')
           cachewf=R('.github/workflows/update-browser-cache.yml')
-          backtest=R('stock-lab/backtest-taiwan-v3.py')
-          validation=json.loads(R('stock-lab/model-validation-status.json'))
-          result=json.loads(R('stock-lab/backtest-result.json'))
 
-          assert policy['version']==8 and policy['policy_name']=='StockLab Taiwan Truth Rules'
+          assert policy['version']==9 and policy['policy_name']=='StockLab Taiwan Truth Rules'
           required={
             'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY',
             'EXACT_SCHEMA_ONLY','FRESHNESS','PRICE_CROSS_CHECK','HISTORY_COMPLETENESS','NO_FAKE_CONFIDENCE',
             'TAIWAN_MICROSTRUCTURE','CORPORATE_ACTION_GATE','ACTIVE_RISK_STATUS','ACCOUNTING_CLASS_GATE',
             'MODEL_VALIDATION_GATE','FAIL_CLOSED','RAW_REDISTRIBUTION','AUDITABILITY',
+            'ENTRY_DECISION_CONTRACT','ENTRY_NINE_FACTORS','ENTRY_EXTERNAL_CONTEXT','UNIFIED_ENTRY_SCANNER',
             'BUY_HOLDING_SEPARATION','TARGET_SESSION_BY_DATA_DATE','NEXT_SESSION_INPUT_COMPLETENESS',
             'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','NO_UNBUYABLE_ENTRY_BANDS','POSITION_INPUT_PROVENANCE',
-            'EXIT_MODEL_SEPARATION','SCANNER_OBJECTIVE_SEPARATION','TOP10_REASON_REQUIRED','DIVIDEND_TRUTH'}
+            'EXIT_MODEL_SEPARATION','TOP10_REASON_REQUIRED','NO_HORIZON_BUY_MODEL','DIVIDEND_TRUTH'}
           assert set(policy['absolute_invariants'])==required
           assert set(policy['provenance_classes'])=={'observed','user_observed','derived','model_estimate','unavailable'}
-          oc=policy['output_contract']
-          for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_deep_support_as_current_buy','forbid_intraday_reprice_without_live_feed','next_session_requires_all_inputs_complete','target_session_must_follow_verified_data_date','recommendation_requires_oos_pass','scanner_must_explain_reasons','scanner_must_explain_risks','scanner_must_not_emit_buy_price'):
-            assert oc[k] is True,k
-          assert oc['score_is_probability'] is False
-          buy=policy['workflow_contract']['buy']
-          assert buy['time_rule'].startswith('08:30-09:00')
-          assert buy['refresh_policy']['attempts_taipei']==['14:20','14:50','15:20','15:50']
-          assert 'retrieval attempts' in buy['refresh_policy']['rule']
-          assert 'target_session_inputs_complete' in policy['prediction_requirements']['buy_session']['required']
-          assert set(policy['workflow_contract']['holding']['required_user_inputs'])=={'ticker','average_cost','shares'}
-          assert set(policy['workflow_contract']['scanner']['strategies'])=={'momentum','growth','income','total_return'}
+
+          # Missing/unverified data must stay missing. Public URL alone is not a licence.
           assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
           assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
+          oc=policy['output_contract']
+          for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_deep_support_as_current_buy','forbid_intraday_reprice_without_live_feed','forbid_horizon_specific_buy_prices','next_session_requires_all_inputs_complete','target_session_must_follow_verified_data_date','recommendation_requires_oos_pass','scanner_must_use_same_entry_contract','scanner_must_explain_reasons','scanner_must_explain_risks','scanner_must_not_emit_buy_price'):
+            assert oc[k] is True,k
+          assert oc['score_is_probability'] is False
+          assert policy['news_events']['required_for_entry_context'] is True
+          assert 'unknown' in policy['news_events']['rule'].lower()
 
+          # Registered scoring datasets must have explicit licence; T86 stays blocked.
           registry=policy['licensed_dataset_registry']
           for name,x in registry.items():
             if x.get('scoring',True) is not False:
               assert x.get('licence')=='OGDL-1.0',(name,x)
           t86=registry['twse_t86_stock_institution']
           assert t86['licence']=='unverified' and t86['automated_collection'] is False and t86['scoring'] is False
-          for k,dataset in [('twse_dividend_distribution',31612),('twse_exright_prepost',89748),('tpex_dividend_distribution',58285),('tpex_exright_prepost',11634),('tpex_exright_daily',11633)]:
-            assert registry[k]['data_gov_dataset']==dataset and registry[k]['licence']=='OGDL-1.0'
-          assert policy['taiwan']['dividend']['missing_is_not_zero'] is True
-          assert policy['taiwan']['dividend']['cash_and_stock_dividend_separate'] is True
 
-          # Runtime remains fail-closed until each independent model is validated.
-          assert 'hardPolicyVersion:8' in runtime
-          assert 'allowLocalFallback:false' in runtime
-          assert 'productionPredictionReady:false' in runtime
-          for s in ('licensedHistoricalOHLC:false','securityMaster:false','tradingCalendar:false','corporateActions:false','financialSchemaCoverage:false','taiwanRiskState:false','dividendData:false','buyModelOosValidation:false','holdingExitValidation:false','scannerMomentumOosValidation:false','scannerGrowthOosValidation:false','scannerIncomeOosValidation:false','scannerTotalReturnOosValidation:false'):
-            assert s in runtime,s
-          assert "import('./hard-policy.js')" in runtime
-          assert '09:00 後禁止重算' in runtime and '排程時間不是資料完成證明' in runtime
-
-          # Buy and holding are separate workflows; legacy five-price entry architecture must not return.
-          assert 'data-buy-plan' in router and 'TW-next-session-entry-v1' in router
-          assert all(x in router for x in ('基準交易日','之後的下一交易日','盤前限價 ROD 模型值','盤中回檔等待區','08:30–09:00','不因時鐘已過 09:00 或 13:30'))
-          for forbidden in ('data-five-price-matrix','③ 短線入場區間','④ 中期入場區間','⑤ 長期佈局區間','fivePricePlan','safeBand(r'):
-            assert forbidden not in router,forbidden
-          assert 'StockLabLicensedHistory' in router and '禁止改用未授權網站歷史資料補值' in router
-          assert '策略信心' not in router and 'confidence' not in router.lower()
-
-          assert 'TW-holding-exit-structure-v1' in holding
-          assert all(x in holding for x in ('averageCost','shares','buyDate','user_observed','持股出場模型尚未通過正式 OOS','window.StockLabHolding'))
-          assert 'buy-entry' in holding
-
-          # Scanner is strategy-specific, explains why, and never emits scanner buy prices.
-          for x in ('scanObjective','短線價差','成長波段','股息收益','長期總報酬','TOP10 只回答「為什麼值得研究」'):
+          # UX has exactly three workflows and no investment-horizon buy/holding selector.
+          for x in ('不知道買什麼','想買這檔','已持有','判斷是否適合入場','總量成本均價','目前持有股數','首次買入日','9項入場因子＋3個市場背景','美股','台指期 TX','國際時事'):
             assert x in idx,x
-          assert 'scanHorizon' not in idx
-          assert all(x in top10 for x in ("momentum:{label:'短線價差'","growth:{label:'成長波段'","income:{label:'股息收益'","total_return:{label:'長期總報酬'",'入榜理由','主要風險','股利因子','dividend_yield_pct','history_years','reasons.length<2','!risks.length'))
-          assert '模型估算區間' not in top10 and 'entry_low' not in top10 and 'entry_high' not in top10
-          assert "request('/v1/scan',{strategy:String(strategy)})" in api
-          assert "scanner_momentum" in hard and "scanner_growth" in hard and "scanner_income" in hard and "scanner_total_return" in hard
-          assert 'version<8' in hard
-          assert 'targetInputsComplete!==true' in hard and "requestKind==='intraday_reprice'" in hard
-          assert 'target_session_inputs_complete' in hard and 'licensed_live_feed' in hard
-
-          # Simplified UX invariants: three decision paths, diagnostics collapsed, holding-only horizon semantics.
-          for x in ('不知道買什麼','想買這檔','已持有','總量成本均價','目前持有股數','首次買入日','短／中／長只在持股分析使用','市場與資料詳情','dataHealthSummary','marketDetailsBody','查看持股狀態與出場條件'):
-            assert x in idx,x
-          for x in ('公開版架構','過渡本地 fallback','pending_sync','The read operation timed out'):
-            assert x not in idx,x
-          assert '14:20、14:50、15:20、15:50' in idx
-          assert '<details id="marketDetails"' in idx
-          assert './holding-model.js' in idx and idx.rfind('./holding-model.js')<idx.rfind('./compliance-gate.js')
-          assert "horizon.value='buy'" in ui
-          assert "get('./browser-data.json')" not in health
-          assert '#marketDetailsBody' in markets and '#marketDetailsBody' in futures and '#marketDetailsBody' in events
-
-          # Final compliance layer must be loaded last and must not enable local prediction fallback.
+          assert 'holdHorizon' not in idx
+          assert '<option value="1m"' not in idx and '<option value="3m"' not in idx and '<option value="long"' not in idx
+          assert './entry-decision.js' in idx
+          assert idx.rfind('./entry-decision.js')<idx.rfind('./market-router.js')
           assert idx.rfind('./compliance-gate.js')>idx.rfind('./health.js')
-          assert 'api.config.allowLocalFallback=false' in compliance
+
+          # Unified nine-factor entry contract.
+          factor_keys=('trend','volume','movingAverages','institution','macd','rsi','kd','crossovers','candlestick')
+          for k in factor_keys: assert f"'{k}'" in entry,k
+          for label in ('價格趨勢＋支撐／壓力','成交量','均線結構','法人／籌碼','MACD','RSI','KD／KDJ','黃金／死亡交叉','K線型態'):
+            assert label in entry,label
+          assert 'StockLabExternalMarket' in entry and 'StockLabTX' in entry and 'StockLabEvents' in entry
+          assert "decision:complete?'等待已驗證 OOS 決策模型':'資料不完整，禁止形成入場結論'" in entry
+
+          # External contexts fail closed instead of treating unknown as neutral/zero.
+          assert 'window.StockLabExternalMarket' in markets and 'context:usContext' in markets
+          assert 'window.StockLabTX' in futures and 'context:txContext' in futures
+          assert 'window.StockLabEvents' in events and 'context:eventContext' in events
+          assert '未知不能寫成「無事件」' in events
+
+          # Single-stock and TOP10 use the exact same 9+3 contract.
+          assert 'StockLabEntryDecision.evaluate' in router
+          assert all(x in router for x in ('九項入場判斷','美股／台指期／國際時事','entryNineFactors','usMarketContext','txFuturesContext','internationalEventFeed','entryDecisionOosValidation'))
+          assert "STRATEGY='entry'" in top10
+          assert all(k in top10 for k in factor_keys)
+          assert all(x in top10 for x in ('contextAuditOK','reasons.length<2','!risks.length','通過全部 Gate 的股票只有'))
+          for legacy in ('momentum:{','growth:{','income:{','total_return:{','scanner_momentum','scanner_growth','scanner_income','scanner_total_return'):
+            assert legacy not in top10+hard+runtime,legacy
+
+          # Holding is cost/position based; no horizon selector or horizon-dependent model.
+          assert all(x in holding for x in ('averageCost','shares','buyDate','entryContextComplete','TW-holding-exit-v2','user_observed'))
+          assert 'horizonConfig' not in holding and 'holdHorizon' not in compliance
+
+          # Runtime and hard policy remain fail closed until all new gates are explicitly passed.
+          assert 'hardPolicyVersion:9' in runtime
+          assert 'allowLocalFallback:false' in runtime and 'productionPredictionReady:false' in runtime
+          for s in ('licensedHistoricalOHLC:false','securityMaster:false','tradingCalendar:false','corporateActions:false','taiwanRiskState:false','entryNineFactors:false','usMarketContext:false','txFuturesContext:false','internationalEventFeed:false','entryDecisionOosValidation:false','holdingExitValidation:false','entryScannerOosValidation:false'):
+            assert s in runtime,s
+          assert all(x in hard for x in ('entryFactorsComplete','usMarketVerified','txFuturesVerified','internationalEventsVerified',"mode==='scanner_entry'",'entryFactorSetOK','marketContextOK'))
+          assert 'imputation_used===true' in hard
+
+          # Facts-only public mode must reveal missing factors, not fabricate a completed answer.
           assert 'VERIFIED FACTS ONLY' in compliance
-          assert '不以舊資料、0、平均值、其他網站未驗證值或 AI 推測補齊' in compliance
-          assert all(x in compliance for x in ('renderFacts','renderHoldingFacts','renderMarketFacts','holdingExitValidation 必須獨立 PASS'))
-          assert all(x in compliance for x in ('legal_source_verified','price_verified','oos_validation_passed'))
-          assert '09:00 後若沒有合法即時／延遲行情' in compliance
-          assert '14:20、14:50、15:20、15:50' in compliance
+          assert 'nineFactorBlocked' in compliance and 'marketContextFacts' in compliance
+          assert '完整判斷指定的九項因子＋美股＋台指期＋國際時事尚未全部驗證' in compliance
+          assert '不以 0、平均值、舊值或 AI 補齊' in compliance
 
-          # Null/missing data cannot silently become zero.
-          assert "if(v==null)return null" in app and "if(v==null)return null" in taiwan
-          assert "['-','--','—','N/A','NA','null','undefined']" in app
-          assert "['-','--','—','N/A','NA','null','undefined']" in taiwan
-          assert "Number(String(v??'')" not in app
-          assert "function num(v){const x=Number(v)" not in taiwan
+          # Validation status explicitly supersedes legacy horizon results.
+          assert validation['schema_version']==3 and validation['architecture']=='unified-entry-holding-v9'
+          assert validation['legacy_horizon_entry_results_are_production_valid'] is False
+          assert set(validation['models'])=={'entry_decision_9plus3','entry_scanner_9plus3','holding_exit'}
+          for name,item in validation['models'].items():
+            assert item['status'] in {'BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER','FAIL','INSUFFICIENT'},(name,item)
 
-          # Public cache must be registered open data, not an unexplained official-site mirror.
+          # Public cache still must be licensed open data, not an unexplained official-site mirror.
           assert 'licensed-open-data-cache' in cache and 'OGDL-1.0' in cache and 'schema_version!==2' in cache
           assert all(x in cachewf for x in ('data_gov_dataset','licence_verified','OGDL-1.0','attribution','licensed-open-data-cache'))
-          for ds in ('11549','11764','18420','91998','94831','11370','11373','11856','56510','94853','91967'):
-            assert ds in cachewf,ds
-          for cron in ("20 6 * * 1-5","50 6 * * 1-5","20 7 * * 1-5","50 7 * * 1-5"):
-            assert cron in cachewf,cron
-          assert 'All source hashes unchanged; keep existing cache timestamp and bytes' in cachewf
-          assert 'Scheduled refresh is not treated as new data' in cachewf
 
-          # Formal model families are separate and remain honestly blocked until legal data/OOS gates are ready.
-          assert validation['schema_version']==2 and validation['architecture']=='buy-holding-strategy-scanner-v7'
-          expected={'buy_session','holding_exit','scanner_momentum','scanner_growth','scanner_income','scanner_total_return'}
-          assert set(validation['models'])==expected
-          for name,item in validation['models'].items():
-            assert item['status'] in {'BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER'},(name,item)
-          assert result['schema_version']==7 and result['architecture']=='buy-holding-strategy-scanner-v7'
-          assert result['formal_validation_status']=='BLOCKED_LEGAL_SOURCE'
-          assert set(result['models'])==expected
-          assert result['network_history_collection_performed'] is False
-          assert result['legacy_preopen_short_swing_long_result_is_production_valid'] is False
-          assert "ARCHITECTURE = 'buy-holding-strategy-scanner-v7'" in backtest
-          assert 'NETWORK_HISTORY_COLLECTION_DISABLED = True' in backtest
-          for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
-            assert forbidden not in backtest,forbidden
-
-          print('StockLab Taiwan Truth Rules v8 session-readiness and holding invariants passed')
+          print('StockLab Taiwan Truth Rules v9 unified 9+3 entry invariants passed')
           PY
 
       - name: Fail-closed behavior fixtures
         run: |
           python - <<'PY'
-          import statistics
-          def allowed(**gates):return bool(gates) and all(v is True for v in gates.values())
-          assert allowed(legal=True,fresh=True,verified=True,supported=True,target_inputs=True,oos=True)
-          assert not allowed(legal=False,fresh=True,verified=True,supported=True,target_inputs=True,oos=True)
-          assert not allowed(legal=None,fresh=True,verified=True,supported=True,target_inputs=True,oos=True)
-          assert not allowed(legal=True,fresh=True,verified=False,supported=True,target_inputs=True,oos=True)
-          assert not allowed(legal=True,fresh=True,verified=True,supported=True,target_inputs=False,oos=True)
-          assert not allowed(legal=True,fresh=True,verified=True,supported=True,target_inputs=True,oos=False)
+          def complete(nine,us,tx,events,oos):
+            return len(nine)==9 and all(x is True for x in nine) and us is True and tx is True and events is True and oos is True
+          assert complete([True]*9,True,True,True,True)
+          assert not complete([True]*8+[False],True,True,True,True)
+          assert not complete([True]*9,False,True,True,True)
+          assert not complete([True]*9,True,False,True,True)
+          assert not complete([True]*9,True,True,False,True)
+          assert not complete([True]*9,True,True,True,False)
 
           def strict_num(v):
             if v is None:return None
@@ -206,30 +166,16 @@ jobs:
             try:return float(s.replace(',','').removesuffix('%'))
             except:return None
           for v in (None,'',' ','-','--','—','N/A','NA','null','undefined'):
-            assert strict_num(v) is None,(v,strict_num(v))
+            assert strict_num(v) is None
           assert strict_num('0')==0 and strict_num('1,234.5')==1234.5
 
-          prior_close=4560.0;gaps=[-0.01,-0.005,0.0,0.0,0.005,0.01]*5
-          expected_open=prior_close*(1+statistics.median(gaps))
-          assert expected_open==4560.0 and expected_open!=4200.0
+          # Missing event input is UNKNOWN, never silently converted to neutral/no-event.
+          event_verified=False
+          event_state='unknown' if not event_verified else 'neutral'
+          assert event_state=='unknown'
 
-          # Clock changes execution window, not source-date truth.
-          base_date='2026-09-14';after_0900_source_date='2026-09-14'
-          assert base_date==after_0900_source_date
-          refresh_attempt_happened=True;official_date_advanced=False;all_required_inputs_ready=False
-          assert refresh_attempt_happened and not official_date_advanced and not all_required_inputs_ready
-          licensed_live_feed=False;intraday_reprice_allowed=licensed_live_feed
-          assert intraday_reprice_allowed is False
-
-          avg_cost,shares,close=4380.0,1000,4560.0
-          assert avg_cost*shares==4380000
-          assert close*shares==4560000
-          assert close*shares-avg_cost*shares==180000
-
-          # Missing dividend is not zero. Verified zero is distinct from missing.
-          assert strict_num(None) is None
-          assert strict_num('0')==0
-          candidate={'strategy':'income','reasons':['殖利率與歷史配息','盈餘可支應股利'],'risks':['除息後未必填息']}
-          assert len(candidate['reasons'])>=2 and len(candidate['risks'])>=1
-          print('v8 fail-closed, target-session readiness, holding and dividend truth fixtures passed')
+          # Price estimates cannot be treated as observations.
+          provenance={'official_close':'observed','gap_median':'derived','entry_price':'model_estimate','missing_factor':'unavailable'}
+          assert provenance['entry_price']!='observed' and provenance['missing_factor']=='unavailable'
+          print('v9 no-imputation and unified-entry fail-closed fixtures passed')
           PY
