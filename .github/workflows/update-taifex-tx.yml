@@ -24,6 +24,7 @@ jobs:
           python - <<'PY'
           import hashlib, html, json, re, urllib.request
           from datetime import datetime, timezone
+          from html.parser import HTMLParser
           from urllib.parse import urlparse
 
           NOW=datetime.now(timezone.utc)
@@ -31,38 +32,67 @@ jobs:
             'report':'https://www.taifex.com.tw/cht/3/futDailyMarketReport?commodityId=TX',
             'excel':'https://www.taifex.com.tw/cht/3/futDailyMarketExcel?commodity_id=TX'
           }
+          class TextTableParser(HTMLParser):
+              def __init__(self): super().__init__(); self.rows=[]; self.current=[]; self.in_row=False; self.in_cell=False; self.cell=[]
+              def handle_starttag(self,tag,attrs):
+                  if tag=='tr': self.in_row=True; self.current=[]
+                  elif tag in ('td','th') and self.in_row: self.in_cell=True; self.cell=[]
+              def handle_data(self,data):
+                  if self.in_cell: self.cell.append(data)
+              def handle_endtag(self,tag):
+                  if tag in ('td','th') and self.in_cell:
+                      self.current.append(re.sub(r'\s+',' ',html.unescape(''.join(self.cell))).strip()); self.cell=[]; self.in_cell=False
+                  elif tag=='tr' and self.in_row:
+                      if self.current: self.rows.append(self.current)
+                      self.current=[]; self.in_row=False; self.in_cell=False
+
           def get(url):
-              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 StockLab/1.1 (+verification)'})
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 StockLab/1.2 (+verification)'})
               with urllib.request.urlopen(req,timeout=30) as r:
                   body=r.read(); final=r.geturl(); host=(urlparse(final).hostname or '').lower()
                   if host!='www.taifex.com.tw': raise ValueError(f'unexpected TAIFEX host {host}')
-                  return body.decode('utf-8','replace'),final,hashlib.sha256(body).hexdigest()
+                  ctype=(r.headers.get('Content-Type','') or '').lower()
+                  return body.decode('utf-8','replace'),final,hashlib.sha256(body).hexdigest(),ctype
           def signed(s):
               t=str(s or '').replace(',','').replace('%','').strip(); sign=-1 if ('▼' in t or t.startswith('-')) else 1
-              m=re.search(r'\d+(?:\.\d+)?',t)
-              return sign*float(m.group()) if m else None
+              m=re.search(r'\d+(?:\.\d+)?',t); return sign*float(m.group()) if m else None
           def number(s):
-              t=str(s or '').replace(',','').strip(); m=re.search(r'-?\d+(?:\.\d+)?',t)
-              return float(m.group()) if m else None
+              t=str(s or '').replace(',','').strip(); m=re.search(r'-?\d+(?:\.\d+)?',t); return float(m.group()) if m else None
+          def row_to_obj(r):
+              cells=[re.sub(r'\s+',' ',str(x)).strip() for x in r]
+              try:
+                  pos=next(i for i,x in enumerate(cells) if x=='TX')
+              except StopIteration:return None
+              cells=cells[pos:]
+              if len(cells)<13 or not re.fullmatch(r'\d{6}',cells[1]): return None
+              vals={'month':cells[1],'open':number(cells[2]),'high':number(cells[3]),'low':number(cells[4]),'last':number(cells[5]),'change':signed(cells[6]),'pct':signed(cells[7]),'after_volume':number(cells[8]),'regular_volume':number(cells[9]),'total':number(cells[10]),'settlement':number(cells[11]),'oi':number(cells[12])}
+              return vals if vals['last'] and vals['total'] is not None else None
           def parse_page(text):
               plain=html.unescape(re.sub(r'<[^>]+>',' ',text)); plain=re.sub(r'\s+',' ',plain)
               dm=re.search(r'日期[:：]\s*(\d{4}/\d{2}/\d{2})',plain)
               if not dm: raise ValueError('TAIFEX trade date not found')
-              # Official monthly TX table fields:
-              # TX | YYYYMM | open | high | low | last | change | change% | after-hours vol | regular vol | total vol | settlement | OI
-              pat=re.compile(r'\bTX\s+(\d{6})\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([▲▼+\-]?\s*[\d,.]+)\s+([▲▼+\-]?\s*[\d.]+)%\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)')
-              rows=[]
-              for m in pat.finditer(plain):
-                  month,op,hi,lo,last,chg,pct,after,regular,total,settle,oi=m.groups()
-                  row={'month':month,'open':number(op),'high':number(hi),'low':number(lo),'last':number(last),'change':signed(chg),'pct':signed(pct),'after_volume':number(after),'regular_volume':number(regular),'total':number(total),'settlement':number(settle),'oi':number(oi)}
-                  if row['last'] and row['total'] is not None: rows.append(row)
+              p=TextTableParser(); p.feed(text)
+              rows=[o for o in (row_to_obj(r) for r in p.rows) if o]
+              # Fallback: segment plain official page text by monthly TX markers, then extract tokens.
+              if not rows:
+                  markers=list(re.finditer(r'\bTX\s+(\d{6})\b',plain))
+                  for idx,m in enumerate(markers):
+                      end=markers[idx+1].start() if idx+1<len(markers) else min(len(plain),m.end()+600)
+                      seg=plain[m.end():end]
+                      toks=re.findall(r'[▲▼+\-]?\s*\d[\d,]*(?:\.\d+)?%?',seg)
+                      if len(toks)>=11:
+                          vals={'month':m.group(1),'open':number(toks[0]),'high':number(toks[1]),'low':number(toks[2]),'last':number(toks[3]),'change':signed(toks[4]),'pct':signed(toks[5]),'after_volume':number(toks[6]),'regular_volume':number(toks[7]),'total':number(toks[8]),'settlement':number(toks[9]),'oi':number(toks[10])}
+                          if vals['last'] and vals['total'] is not None: rows.append(vals)
+              # Deduplicate by month; spread contracts contain '/' and never enter this set.
+              by_month={r['month']:r for r in rows}
+              rows=list(by_month.values())
               if not rows: raise ValueError('no monthly TX rows parsed')
               return dm.group(1),rows
-          out={'schema_version':1,'generated_at':NOW.isoformat(),'status':'failed','source':'TAIFEX','contract':'TX','verified':False,'urls':URLS,'validation':[],'raw_sha256':{}}
+          out={'schema_version':1,'generated_at':NOW.isoformat(),'status':'failed','source':'TAIFEX','contract':'TX','verified':False,'urls':URLS,'validation':[],'raw_sha256':{},'content_type':{}}
           try:
               parsed={}
               for k,u in URLS.items():
-                  text,final,sha=get(u); parsed[k]=parse_page(text); out['raw_sha256'][k]=sha
+                  text,final,sha,ctype=get(u); parsed[k]=parse_page(text); out['raw_sha256'][k]=sha; out['content_type'][k]=ctype
               d1,r1=parsed['report']; d2,r2=parsed['excel']
               if d1!=d2: raise ValueError(f'trade-date conflict report={d1} excel={d2}')
               a={x['month']:x for x in r1}; b={x['month']:x for x in r2}; common=set(a)&set(b)
