@@ -5,14 +5,16 @@ on:
   push:
     paths:
       - '.github/workflows/update-browser-cache.yml'
-      - 'stock-lab/archive-ogdl-daily.py'
-      - 'stock-lab/official-schema-registry.json'
   schedule:
-    # Taiwan time 14:20 / 14:50 / 15:20 / 15:50. These are retrieval attempts, not data-ready guarantees.
+    # Taiwan time 14:20 / 14:50 / 15:20 / 15:50. Retrieval attempts only; never a data-ready guarantee.
     - cron: '20 6 * * 1-5'
     - cron: '50 6 * * 1-5'
     - cron: '20 7 * * 1-5'
     - cron: '50 7 * * 1-5'
+
+concurrency:
+  group: stocklab-browser-cache-writer
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -29,10 +31,10 @@ jobs:
       - name: Build licensed same-origin cache
         run: |
           python - <<'PY'
-          import csv, io, json, urllib.request, hashlib, time, http.client, os
+          import csv, io, json, urllib.request, hashlib, time, http.client
           from datetime import datetime, timezone
           from urllib.parse import urlparse
-          UA={'User-Agent':'StockLab-browser-cache/3.0','Accept':'application/json,text/csv,*/*'}
+          UA={'User-Agent':'StockLab-browser-cache/3.1','Accept':'application/json,text/csv,*/*'}
           # Every dataset below has a dataset-specific OGDL-1.0 registration on data.gov.tw.
           DATASETS={
             'twse_snapshot':{'url':'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL','id':11549,'attr':'金融監督管理委員會證券期貨局／臺灣證券交易所','fmt':'json'},
@@ -69,7 +71,7 @@ jobs:
                 req=urllib.request.Request(url,headers=UA)
                 with urllib.request.urlopen(req,timeout=120) as r:
                   host=(urlparse(r.geturl()).hostname or '').lower()
-                  if host not in ALLOWED: raise RuntimeError(f'{name}: unexpected host {host}')
+                  if host not in ALLOWED:raise RuntimeError(f'{name}: unexpected host {host}')
                   expected=r.headers.get('Content-Length');raw=r.read()
                   if expected and len(raw)!=int(expected):raise http.client.IncompleteRead(raw,int(expected)-len(raw))
                   data=parse(raw,spec['fmt'],name)
@@ -97,13 +99,13 @@ jobs:
           old=None
           try:
             with open(path,encoding='utf-8') as f:old=json.load(f)
-          except Exception: pass
+          except Exception:pass
           same=bool(old and old.get('schema_version')==2 and set(old.get('meta',{}))==set(out['meta']) and all(old['meta'][k].get('sha256')==out['meta'][k]['sha256'] for k in out['meta']))
           if same:
             print('All source hashes unchanged; keep existing cache timestamp and bytes. Scheduled refresh is not treated as new data.')
           else:
             with open(path,'w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,separators=(',',':'))
-            print('Cache updated from changed source bytes', {k:v['count'] for k,v in out['meta'].items()})
+            print('Cache updated from changed source bytes',{k:v['count'] for k,v in out['meta'].items()})
           PY
       - name: Validate legal provenance and cache
         run: |
@@ -114,10 +116,7 @@ jobs:
           assert x['licence']=='政府資料開放授權條款-第1版 / OGDL-1.0'
           req={'twse_snapshot','twse_valuation','twse_revenue','twse_income','twse_balance','twse_dividend','twse_exright_prepost','tpex_snapshot','tpex_valuation','tpex_institution','tpex_revenue','tpex_income','tpex_balance','tpex_dividend','tpex_exright_prepost','tpex_exright_daily'}
           assert set(x['datasets'])==req
-          expected_ids={
-            'twse_dividend':31612,'twse_exright_prepost':89748,
-            'tpex_dividend':58285,'tpex_exright_prepost':11634,'tpex_exright_daily':11633
-          }
+          expected_ids={'twse_dividend':31612,'twse_exright_prepost':89748,'tpex_dividend':58285,'tpex_exright_prepost':11634,'tpex_exright_daily':11633}
           for k in req:
             m=x['meta'][k]
             assert m['count']>0 and len(m['sha256'])==64
@@ -127,37 +126,13 @@ jobs:
           for k,v in expected_ids.items():assert x['meta'][k]['data_gov_dataset']==v,(k,x['meta'][k])
           print('licensed browser cache including dividend datasets validated')
           PY
-      - name: Archive licensed daily OHLC without inference
+      - name: Commit browser cache only when source bytes changed
         run: |
-          python -m py_compile stock-lab/archive-ogdl-daily.py
-          python stock-lab/archive-ogdl-daily.py \
-            --cache stock-lab/browser-data.json \
-            --registry stock-lab/official-schema-registry.json \
-            --out-dir stock-lab/history-ogdl
-      - name: Validate prospective history archive
-        run: |
-          python - <<'PY'
-          import json,glob
-          m=json.load(open('stock-lab/history-ogdl/manifest.json',encoding='utf-8'))
-          assert m['schema_version']==1 and m['source_class']=='ogdl_daily_archive'
-          assert m['licence']=='OGDL-1.0' and m['no_imputation'] is True
-          assert m['network_collection_performed_by_archiver'] is False
-          assert set(m['markets'])=={'TWSE','TPEx'}
-          assert m['rows']>0 and m['first_date'] and m['last_date']
-          assert glob.glob('stock-lab/history-ogdl/*.jsonl')
-          for market in ('TWSE','TPEx'):
-            x=m['latest_ingest'][market]
-            assert x['accepted']>0 and x['data_gov_dataset'] in (11549,11370)
-            assert len(x['raw_sha256'])==64 and x['source_schema']
-          print('licensed prospective OHLC archive validated',m['last_date'],m['rows'])
-          PY
-      - name: Commit cache and archive if changed
-        run: |
-          if [ -z "$(git status --porcelain -- stock-lab/browser-data.json stock-lab/history-ogdl)" ]; then echo 'No changes'; exit 0; fi
+          if [ -z "$(git status --porcelain -- stock-lab/browser-data.json)" ]; then echo 'No source-byte changes'; exit 0; fi
           git config user.name 'stocklab-bot'
           git config user.email 'stocklab-bot@users.noreply.github.com'
-          git add stock-lab/browser-data.json stock-lab/history-ogdl
-          git commit -m 'update licensed browser cache and OGDL daily history'
+          git add stock-lab/browser-data.json
+          git commit -m 'update licensed browser cache'
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
