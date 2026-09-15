@@ -1,38 +1,56 @@
 {
-  "schema_version": 2,
-  "architecture": "buy-holding-strategy-scanner-v7",
-  "generated_rule": "Status is fail-closed. PASS may only be written by a workflow using dataset-specific legally reusable data and the production-equivalent model formula. Scanner strategies require separate OOS validation and may not share one PASS.",
-  "legacy_preopen_short_swing_long_result_is_production_valid": false,
+  "schema_version": 3,
+  "architecture": "unified-entry-holding-v9",
+  "generated_rule": "Status is fail-closed. PASS may only be written by a workflow using legally reusable data, the production-equivalent formula and chronological out-of-sample validation. Missing factors or market contexts may not be imputed.",
+  "legacy_horizon_entry_results_are_production_valid": false,
   "models": {
-    "buy_session": {
-      "status": "BLOCKED_LEGAL_SOURCE",
-      "reason": "No dataset-specific legally reusable 60-month historical OHLC feed is connected to the production-equivalent next-session buy model.",
-      "required_before_pass": ["licensed historical OHLC", "security master", "trading calendar", "corporate-action adjustments", "Taiwan active risk states", "chronological OOS", "cost/slippage", "production-formula match"]
+    "entry_decision_9plus3": {
+      "status": "BLOCKED_DATA_LAYER",
+      "reason": "The production entry contract now requires nine verified entry factors plus verified US-market, TAIFEX TX and international-event contexts. Legal historical OHLC, TWSE institutional input, international-event feed and production-equivalent OOS validation are not all complete.",
+      "required_before_pass": [
+        "licensed historical OHLC",
+        "supported security master",
+        "trading calendar",
+        "corporate-action adjustments",
+        "Taiwan active risk states",
+        "all nine entry factors verified",
+        "verified US-market context",
+        "verified TAIFEX TX context",
+        "verified international-event context",
+        "chronological OOS",
+        "cost/slippage",
+        "production-formula match"
+      ]
+    },
+    "entry_scanner_9plus3": {
+      "status": "BLOCKED_DATA_LAYER",
+      "reason": "TOP10 must use exactly the same 9+3 contract as single-stock entry analysis across a survivorship-safe TWSE+TPEx universe. No former horizon or objective ranking may substitute.",
+      "required_before_pass": [
+        "licensed survivorship-safe TWSE+TPEx universe/history",
+        "all nine entry factors for every candidate",
+        "verified US-market context",
+        "verified TAIFEX TX context",
+        "verified international-event context",
+        "Taiwan active risk states",
+        "chronological OOS",
+        "benchmark",
+        "production-formula match"
+      ]
     },
     "holding_exit": {
-      "status": "BLOCKED_LEGAL_SOURCE",
-      "reason": "The cost-aware holding-exit model is separate from the buy-entry model and has not been OOS validated on a legally reusable historical feed.",
-      "required_before_pass": ["licensed historical OHLC", "synthetic/historical position protocol", "user-cost-aware formula freeze", "corporate-action adjustments", "Taiwan active risk states", "chronological OOS", "cost/slippage", "production-formula match"]
-    },
-    "scanner_momentum": {
-      "status": "BLOCKED_LEGAL_SOURCE",
-      "reason": "Momentum ranking requires legally reusable historical price/volume and a survivorship-safe TWSE+TPEx universe; no generic short/mid/long ranking may substitute.",
-      "required_before_pass": ["licensed survivorship-safe universe/history", "technical/liquidity factor freeze", "Taiwan active risk states", "chronological OOS", "benchmark", "production-formula match"]
-    },
-    "scanner_growth": {
-      "status": "BLOCKED_LEGAL_SOURCE",
-      "reason": "Growth ranking requires historical monthly revenue plus accounting-class-correct quarterly fundamentals and separate OOS validation.",
-      "required_before_pass": ["licensed historical price/universe", "historical monthly revenue", "industry/accounting-class financials", "growth factor freeze", "chronological OOS", "benchmark", "production-formula match"]
-    },
-    "scanner_income": {
       "status": "BLOCKED_DATA_LAYER",
-      "reason": "Income ranking now requires verified multi-year cash/stock dividend history, yield, financial support and ex-right/ex-dividend events. The licensed dividend datasets are registered but the production dividend-history layer is not connected yet.",
-      "required_before_pass": ["TWSE/TPEx OGDL dividend distribution feed", "minimum 3-year dividend history", "cash and stock dividend separation", "yield/earnings support", "ex-right/ex-dividend event handling", "chronological OOS", "production-formula match"]
-    },
-    "scanner_total_return": {
-      "status": "BLOCKED_DATA_LAYER",
-      "reason": "Long-term total-return ranking requires verified growth, valuation, financial quality and dividend contribution. Dividend history and strategy-specific OOS are not yet production-ready.",
-      "required_before_pass": ["licensed historical price/universe", "historical revenue/fundamentals", "verified dividend history even when zero", "valuation", "total-return factor freeze", "chronological OOS", "benchmark", "production-formula match"]
+      "reason": "The cost-aware holding-exit model is separate from entry analysis. It requires user cost/shares, verified 9+3 market context and an independent production-equivalent OOS validation.",
+      "required_before_pass": [
+        "licensed historical OHLC",
+        "synthetic/historical position protocol",
+        "user-cost-aware formula freeze",
+        "corporate-action adjustments",
+        "Taiwan active risk states",
+        "verified 9+3 context",
+        "chronological OOS",
+        "cost/slippage",
+        "production-formula match"
+      ]
     }
   }
 }
