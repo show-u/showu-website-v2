@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "contract_name": "StockLab Licensed Taiwan Market Data Bundle",
+  "purpose": "Fail-closed contract for legally reusable historical data used by entry, scanner and holding-exit validation. This file is a schema/policy contract only and contains no market observations.",
+  "non_negotiable_rules": {
+    "no_network_fallback": true,
+    "no_unlicensed_website_scraping": true,
+    "no_missing_dataset_imputation": true,
+    "no_stale_data_relabelled_current": true,
+    "no_raw_redistribution_without_permission": true,
+    "every_payload_file_requires_sha256": true,
+    "every_observation_requires_source_provenance": true,
+    "license_must_allow_automated_processing": true,
+    "license_must_allow_derived_outputs": true,
+    "production_and_oos_use_same_normalization_rules": true
+  },
+  "required_manifest_fields": [
+    "schema_version",
+    "bundle_id",
+    "created_at",
+    "provider",
+    "license",
+    "coverage",
+    "datasets"
+  ],
+  "license_contract": {
+    "required_fields": [
+      "license_name",
+      "legal_basis",
+      "evidence_reference",
+      "automated_processing_allowed",
+      "derived_outputs_allowed",
+      "local_storage_allowed",
+      "raw_redistribution_allowed"
+    ],
+    "required_true_for_model_use": [
+      "automated_processing_allowed",
+      "derived_outputs_allowed",
+      "local_storage_allowed"
+    ],
+    "rule": "A public URL, API endpoint or official website is not itself proof of reusable rights. evidence_reference must identify the applicable open-data licence, contract, written permission or equivalent legal basis."
+  },
+  "required_datasets": {
+    "security_master": {
+      "required": true,
+      "minimum_fields": ["ticker", "market", "security_type", "valid_from", "valid_to", "source_id"]
+    },
+    "trading_calendar": {
+      "required": true,
+      "minimum_fields": ["date", "market", "is_trading_day", "source_id"]
+    },
+    "daily_ohlc": {
+      "required": true,
+      "minimum_fields": ["ticker", "market", "date", "open", "high", "low", "close", "volume", "source_id"]
+    },
+    "corporate_actions": {
+      "required": true,
+      "minimum_fields": ["ticker", "market", "effective_date", "event_type", "source_id"]
+    },
+    "risk_states": {
+      "required": true,
+      "minimum_fields": ["ticker", "market", "date", "attention", "disposition", "suspended", "source_id"]
+    }
+  },
+  "dataset_manifest_entry": {
+    "required_fields": ["path", "sha256", "row_count", "format", "source_ids"],
+    "allowed_formats": ["json", "jsonl", "csv"],
+    "sha256_pattern": "^[a-f0-9]{64}$"
+  },
+  "coverage_contract": {
+    "required_fields": ["markets", "start_date", "end_date", "securities_count"],
+    "supported_markets": ["TWSE", "TPEx"],
+    "date_format": "YYYY-MM-DD"
+  },
+  "observation_provenance": {
+    "source_id_must_resolve_to_manifest_source": true,
+    "allowed_provenance_classes": ["observed", "user_observed", "derived", "model_estimate", "unavailable"],
+    "market_observations_must_be": "observed"
+  },
+  "activation_rule": "The runtime licensedHistoricalOHLC/securityMaster/tradingCalendar/corporateActions/taiwanRiskState gates may become true only after the exact bundle has passed the offline validator and the production loader has verified the same manifest and hashes."
+}
