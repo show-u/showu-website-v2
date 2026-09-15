@@ -1,16 +1,20 @@
-// UX patch: tab switching, ticker/company-name search, plus explicit price presentation.
+// UX patch: three-way navigation, ticker/company-name search, plus explicit price presentation.
 (function(){
   const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn'),horizon=document.querySelector('#horizon');
-  const singleBtn=document.querySelector('#singleBtn'),findBtn=document.querySelector('#findBtn');
-  const singlePanel=document.querySelector('#singlePanel'),findPanel=document.querySelector('#findPanel');
-  if(singleBtn&&findBtn&&singlePanel&&findPanel){
-    const showSingle=()=>{singlePanel.classList.remove('hidden');findPanel.classList.add('hidden');singleBtn.classList.remove('ghost');findBtn.classList.add('ghost');input?.focus();};
-    const showFind=()=>{findPanel.classList.remove('hidden');singlePanel.classList.add('hidden');findBtn.classList.remove('ghost');singleBtn.classList.add('ghost');};
+  const singleBtn=document.querySelector('#singleBtn'),findBtn=document.querySelector('#findBtn'),holdBtn=document.querySelector('#holdBtn');
+  const singlePanel=document.querySelector('#singlePanel'),findPanel=document.querySelector('#findPanel'),holdPanel=document.querySelector('#holdPanel');
+  if(singleBtn&&findBtn&&holdBtn&&singlePanel&&findPanel&&holdPanel){
+    const allButtons=[findBtn,singleBtn,holdBtn],allPanels=[findPanel,singlePanel,holdPanel];
+    const activate=(button,panel)=>{allPanels.forEach(x=>x.classList.add('hidden'));allButtons.forEach(x=>x.classList.add('ghost'));panel.classList.remove('hidden');button.classList.remove('ghost');};
+    const showSingle=()=>{activate(singleBtn,singlePanel);input?.focus();};
+    const showFind=()=>activate(findBtn,findPanel);
+    const showHold=()=>{activate(holdBtn,holdPanel);document.querySelector('#holdTicker')?.focus();};
     singleBtn.addEventListener('click',showSingle);
     findBtn.addEventListener('click',showFind);
+    holdBtn.addEventListener('click',showHold);
     if(horizon)horizon.value='preopen';
-    // Stock search is the primary entry because the five-price model is a single-stock decision tool.
-    showSingle();
+    // Discovery is the neutral starting point; buy and holding workflows are separate decisions.
+    showFind();
   }
   if(!input||!btn)return;
   let cachePromise=null;
@@ -43,7 +47,7 @@
   function ensureSinglePriceSummary(){
     const box=document.querySelector('#result');
     if(!box||box.classList.contains('hidden')||box.querySelector('.bad'))return;
-    // Pre-open owns the complete five-price matrix. Never overlay it with the legacy generic summary.
+    // Buy-analysis renderer owns its own execution plan. Never overlay it with the legacy generic summary.
     if(box.querySelector('[data-five-price-matrix]')||/開盤前｜當日掛單價格/.test(box.textContent||'')){
       box.querySelector('[data-price-summary]')?.remove();
       return;
