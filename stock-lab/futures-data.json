@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-15T01:51:13.481438+00:00",
+  "generated_at": "2026-09-15T01:52:13.273095+00:00",
   "status": "failed",
   "source": "TAIFEX",
   "contract": "TX",
@@ -10,6 +10,13 @@
     "excel": "https://www.taifex.com.tw/cht/3/futDailyMarketExcel?commodity_id=TX"
   },
   "validation": [],
-  "raw_sha256": {},
-  "error": "no monthly TX rows parsed"
+  "raw_sha256": {
+    "report": "793560b02dd41a368c2584dfa241cb0996602ebcc502d1ce9ab570c41f07d34f",
+    "excel": "aea74a886accc2a4df28c2722376268eeda2e588276bfceb72d26c3bb092e2a1"
+  },
+  "content_type": {
+    "report": "text/html;charset=utf-8",
+    "excel": "text/html;charset=utf-8"
+  },
+  "error": "trade-date conflict report=2026/09/15 excel=2026/09/14"
 }
