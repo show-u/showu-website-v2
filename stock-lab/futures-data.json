@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-15T01:52:13.273095+00:00",
-  "status": "failed",
+  "generated_at": "2026-09-15T01:56:04.362969+00:00",
+  "status": "pending_sync",
   "source": "TAIFEX",
   "contract": "TX",
   "verified": false,
@@ -18,5 +18,10 @@
     "report": "text/html;charset=utf-8",
     "excel": "text/html;charset=utf-8"
   },
+  "source_dates": {
+    "report": "2026/09/15",
+    "excel": "2026/09/14"
+  },
+  "sync_reason": "official TAIFEX pages are on different trade dates; snapshot remains unverified",
   "error": "trade-date conflict report=2026/09/15 excel=2026/09/14"
 }
