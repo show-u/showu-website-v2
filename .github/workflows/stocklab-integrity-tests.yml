@@ -32,7 +32,7 @@ jobs:
           done
           python -m py_compile stock-lab/backtest-taiwan-v3.py
 
-      - name: StockLab Truth Rules v7 invariants
+      - name: StockLab Truth Rules v8 invariants
         run: |
           python - <<'PY'
           import json
@@ -60,22 +60,26 @@ jobs:
           validation=json.loads(R('stock-lab/model-validation-status.json'))
           result=json.loads(R('stock-lab/backtest-result.json'))
 
-          assert policy['version']==7 and policy['policy_name']=='StockLab Taiwan Truth Rules'
+          assert policy['version']==8 and policy['policy_name']=='StockLab Taiwan Truth Rules'
           required={
             'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY',
             'EXACT_SCHEMA_ONLY','FRESHNESS','PRICE_CROSS_CHECK','HISTORY_COMPLETENESS','NO_FAKE_CONFIDENCE',
             'TAIWAN_MICROSTRUCTURE','CORPORATE_ACTION_GATE','ACTIVE_RISK_STATUS','ACCOUNTING_CLASS_GATE',
             'MODEL_VALIDATION_GATE','FAIL_CLOSED','RAW_REDISTRIBUTION','AUDITABILITY',
-            'BUY_HOLDING_SEPARATION','TARGET_SESSION_BY_DATA_DATE','NO_UNBUYABLE_ENTRY_BANDS',
-            'POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','SCANNER_OBJECTIVE_SEPARATION',
-            'TOP10_REASON_REQUIRED','DIVIDEND_TRUTH'}
+            'BUY_HOLDING_SEPARATION','TARGET_SESSION_BY_DATA_DATE','NEXT_SESSION_INPUT_COMPLETENESS',
+            'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','NO_UNBUYABLE_ENTRY_BANDS','POSITION_INPUT_PROVENANCE',
+            'EXIT_MODEL_SEPARATION','SCANNER_OBJECTIVE_SEPARATION','TOP10_REASON_REQUIRED','DIVIDEND_TRUTH'}
           assert set(policy['absolute_invariants'])==required
           assert set(policy['provenance_classes'])=={'observed','user_observed','derived','model_estimate','unavailable'}
           oc=policy['output_contract']
-          for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_deep_support_as_current_buy','target_session_must_follow_verified_data_date','recommendation_requires_oos_pass','scanner_must_explain_reasons','scanner_must_explain_risks','scanner_must_not_emit_buy_price'):
+          for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_deep_support_as_current_buy','forbid_intraday_reprice_without_live_feed','next_session_requires_all_inputs_complete','target_session_must_follow_verified_data_date','recommendation_requires_oos_pass','scanner_must_explain_reasons','scanner_must_explain_risks','scanner_must_not_emit_buy_price'):
             assert oc[k] is True,k
           assert oc['score_is_probability'] is False
-          assert policy['workflow_contract']['buy']['time_rule'].startswith('08:30-09:00')
+          buy=policy['workflow_contract']['buy']
+          assert buy['time_rule'].startswith('08:30-09:00')
+          assert buy['refresh_policy']['attempts_taipei']==['14:20','14:50','15:20','15:50']
+          assert 'retrieval attempts' in buy['refresh_policy']['rule']
+          assert 'target_session_inputs_complete' in policy['prediction_requirements']['buy_session']['required']
           assert set(policy['workflow_contract']['holding']['required_user_inputs'])=={'ticker','average_cost','shares'}
           assert set(policy['workflow_contract']['scanner']['strategies'])=={'momentum','growth','income','total_return'}
           assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
@@ -93,12 +97,13 @@ jobs:
           assert policy['taiwan']['dividend']['cash_and_stock_dividend_separate'] is True
 
           # Runtime remains fail-closed until each independent model is validated.
-          assert 'hardPolicyVersion:7' in runtime
+          assert 'hardPolicyVersion:8' in runtime
           assert 'allowLocalFallback:false' in runtime
           assert 'productionPredictionReady:false' in runtime
           for s in ('licensedHistoricalOHLC:false','securityMaster:false','tradingCalendar:false','corporateActions:false','financialSchemaCoverage:false','taiwanRiskState:false','dividendData:false','buyModelOosValidation:false','holdingExitValidation:false','scannerMomentumOosValidation:false','scannerGrowthOosValidation:false','scannerIncomeOosValidation:false','scannerTotalReturnOosValidation:false'):
             assert s in runtime,s
           assert "import('./hard-policy.js')" in runtime
+          assert '09:00 後禁止重算' in runtime and '排程時間不是資料完成證明' in runtime
 
           # Buy and holding are separate workflows; legacy five-price entry architecture must not return.
           assert 'data-buy-plan' in router and 'TW-next-session-entry-v1' in router
@@ -120,13 +125,16 @@ jobs:
           assert '模型估算區間' not in top10 and 'entry_low' not in top10 and 'entry_high' not in top10
           assert "request('/v1/scan',{strategy:String(strategy)})" in api
           assert "scanner_momentum" in hard and "scanner_growth" in hard and "scanner_income" in hard and "scanner_total_return" in hard
-          assert 'version<7' in hard
+          assert 'version<8' in hard
+          assert 'targetInputsComplete!==true' in hard and "requestKind==='intraday_reprice'" in hard
+          assert 'target_session_inputs_complete' in hard and 'licensed_live_feed' in hard
 
           # Simplified UX invariants: three decision paths, diagnostics collapsed, holding-only horizon semantics.
-          for x in ('不知道買什麼','想買這檔','已持有','總量成本均價','目前持有股數','首次買入日','短／中／長只在持股分析使用','市場與資料詳情','dataHealthSummary','marketDetailsBody'):
+          for x in ('不知道買什麼','想買這檔','已持有','總量成本均價','目前持有股數','首次買入日','短／中／長只在持股分析使用','市場與資料詳情','dataHealthSummary','marketDetailsBody','查看持股狀態與出場條件'):
             assert x in idx,x
           for x in ('公開版架構','過渡本地 fallback','pending_sync','The read operation timed out'):
             assert x not in idx,x
+          assert '14:20、14:50、15:20、15:50' in idx
           assert '<details id="marketDetails"' in idx
           assert './holding-model.js' in idx and idx.rfind('./holding-model.js')<idx.rfind('./compliance-gate.js')
           assert "horizon.value='buy'" in ui
@@ -140,6 +148,8 @@ jobs:
           assert '不以舊資料、0、平均值、其他網站未驗證值或 AI 推測補齊' in compliance
           assert all(x in compliance for x in ('renderFacts','renderHoldingFacts','renderMarketFacts','holdingExitValidation 必須獨立 PASS'))
           assert all(x in compliance for x in ('legal_source_verified','price_verified','oos_validation_passed'))
+          assert '09:00 後若沒有合法即時／延遲行情' in compliance
+          assert '14:20、14:50、15:20、15:50' in compliance
 
           # Null/missing data cannot silently become zero.
           assert "if(v==null)return null" in app and "if(v==null)return null" in taiwan
@@ -153,6 +163,10 @@ jobs:
           assert all(x in cachewf for x in ('data_gov_dataset','licence_verified','OGDL-1.0','attribution','licensed-open-data-cache'))
           for ds in ('11549','11764','18420','91998','94831','11370','11373','11856','56510','94853','91967'):
             assert ds in cachewf,ds
+          for cron in ("20 6 * * 1-5","50 6 * * 1-5","20 7 * * 1-5","50 7 * * 1-5"):
+            assert cron in cachewf,cron
+          assert 'All source hashes unchanged; keep existing cache timestamp and bytes' in cachewf
+          assert 'Scheduled refresh is not treated as new data' in cachewf
 
           # Formal model families are separate and remain honestly blocked until legal data/OOS gates are ready.
           assert validation['schema_version']==2 and validation['architecture']=='buy-holding-strategy-scanner-v7'
@@ -170,7 +184,7 @@ jobs:
           for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
             assert forbidden not in backtest,forbidden
 
-          print('StockLab Taiwan Truth Rules v7 strategy-specific scanner invariants passed')
+          print('StockLab Taiwan Truth Rules v8 session-readiness and holding invariants passed')
           PY
 
       - name: Fail-closed behavior fixtures
@@ -178,11 +192,12 @@ jobs:
           python - <<'PY'
           import statistics
           def allowed(**gates):return bool(gates) and all(v is True for v in gates.values())
-          assert allowed(legal=True,fresh=True,verified=True,supported=True,oos=True)
-          assert not allowed(legal=False,fresh=True,verified=True,supported=True,oos=True)
-          assert not allowed(legal=None,fresh=True,verified=True,supported=True,oos=True)
-          assert not allowed(legal=True,fresh=True,verified=False,supported=True,oos=True)
-          assert not allowed(legal=True,fresh=True,verified=True,supported=True,oos=False)
+          assert allowed(legal=True,fresh=True,verified=True,supported=True,target_inputs=True,oos=True)
+          assert not allowed(legal=False,fresh=True,verified=True,supported=True,target_inputs=True,oos=True)
+          assert not allowed(legal=None,fresh=True,verified=True,supported=True,target_inputs=True,oos=True)
+          assert not allowed(legal=True,fresh=True,verified=False,supported=True,target_inputs=True,oos=True)
+          assert not allowed(legal=True,fresh=True,verified=True,supported=True,target_inputs=False,oos=True)
+          assert not allowed(legal=True,fresh=True,verified=True,supported=True,target_inputs=True,oos=False)
 
           def strict_num(v):
             if v is None:return None
@@ -198,8 +213,13 @@ jobs:
           expected_open=prior_close*(1+statistics.median(gaps))
           assert expected_open==4560.0 and expected_open!=4200.0
 
+          # Clock changes execution window, not source-date truth.
           base_date='2026-09-14';after_0900_source_date='2026-09-14'
           assert base_date==after_0900_source_date
+          refresh_attempt_happened=True;official_date_advanced=False;all_required_inputs_ready=False
+          assert refresh_attempt_happened and not official_date_advanced and not all_required_inputs_ready
+          licensed_live_feed=False;intraday_reprice_allowed=licensed_live_feed
+          assert intraday_reprice_allowed is False
 
           avg_cost,shares,close=4380.0,1000,4560.0
           assert avg_cost*shares==4380000
@@ -211,5 +231,5 @@ jobs:
           assert strict_num('0')==0
           candidate={'strategy':'income','reasons':['殖利率與歷史配息','盈餘可支應股利'],'risks':['除息後未必填息']}
           assert len(candidate['reasons'])>=2 and len(candidate['risks'])>=1
-          print('v7 fail-closed, data-date, holding and dividend truth fixtures passed')
+          print('v8 fail-closed, target-session readiness, holding and dividend truth fixtures passed')
           PY
