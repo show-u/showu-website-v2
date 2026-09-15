@@ -6,11 +6,13 @@
   "models": {
     "entry_decision_9plus3": {
       "status": "BLOCKED_DATA_LAYER",
+      "validation_protocol": "stock-lab/entry-validation-protocol.json",
       "reason": "The production entry contract requires nine verified entry factors plus verified US-market, TAIFEX TX and international-event contexts. Legal historical OHLC, TWSE institutional input, international-event feed, production-equivalent OOS validation, entry-range execution/reachability validation and confidence calibration are not all complete.",
       "required_before_pass": ["licensed historical OHLC", "supported security master", "trading calendar", "corporate-action adjustments", "Taiwan active risk states", "all nine entry factors verified", "verified US-market context", "verified TAIFEX TX context", "verified international-event context", "chronological OOS", "cost/slippage", "OOS entry-range touch/fill/reachability validation", "production-formula match", "untouched OOS confidence calibration"]
     },
     "entry_scanner_9plus3": {
       "status": "BLOCKED_DATA_LAYER",
+      "validation_protocol": "stock-lab/entry-validation-protocol.json",
       "reason": "TOP10 must use exactly the same 9+3 contract as single-stock entry analysis across a survivorship-safe TWSE+TPEx universe. No former horizon or objective ranking may substitute. Every displayed entry range must pass OOS touch/fill/reachability validation, and ranking confidence may not be fabricated from raw factor counts.",
       "required_before_pass": ["licensed survivorship-safe TWSE+TPEx universe/history", "all nine entry factors for every candidate", "verified US-market context", "verified TAIFEX TX context", "verified international-event context", "Taiwan active risk states", "chronological OOS", "benchmark", "OOS entry-range touch/fill/reachability validation", "production-formula match", "untouched OOS confidence calibration"]
     },
