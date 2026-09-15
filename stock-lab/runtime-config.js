@@ -3,7 +3,7 @@
 window.STOCKLAB_RUNTIME={
   apiBase:'',
   architecture:'backend-first-migration',
-  hardPolicyVersion:4,
+  hardPolicyVersion:5,
   allowLocalFallback:false,
   productionPredictionReady:false,
   gates:{
@@ -15,12 +15,12 @@ window.STOCKLAB_RUNTIME={
     oosValidation:false
   },
   blockers:[
-    '歷史 OHLC 自動使用授權尚未完成資料集層級驗證',
-    '普通股／ETF／ETN／TDR／特殊商品分類 Gate 尚未完成',
-    '除權息／減資／新上市無漲跌幅等參考價事件 Gate 尚未完成',
-    '金融／保險／證券期貨／金控／異業財報 schema 尚未完整覆蓋',
-    'TPEx 融資／融券與處置狀態目前尚未完整驗證，未知不得視為正常',
-    '正式樣本外驗證尚未建立在已確認合法的歷史資料源上'
+    '60 個月歷史 OHLC 尚未取得可明確重用／回測的授權資料源，因此正式 OOS 驗證維持 BLOCKED_LEGAL_SOURCE',
+    '普通股／ETF／ETN／TDR／特殊商品分類 Gate 尚未完成，未知商品不得硬套普通股模型',
+    '除權息可取得 OGDL 資料，但減資、首五日無漲跌幅、暫停／恢復交易等參考價事件尚未整合成完整 Gate',
+    '金融／保險／證券期貨／金控／異業財報 schema 尚未完整覆蓋；不能以一般業財報替代',
+    '注意／處置／信用交易等台股風險狀態需完成同交易日與有效期間驗證，未知不得視為正常',
+    '正式樣本外驗證尚未建立在合法且完整的歷史資料源上，任何研究分數都不是勝率或已驗證推薦'
   ]
 };
 window.STOCKLAB_HARD_READY=import('./hard-policy.js')
