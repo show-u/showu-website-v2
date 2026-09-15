@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -11,20 +11,26 @@
     "EXACT_SCHEMA_ONLY": "Scored structured data may be parsed only through registered exact field names/versioned schemas. Semantic guessing of unknown field names is forbidden.",
     "FRESHNESS": "Current-state outputs require the latest completed official trading session or latest required reporting period. Calendar-age tolerance must never relabel an old session as current.",
     "PRICE_CROSS_CHECK": "Price-based prediction requires same-security, same-session official close cross-check. Any mismatch blocks the prediction.",
-    "HISTORY_COMPLETENESS": "Partial historical downloads cannot silently become a valid series. Each horizon has a minimum valid-bar requirement and abnormal gaps block the prediction.",
+    "HISTORY_COMPLETENESS": "Partial historical downloads cannot silently become a valid series. Each model has a minimum valid-bar requirement and abnormal gaps block the prediction.",
     "NO_FAKE_CONFIDENCE": "Do not display confidence, probability, win probability or success rate unless calibrated from a statistically valid out-of-sample test with sample size and method disclosed.",
     "TAIWAN_MICROSTRUCTURE": "All executable prices must obey Taiwan tick size, reference-price/price-limit rules, trading-session rules and active restrictions applicable to that security.",
     "CORPORATE_ACTION_GATE": "Ex-right/ex-dividend, capital reduction, split, new listing/no-limit periods or other reference-price discontinuities require explicit official adjustment or the price prediction is blocked.",
     "ACTIVE_RISK_STATUS": "Attention/disposition/suspension states must be valid for the target trading date. Unknown status is not a clean status.",
     "ACCOUNTING_CLASS_GATE": "General, financial, insurance, securities/futures, holding-company and mixed-industry statements may not be treated as interchangeable. Unknown class receives no sector-financial score.",
-    "MODEL_VALIDATION_GATE": "A horizon whose out-of-sample status is FAIL or INSUFFICIENT must not be presented as a validated recommendation; at most it may be an explicitly unvalidated research estimate.",
+    "MODEL_VALIDATION_GATE": "A model whose out-of-sample status is FAIL or INSUFFICIENT must not be presented as a validated recommendation; at most it may be an explicitly unvalidated research estimate.",
     "FAIL_CLOSED": "When a required gate cannot be evaluated, the result is blocked. Unknown is never treated as pass.",
     "RAW_REDISTRIBUTION": "Raw official datasets may be mirrored publicly only when the specific dataset licence/authorisation permits redistribution and attribution obligations are satisfied.",
-    "AUDITABILITY": "Model version, source status, data date and blockers/warnings must be visible or recoverable for every generated result."
+    "AUDITABILITY": "Model version, source status, data date and blockers/warnings must be visible or recoverable for every generated result.",
+    "BUY_HOLDING_SEPARATION": "A buy-entry model and an existing-position exit model are different decisions. Short/mid/long structural support bands must never be shown as currently executable buy prices merely because they are below market.",
+    "TARGET_SESSION_BY_DATA_DATE": "The model's target trading session is determined from the latest verified completed official session, not from the user's clock alone. Clock time only controls whether an order type is currently executable.",
+    "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a wait/re-entry condition. It must not be labelled as a current buy recommendation unless the model can establish that the price is actionable for the target session.",
+    "POSITION_INPUT_PROVENANCE": "Holding cost, shares and buy date are user-supplied facts. They must be labelled as user input and never inferred from market data.",
+    "EXIT_MODEL_SEPARATION": "Exit timing must use the holder's cost basis, position size, holding duration, verified price structure and risk state. A former buy-entry band may not be renamed into an exit recommendation."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
-    "derived": "Deterministic calculation from identified observed inputs; formula and input dates must be known.",
+    "user_observed": "Value explicitly entered by the user, such as average cost, shares or buy date.",
+    "derived": "Deterministic calculation from identified observed/user-observed inputs; formula and input dates must be known.",
     "model_estimate": "Forecast/decision output from verified inputs; never labelled as official data.",
     "unavailable": "Missing, stale, legally blocked, schema-unknown or failed validation; never converted to a numeric factor."
   },
@@ -55,24 +61,61 @@
     "taifex_institution_contract": {"data_gov_dataset": 11596, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣期貨交易所", "redistribution": true}
   },
   "history_requirements": {
-    "preopen": {"minimum_valid_bars": 60, "minimum_gap_pairs": 40, "max_latest_age_calendar_days": 4},
-    "day": {"minimum_valid_bars": 60, "max_latest_age_calendar_days": 4},
-    "1m": {"minimum_valid_bars": 80, "max_latest_age_calendar_days": 4},
-    "3m": {"minimum_valid_bars": 120, "max_latest_age_calendar_days": 4},
-    "long": {"minimum_valid_bars": 220, "max_latest_age_calendar_days": 4},
+    "buy_session": {"minimum_valid_bars": 60, "minimum_gap_pairs": 40, "max_latest_age_calendar_days": 4},
+    "holding_short": {"minimum_valid_bars": 80, "max_latest_age_calendar_days": 4},
+    "holding_swing": {"minimum_valid_bars": 120, "max_latest_age_calendar_days": 4},
+    "holding_long": {"minimum_valid_bars": 220, "max_latest_age_calendar_days": 4},
     "max_unexplained_calendar_gap_days": 15
   },
-  "prediction_requirements": {
-    "preopen": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known"], "session_rule": "08:30-09:00 limit ROD only; after 09:00 the pre-open output is expired.", "missing_event_feed": "must be disclosed; never invent an all-clear event status"},
-    "day_entry": {"required": ["legal_source", "supported_security", "verified_latest_close", "sufficient_history", "active_disposition_state_known"]},
-    "short": {"required": ["legal_source", "supported_security", "verified_price", "sufficient_history", "monthly_revenue", "active_disposition_state_known"], "institution": "optional only when legal/source/date validated; missing factor stays missing"},
-    "swing": {"required": ["legal_source", "supported_security", "verified_price", "sufficient_history", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known"]},
-    "long": {"required": ["legal_source", "supported_security", "verified_price", "sufficient_history", "valuation", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known"]}
+  "workflow_contract": {
+    "buy": {
+      "purpose": "Decide whether and how to enter the next applicable trading session from the latest verified completed official session.",
+      "forbidden": ["short/mid/long deep support bands presented as current buy prices", "real-time wording without a licensed live feed", "automatic switch to tomorrow solely because clock passed 09:00 or 13:30"],
+      "time_rule": "08:30-09:00 controls whether limit ROD is currently executable. After 09:00 the same session plan may remain visible as a historical/reference plan, but must not be called a live executable quote. A new next-session plan is generated only after the official latest-session close has advanced and passed verification."
+    },
+    "holding": {
+      "required_user_inputs": ["ticker", "average_cost", "shares"],
+      "optional_user_inputs": ["first_buy_date", "intended_holding_horizon"],
+      "purpose": "Manage an existing position and decide hold/reduce/take-profit/exit conditions using the holder's own cost basis and verified market structure.",
+      "forbidden": ["renaming buy-entry bands as exit advice", "inferring user cost or shares", "claiming current unrealized P/L from stale or unverified price as if live"]
+    },
+    "scanner": {
+      "purpose": "Use horizon only to rank candidate characteristics and factor weights; horizon is not a promise of a fixed future buy price."
+    }
   },
-  "output_contract": {"missing_text": "資料未取得／未通過驗證", "forbid_synthetic_fill": true, "forbid_stale_as_current": true, "forbid_unverified_as_fact": true, "forbid_probability_without_calibration": true, "score_is_probability": false, "recommendation_requires_oos_pass": true},
-  "backtest_validation": {"requested_universe": 160, "minimum_valid_universe": 120, "minimum_valid_universe_ratio": 0.75, "minimum_oos_trades_per_mode": 100, "minimum_oos_unique_stocks_per_mode": 30, "costs_required": true, "chronological_oos_required": true, "oos_parameter_freeze_required": true, "insufficient_result_label": "INSUFFICIENT"},
+  "prediction_requirements": {
+    "buy_session": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known", "oos_validation_passed"], "order_rule": "08:30-09:00 limit ROD only. Outside that window, a stored/modelled pre-open value is reference-only, not an executable current quote."},
+    "holding_exit": {"required": ["user_average_cost", "user_shares", "legal_source", "supported_security", "verified_latest_close", "sufficient_ohlc_history", "corporate_action_checked", "active_disposition_state_known", "holding_exit_oos_validation_passed"]},
+    "scanner_short": {"required": ["legal_source", "supported_security", "verified_price", "monthly_revenue", "active_disposition_state_known", "oos_validation_passed"]},
+    "scanner_swing": {"required": ["legal_source", "supported_security", "verified_price", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known", "oos_validation_passed"]},
+    "scanner_long": {"required": ["legal_source", "supported_security", "verified_price", "valuation", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known", "oos_validation_passed"]}
+  },
+  "output_contract": {
+    "missing_text": "資料未取得／未通過驗證",
+    "forbid_synthetic_fill": true,
+    "forbid_stale_as_current": true,
+    "forbid_unverified_as_fact": true,
+    "forbid_probability_without_calibration": true,
+    "forbid_deep_support_as_current_buy": true,
+    "target_session_must_follow_verified_data_date": true,
+    "score_is_probability": false,
+    "recommendation_requires_oos_pass": true
+  },
+  "backtest_validation": {
+    "requested_universe": 160,
+    "minimum_valid_universe": 120,
+    "minimum_valid_universe_ratio": 0.75,
+    "minimum_oos_trades_per_model": 100,
+    "minimum_oos_unique_stocks_per_model": 30,
+    "costs_required": true,
+    "chronological_oos_required": true,
+    "oos_parameter_freeze_required": true,
+    "production_formula_match_required": true,
+    "insufficient_result_label": "INSUFFICIENT"
+  },
   "taiwan": {
-    "price": {"hosts": ["www.twse.com.tw", "openapi.twse.com.tw", "www.tpex.org.tw"], "cross_check_required": true, "latest_completed_session_required": true, "scored": true},
+    "regular_session": {"orders_begin": "08:30", "open": "09:00", "continuous_end": "13:25", "close": "13:30", "preopen_order_type": "limit ROD"},
+    "price": {"hosts": ["openapi.twse.com.tw", "www.tpex.org.tw"], "cross_check_required": true, "latest_completed_session_required": true, "scored": true},
     "twse_institution": {"source": "T86", "legal_status": "blocked_pending_explicit_licence_or_contract", "scored": false},
     "tpex_institution": {"must_match_stock_trade_date": true, "legal_status": "OGDL-1.0", "scored": true},
     "valuation": {"max_gap_from_stock_date_days": 7, "scored": true},
