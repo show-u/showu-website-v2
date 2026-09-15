@@ -18,8 +18,10 @@ window.STOCKLAB_RUNTIME={
     txFuturesContext:false,
     internationalEventFeed:false,
     entryDecisionOosValidation:false,
+    entryRangeExecutionValidation:false,
     entryConfidenceCalibration:false,
     holdingExitValidation:false,
+    holdingExitExecutionValidation:false,
     holdingConfidenceCalibration:false,
     entryScannerOosValidation:false,
     scannerConfidenceCalibration:false
@@ -34,7 +36,9 @@ window.STOCKLAB_RUNTIME={
     '台指期 TX 必須通過 TAIFEX 來源與交叉驗證；未通過就不能形成完整入場結論',
     '國際時事自動資料流尚未完成合法來源、事件日、發布日與交叉驗證；未知不得寫成「沒有重大事件」',
     'TOP10 與單股入場都使用同一套九項因子＋美股＋台指期＋國際時事模型；這些因素只供內部判斷，不在簡潔頁面逐項展開',
+    '進場區間必須在正式 OOS 中驗證觸價／成交可達性；常給買不到的深層支撐價，即使事後報酬漂亮也不得 PASS',
     '信心指數必須由正式樣本外結果校準；沒有 calibration PASS 時不得用正向因子數、主觀權重或 heuristic 冒充信心指數',
+    '持股出場價格也必須驗證實際執行邏輯；不得用事後才知道的高低點假裝可成交出場價',
     '每一檔 TOP10 必須保留可稽核的入榜理由與主要風險；公開頁面可簡化顯示，但後端 audit 不得刪除',
     '沒有合法即時／延遲行情授權時，09:00 後禁止重算「當日可執行價格」；只能保留原計畫作標示清楚的參考紀錄',
     '收盤後排程時間不是資料完成證明；只有官方資料日期前進且所有必要輸入都驗證通過，才能建立新計畫'
