@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
 
+# TPEx source health is a hard gate: failed/stale checks block OTC analysis.
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -24,7 +25,7 @@ jobs:
         run: |
           python - <<'PY'
           import json, urllib.request, hashlib
-          from datetime import datetime, timezone, timedelta
+          from datetime import datetime, timezone
           from urllib.parse import urlparse
 
           NOW=datetime.now(timezone.utc)
