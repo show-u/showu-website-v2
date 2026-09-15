@@ -9,12 +9,13 @@
   const avgCost=document.querySelector('#holdAvgCost');
   const shares=document.querySelector('#holdShares');
   const buyDate=document.querySelector('#holdBuyDate');
+  const holdResult=document.querySelector('#holdResult');
   if(!mode||!manual||!lotsBox||!rows||!addBtn||!summary||!avgCost||!shares||!buyDate)return;
 
   let seq=0;
   const num=v=>{const s=String(v??'').trim().replace(/,/g,'');if(!s)return null;const x=Number(s);return Number.isFinite(x)?x:null};
   const money=x=>Number(x).toLocaleString('zh-TW',{maximumFractionDigits:4});
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 
   function rowTemplate(){
     const id=++seq;
@@ -43,9 +44,12 @@
     const lots=lotRows().filter(x=>x.date&&x.price>0&&x.shares>0).map(x=>({date:x.date,price:x.price,shares:x.shares,note:x.note||null,provenance:'user_observed'}));
     return{mode:'lots',averageCost:a,shares:s,buyDate:d,lots,provenance:{averageCost:'derived_from_user_lots',shares:'derived_from_user_lots',buyDate:'derived_from_user_lots'}};
   }
+  function provenanceHtml(){return mode.value==='lots'?'<b>部位資料來源｜derived from user input</b><div class="mini">總股數、總成本均價與最早買入日由你輸入的逐筆「買入日＋價格＋目前仍持有股數」加權計算；不是券商原始欄位，也不是市場推估。</div>':'<b>部位資料來源｜user observed</b><div class="mini">成本均價、目前持有股數與首次買入日直接採用你輸入的券商／個人紀錄；系統不自行猜測。</div>'}
+  function stampProvenance(){if(!holdResult||!holdResult.querySelector('h2'))return;let n=holdResult.querySelector('[data-position-provenance]');if(!n){n=document.createElement('div');n.className='source-note compact-note';n.dataset.positionProvenance='1';const top=holdResult.querySelector('.toprow');top?.insertAdjacentElement('afterend',n)}if(n)n.innerHTML=provenanceHtml()}
 
   mode.addEventListener('change',setMode);addBtn.addEventListener('click',addRow);
   rows.addEventListener('input',recompute);rows.addEventListener('change',recompute);rows.addEventListener('click',e=>{const b=e.target.closest('[data-remove-lot]');if(!b)return;b.closest('.position-lot')?.remove();if(!rows.children.length)addRow();recompute()});
-  window.StockLabPositionInput={collect,recompute,mode:()=>mode.value};
+  if(holdResult)new MutationObserver(stampProvenance).observe(holdResult,{subtree:true,childList:true});
+  window.StockLabPositionInput={collect,recompute,mode:()=>mode.value,stampProvenance};
   setMode();
 })();
