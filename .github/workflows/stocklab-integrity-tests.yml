@@ -7,6 +7,7 @@ on:
       - '.github/workflows/update-market-snapshot.yml'
       - '.github/workflows/update-taifex-tx.yml'
       - '.github/workflows/update-tpex-health.yml'
+      - '.github/workflows/update-taiwan-factors.yml'
       - '.github/workflows/stocklab-integrity-tests.yml'
   workflow_dispatch:
 
@@ -28,13 +29,14 @@ jobs:
           node --check stock-lab/tpex.js
           node --check stock-lab/financials.js
           node --check stock-lab/integrity.js
+          node --check stock-lab/taiwan-model-v2.js
           node --check stock-lab/markets.js
           node --check stock-lab/futures.js
           node --check stock-lab/event-risk.js
           node --check stock-lab/top10-gate.js
           node --check stock-lab/market-router.js
           node --check stock-lab/ui-patch.js
-      - name: Source policy and snapshot checks
+      - name: Source policy and Taiwan-model checks
         run: |
           python - <<'PY'
           import json
@@ -46,6 +48,7 @@ jobs:
           tpex=Path('stock-lab/tpex.js').read_text(encoding='utf-8')
           fin=Path('stock-lab/financials.js').read_text(encoding='utf-8')
           integ=Path('stock-lab/integrity.js').read_text(encoding='utf-8')
+          taiwan=Path('stock-lab/taiwan-model-v2.js').read_text(encoding='utf-8')
           markets=Path('stock-lab/markets.js').read_text(encoding='utf-8')
           futures=Path('stock-lab/futures.js').read_text(encoding='utf-8')
           events=Path('stock-lab/event-risk.js').read_text(encoding='utf-8')
@@ -53,47 +56,46 @@ jobs:
           router=Path('stock-lab/market-router.js').read_text(encoding='utf-8')
           ui=Path('stock-lab/ui-patch.js').read_text(encoding='utf-8')
           policy=json.loads(Path('stock-lab/verification-policy.json').read_text(encoding='utf-8'))
-          for script in ('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js','ui-patch.js'):
-              assert f'./{script}' in idx, f'{script} not loaded by index'
+          scripts=('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','taiwan-model-v2.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js','ui-patch.js')
+          for script in scripts: assert f'./{script}' in idx, f'{script} not loaded by index'
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
           assert "Wilder RSI 14 v2" in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
-          assert "h!=='www.tpex.org.tw'" in tpex
-          assert 'tpex_mainboard_daily_close_quotes' in tpex
-          assert 'tpex_mainboard_peratio_analysis' in tpex
-          assert 'tpex_3insti_daily_trading' in tpex
-          assert 'mopsfin_t187ap05_O' in tpex
-          assert 'afterTrading/tradingStock' in tpex
-          assert 'tpex-health.json' in tpex and 'requireTpexHealth' in tpex
-          assert 't187ap06_L_ci' in fin and 't187ap07_L_ci' in fin
-          assert 'mopsfin_t187ap06_O_ci' in fin and 'mopsfin_t187ap07_O_ci' in fin
+          assert "h!=='www.tpex.org.tw'" in tpex and 'tpex_mainboard_daily_close_quotes' in tpex
+          assert 'tpex_mainboard_peratio_analysis' in tpex and 'tpex_3insti_daily_trading' in tpex and 'mopsfin_t187ap05_O' in tpex
+          assert 'afterTrading/tradingStock' in tpex and 'tpex-health.json' in tpex and 'requireTpexHealth' in tpex
+          assert 't187ap06_L_ci' in fin and 't187ap07_L_ci' in fin and 'mopsfin_t187ap06_O_ci' in fin and 'mopsfin_t187ap07_O_ci' in fin
           assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
+          # Taiwan methodology invariants: no legacy fixed-discount entry model and no universal PE35/70 core score.
+          assert 'entryLow:Math.max(lo,L.c*' not in app
+          assert 'entryHigh:L.c*' not in app
+          assert "h==='long'&&v?.pe" not in app
+          assert 'adaptiveBand' in taiwan and 'TW-structure-volatility-v3' in taiwan
+          assert 'pctRank' in taiwan and 'sectorFamily' in taiwan and "s==='24'" in taiwan and "s==='17'" in taiwan
+          assert 'margin_change_pct' in taiwan and 'short_change_pct' in taiwan and 'riskBlocked' in taiwan
+          assert 'a.integrity?.valuation?.ok' in taiwan
+          assert 'riskBlocked' in router and '處置股票：不產生掛單價格' in router
+          assert 'StockLabTaiwan?.loadFactors' in router
           assert 'schema_version!==3' in markets
           assert 'cross_check' in futures and 'TAIFEX' in futures
           assert policy['taiwan']['taiex_futures']['scored'] is False
           assert policy['external_market']['sox']['cross_check_host']=='fred.stlouisfed.org'
           assert policy['external_market']['nasdaq']['cross_check_host']=='fred.stlouisfed.org'
-          assert policy['news_events']['scored'] is False
-          assert set(policy['news_events']['levels'])=={'A','B','C','D'}
-          assert 'headline' in policy['news_events']['rule'].lower()
-          assert 'D｜排除' in events
-          assert 'TWSE 上市 + TPEx 上櫃' in gate
-          assert 'slice(0,40)' in gate
-          assert "threshold=h==='1m'?80:85" in gate
-          assert 'critical&&score>=threshold' in gate
-          assert 'gate.eligible' in gate and '資料完整度' in gate
+          assert policy['news_events']['scored'] is False and set(policy['news_events']['levels'])=={'A','B','C','D'}
+          assert 'headline' in policy['news_events']['rule'].lower() and 'D｜排除' in events
+          assert 'TWSE 上市 + TPEx 上櫃' in gate and 'slice(0,40)' in gate and "threshold=h==='1m'?80:85" in gate
+          assert 'critical&&score>=threshold' in gate and 'gate.eligible' in gate and '資料完整度' in gate
           assert "marketName='TPEx'" in router and "marketName='TWSE'" in router
           assert '不需要 ChatGPT／GPT 帳號' in idx
           assert '股票代號／股票名稱' in idx and '例如：2454 或 聯發科' in idx
           assert '開盤前｜當日掛單價格' in idx and '當沖｜今天' not in idx
           assert "h==='preopen'" in router and '今日建議掛單價格' in router and 'ATR14' in router and 'tickSize' in router
+          assert '固定價格百分比' in router
           assert 'browser-data.json' in ui and '建議入場價格區間' in ui and '現在價格' in ui and '最新官方收盤價' in ui
           snap=json.loads(Path('stock-lab/market-data.json').read_text(encoding='utf-8'))
           assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
           for k,(src,host) in expected.items():
-              x=snap['sources'][k]
-              assert x.get('source')==src
-              assert urlparse(x.get('url','')).hostname==host
+              x=snap['sources'][k]; assert x.get('source')==src; assert urlparse(x.get('url','')).hostname==host
           tx=json.loads(Path('stock-lab/futures-data.json').read_text(encoding='utf-8'))
           assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
           for u in tx.get('urls',{}).values(): assert urlparse(u).hostname=='www.taifex.com.tw'
@@ -102,7 +104,7 @@ jobs:
           if tph.get('verified'):
               assert tph.get('status')=='ok'
               assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
-          print('source-policy, pre-open plan, UI search, Wilder RSI, TPEx health and TOP10 gate checks passed')
+          print('Taiwan-specific model invariants and source policy passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
@@ -111,20 +113,10 @@ jobs:
           def same_date_change(old,new): return abs(new/old-1)*100 if old else 999
           assert rollback('2026-09-14','2026-09-15') is True
           assert rollback('2026-09-15','2026-09-15') is False
-          assert same_date_change(100,100.6)>0.5
-          assert same_date_change(100,100.1)<0.5
-          assert abs(-5.9)<25
-          assert abs(30)>25
-          assert abs(40)<60
-          assert abs(70)>60
-          a={'date':'2026/09/14','month':'202609','last':45780}
-          b={'date':'2026/09/14','month':'202609','last':45780}
-          assert a==b
-          b['last']=45781
-          assert a!=b
-          assert 80>=80 and 79<80
-          assert 85>=85 and 84<85
-          assert all([True,True,True]) is True
-          assert all([True,False,True]) is False
+          assert same_date_change(100,100.6)>0.5 and same_date_change(100,100.1)<0.5
+          assert abs(-5.9)<25 and abs(30)>25 and abs(40)<60 and abs(70)>60
+          a={'date':'2026/09/14','month':'202609','last':45780};b=dict(a);assert a==b;b['last']=45781;assert a!=b
+          assert 80>=80 and 79<80 and 85>=85 and 84<85
+          assert all([True,True,True]) is True and all([True,False,True]) is False
           print('anomaly, TAIFEX, TPEx health and completeness fixtures passed')
           PY
