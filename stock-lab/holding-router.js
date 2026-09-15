@@ -34,7 +34,9 @@
     const blockers=runtimeBlockers(p);if(blockers.length){box.innerHTML=positionFacts(code,name,p)+blockersHtml(blockers);return}
     const loader=window.StockLabLicensedHistory;if(!loader?.load){box.innerHTML=positionFacts(code,name,p)+blockersHtml(['合法歷史行情介面尚未接入']);return}
     const minimumBars=window.StockLabHolding?.requiredBars?.()||120;
-    const bars=await loader.load({code,market,minimumBars,from:p.buyDate});if(!Array.isArray(bars)||bars.length<minimumBars)throw Error(`合法歷史行情不足 ${minimumBars} 根，不能建立出場結構`);
+    // Load enough pre-entry history for structure. Holding age itself is still counted exactly from p.buyDate inside holdingProfile().
+    const bars=await loader.load({code,market,minimumBars});if(!Array.isArray(bars)||bars.length<minimumBars)throw Error(`合法歷史行情不足 ${minimumBars} 根，不能建立出場結構`);
+    if(!bars.some(x=>(x.iso||x.date)===p.buyDate))throw Error('首次買入日不在合法且驗證通過的交易日序列中；禁止用附近日期或日曆天數代替');
     let vf;if(market==='TPEx'){const snap=await window.StockLabTPEx?.tpexSnapshot?.(),row=(snap||[]).find(x=>String(x.code)===code);vf=await window.StockLabTPEx?.verifyTpex?.(code,bars,row)}else vf=await verify(code,bars);
     if(!vf?.complete)throw Error('最新官方收盤交叉驗證未通過');
     const sf=window.StockLabTaiwan?.stockFactor?window.StockLabTaiwan.stockFactor(code):{};
