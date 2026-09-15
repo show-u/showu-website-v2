@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -25,7 +25,10 @@
     "TARGET_SESSION_BY_DATA_DATE": "The model's target trading session is determined from the latest verified completed official session, not from the user's clock alone. Clock time only controls whether an order type is currently executable.",
     "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a wait/re-entry condition. It must not be labelled as a current buy recommendation unless the model can establish that the price is actionable for the target session.",
     "POSITION_INPUT_PROVENANCE": "Holding cost, shares and buy date are user-supplied facts. They must be labelled as user input and never inferred from market data.",
-    "EXIT_MODEL_SEPARATION": "Exit timing must use the holder's cost basis, position size, holding duration, verified price structure and risk state. A former buy-entry band may not be renamed into an exit recommendation."
+    "EXIT_MODEL_SEPARATION": "Exit timing must use the holder's cost basis, position size, holding duration, verified price structure and risk state. A former buy-entry band may not be renamed into an exit recommendation.",
+    "SCANNER_OBJECTIVE_SEPARATION": "Momentum, growth, income and long-term total-return scanners are separate models with separate required factors and OOS validation. A single ranking must never be relabelled as multiple investment horizons or objectives.",
+    "TOP10_REASON_REQUIRED": "Every TOP10 candidate must disclose at least two strategy-specific, source-traceable inclusion reasons and at least one material risk. A naked rank or score is insufficient.",
+    "DIVIDEND_TRUTH": "Cash dividends, stock dividends, dividend yield, distribution year and ex-right/ex-dividend dates must come from licensed verified datasets. Missing or not-yet-announced dividend fields remain unavailable and must never be converted to zero or guessed dates."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
@@ -49,6 +52,8 @@
     "twse_margin_short": {"data_gov_dataset": 11680, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
     "twse_disposition": {"data_gov_dataset": 29082, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
     "twse_attention_cumulative": {"data_gov_dataset": 33999, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true, "scoring": false},
+    "twse_dividend_distribution": {"data_gov_dataset": 31612, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true, "fields": ["cash_dividend_per_share", "stock_dividend_per_share", "distribution_year", "resolution_status"]},
+    "twse_exright_prepost": {"data_gov_dataset": 89748, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true, "fields": ["ex_date", "cash_dividend", "stock_dividend_ratio"]},
     "twse_t86_stock_institution": {"licence": "unverified", "redistribution": false, "automated_collection": false, "scoring": false, "status": "blocked_pending_explicit_licence_or_contract"},
     "tpex_daily_close": {"data_gov_dataset": 11370, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "tpex_valuation": {"data_gov_dataset": 11373, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
@@ -58,6 +63,9 @@
     "tpex_revenue": {"data_gov_dataset": 56510, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "tpex_income_general": {"data_gov_dataset": 94853, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "tpex_balance_general": {"data_gov_dataset": 91967, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_dividend_distribution": {"data_gov_dataset": 58285, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true, "fields": ["cash_dividend_per_share", "stock_dividend_per_share", "distribution_year", "resolution_status"]},
+    "tpex_exright_prepost": {"data_gov_dataset": 11634, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true, "fields": ["ex_date", "cash_dividend", "stock_dividend_ratio"]},
+    "tpex_exright_daily": {"data_gov_dataset": 11633, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true, "fields": ["ex_date", "reference_price", "cash_dividend", "stock_dividend"]},
     "taifex_institution_contract": {"data_gov_dataset": 11596, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣期貨交易所", "redistribution": true}
   },
   "history_requirements": {
@@ -65,6 +73,7 @@
     "holding_short": {"minimum_valid_bars": 80, "max_latest_age_calendar_days": 4},
     "holding_swing": {"minimum_valid_bars": 120, "max_latest_age_calendar_days": 4},
     "holding_long": {"minimum_valid_bars": 220, "max_latest_age_calendar_days": 4},
+    "dividend_history_min_years": 3,
     "max_unexplained_calendar_gap_days": 15
   },
   "workflow_contract": {
@@ -80,15 +89,24 @@
       "forbidden": ["renaming buy-entry bands as exit advice", "inferring user cost or shares", "claiming current unrealized P/L from stale or unverified price as if live"]
     },
     "scanner": {
-      "purpose": "Use horizon only to rank candidate characteristics and factor weights; horizon is not a promise of a fixed future buy price."
+      "purpose": "Find research candidates by investment objective, not by relabelling one generic ranking as short/mid/long.",
+      "strategies": {
+        "momentum": "Short-horizon price/volume/liquidity structure and Taiwan trading-risk state.",
+        "growth": "Revenue acceleration, earnings/financial quality and valuation sanity for growth/swing candidates.",
+        "income": "Verified cash/stock dividends, dividend yield, multi-year distribution history, earnings support and valuation.",
+        "total_return": "Growth, financial quality, valuation and verified dividend contribution combined for long-term total return."
+      },
+      "required_output": ["strategy", "at_least_two_reasons_per_candidate", "at_least_one_risk_per_candidate", "data_date", "model_version"],
+      "forbidden": ["same ordered list relabelled across strategies", "scanner entry-price bands", "dividend values inferred from missing fields"]
     }
   },
   "prediction_requirements": {
     "buy_session": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known", "oos_validation_passed"], "order_rule": "08:30-09:00 limit ROD only. Outside that window, a stored/modelled pre-open value is reference-only, not an executable current quote."},
     "holding_exit": {"required": ["user_average_cost", "user_shares", "legal_source", "supported_security", "verified_latest_close", "sufficient_ohlc_history", "corporate_action_checked", "active_disposition_state_known", "holding_exit_oos_validation_passed"]},
-    "scanner_short": {"required": ["legal_source", "supported_security", "verified_price", "monthly_revenue", "active_disposition_state_known", "oos_validation_passed"]},
-    "scanner_swing": {"required": ["legal_source", "supported_security", "verified_price", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known", "oos_validation_passed"]},
-    "scanner_long": {"required": ["legal_source", "supported_security", "verified_price", "valuation", "monthly_revenue", "quarterly_financials_if_supported_accounting_class", "active_disposition_state_known", "oos_validation_passed"]}
+    "scanner_momentum": {"required": ["legal_source", "supported_security", "verified_price", "technical_structure", "liquidity", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
+    "scanner_growth": {"required": ["legal_source", "supported_security", "verified_price", "monthly_revenue", "quarterly_financials_supported_accounting_class", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
+    "scanner_income": {"required": ["legal_source", "supported_security", "verified_price", "valuation", "verified_dividend_distribution", "minimum_three_year_dividend_history", "quarterly_financials_supported_accounting_class", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
+    "scanner_total_return": {"required": ["legal_source", "supported_security", "verified_price", "valuation", "monthly_revenue", "verified_dividend_distribution_even_if_zero", "quarterly_financials_supported_accounting_class", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]}
   },
   "output_contract": {
     "missing_text": "資料未取得／未通過驗證",
@@ -99,7 +117,10 @@
     "forbid_deep_support_as_current_buy": true,
     "target_session_must_follow_verified_data_date": true,
     "score_is_probability": false,
-    "recommendation_requires_oos_pass": true
+    "recommendation_requires_oos_pass": true,
+    "scanner_must_explain_reasons": true,
+    "scanner_must_explain_risks": true,
+    "scanner_must_not_emit_buy_price": true
   },
   "backtest_validation": {
     "requested_universe": 160,
@@ -111,6 +132,7 @@
     "chronological_oos_required": true,
     "oos_parameter_freeze_required": true,
     "production_formula_match_required": true,
+    "strategy_specific_oos_required": true,
     "insufficient_result_label": "INSUFFICIENT"
   },
   "taiwan": {
@@ -122,6 +144,7 @@
     "monthly_revenue": {"period_validation_required": true, "scored": true},
     "quarterly_income": {"report_date_required": true, "industry_schema_required": true, "scored": true},
     "quarterly_balance": {"report_date_required": true, "industry_schema_required": true, "scored": true},
+    "dividend": {"cash_and_stock_dividend_separate": true, "history_required_for_income_strategy": true, "unannounced_ex_date_is_null": true, "missing_is_not_zero": true},
     "taiex_futures": {"source": "TAIFEX", "cross_check_required": true, "scored": false}
   },
   "external_market": {
