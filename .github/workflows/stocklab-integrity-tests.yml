@@ -27,7 +27,7 @@ jobs:
 
       - name: JavaScript and Python syntax checks
         run: |
-          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk top10-gate market-router holding-model ui-patch hard-policy compliance-gate; do
+          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk top10-gate market-router holding-model ui-patch health hard-policy compliance-gate; do
             node --check "stock-lab/$f.js"
           done
           python -m py_compile stock-lab/backtest-taiwan-v3.py
@@ -49,6 +49,10 @@ jobs:
           app=R('stock-lab/app.js')
           taiwan=R('stock-lab/taiwan-model-v2.js')
           cache=R('stock-lab/same-origin-cache.js')
+          health=R('stock-lab/health.js')
+          markets=R('stock-lab/markets.js')
+          futures=R('stock-lab/futures.js')
+          events=R('stock-lab/event-risk.js')
           cachewf=R('.github/workflows/update-browser-cache.yml')
           backtest=R('stock-lab/backtest-taiwan-v3.py')
           validation=json.loads(R('stock-lab/model-validation-status.json'))
@@ -99,9 +103,17 @@ jobs:
           assert 'TW-holding-exit-structure-v1' in holding
           assert all(x in holding for x in ('averageCost','shares','buyDate','user_observed','持股出場模型尚未通過正式 OOS','window.StockLabHolding'))
           assert 'buy-entry' in holding
-          assert all(x in idx for x in ('目前總量成本均價','目前持有股數','首次買入日','持股分析才使用短／中／長','買入模型與持股出場模型完全分開'))
+
+          # Simplified UX invariants: three decision paths, diagnostics collapsed, holding-only horizon semantics.
+          for x in ('不知道買什麼','想買這檔','已持有','總量成本均價','目前持有股數','首次買入日','短／中／長只在持股分析使用','市場與資料詳情','dataHealthSummary','marketDetailsBody'):
+            assert x in idx,x
+          for x in ('公開版架構','過渡本地 fallback','pending_sync','The read operation timed out'):
+            assert x not in idx,x
+          assert '<details id="marketDetails"' in idx
           assert './holding-model.js' in idx and idx.rfind('./holding-model.js')<idx.rfind('./compliance-gate.js')
           assert "horizon.value='buy'" in ui
+          assert "get('./browser-data.json')" not in health
+          assert '#marketDetailsBody' in markets and '#marketDetailsBody' in futures and '#marketDetailsBody' in events
 
           # Final compliance layer must be loaded last and must not enable local prediction fallback.
           assert idx.rfind('./compliance-gate.js')>idx.rfind('./health.js')
@@ -125,7 +137,7 @@ jobs:
           for ds in ('11549','11764','18420','91998','94831','11370','11373','11856','56510','94853','91967'):
             assert ds in cachewf,ds
 
-          # Old 160-stock website-history diagnostic is disabled, not merely labelled blocked.
+          # Old website-history diagnostic is disabled; formal models remain independently blocked until legal OOS data exists.
           assert validation['architecture']=='buy-holding-separate-v6'
           assert validation['legacy_preopen_short_swing_long_result_is_production_valid'] is False
           assert set(validation['models'])=={'buy_session','holding_exit','scanner'}
@@ -139,7 +151,7 @@ jobs:
           for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
             assert forbidden not in backtest,forbidden
 
-          print('StockLab Taiwan Truth Rules v6 invariants passed')
+          print('StockLab Taiwan Truth Rules v6 and simplified UX invariants passed')
           PY
 
       - name: Fail-closed behavior fixtures
@@ -163,16 +175,13 @@ jobs:
             assert strict_num(v) is None,(v,strict_num(v))
           assert strict_num('0')==0 and strict_num('1,234.5')==1234.5
 
-          # Prior close anchors the next-session estimate; a deep support price cannot replace it.
           prior_close=4560.0;gaps=[-0.01,-0.005,0.0,0.0,0.005,0.01]*5
           expected_open=prior_close*(1+statistics.median(gaps))
           assert expected_open==4560.0 and expected_open!=4200.0
 
-          # Passing 09:00 never changes the observed source session.
           base_date='2026-09-14';after_0900_source_date='2026-09-14'
           assert base_date==after_0900_source_date
 
-          # Position facts are user inputs; no guessed fees/dividends/cost basis.
           avg_cost,shares,close=4380.0,1000,4560.0
           assert avg_cost*shares==4380000
           assert close*shares==4560000
