@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "principle": "Only exact registered field names may enter normalized observed data. Alternate/guessed field names are not permitted in scored or predictive paths.",
+  "schemas": {
+    "twse_stock_day_all_v1": {
+      "dataset": "twse_snapshot",
+      "data_gov_dataset": 11549,
+      "licence": "OGDL-1.0",
+      "market": "TWSE",
+      "required_fields": ["Date","Code","Name","TradeVolume","TradeValue","OpeningPrice","HighestPrice","LowestPrice","ClosingPrice","Change","Transaction"],
+      "mapping": {
+        "date": "Date",
+        "ticker": "Code",
+        "name": "Name",
+        "volume": "TradeVolume",
+        "trade_value": "TradeValue",
+        "open": "OpeningPrice",
+        "high": "HighestPrice",
+        "low": "LowestPrice",
+        "close": "ClosingPrice"
+      },
+      "date_calendar": "ROC compact YYYMMDD"
+    },
+    "tpex_mainboard_daily_close_quotes_v1": {
+      "dataset": "tpex_snapshot",
+      "data_gov_dataset": 11370,
+      "licence": "OGDL-1.0",
+      "market": "TPEx",
+      "required_fields": ["Date","SecuritiesCompanyCode","CompanyName","Close","Change","Open","High","Low","Average","TradingShares","TransactionAmount","TransactionNumber"],
+      "mapping": {
+        "date": "Date",
+        "ticker": "SecuritiesCompanyCode",
+        "name": "CompanyName",
+        "volume": "TradingShares",
+        "trade_value": "TransactionAmount",
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close"
+      },
+      "date_calendar": "ROC compact YYYMMDD"
+    }
+  }
+}
