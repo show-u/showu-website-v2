@@ -8,7 +8,11 @@ on:
       - 'stock-lab/archive-ogdl-daily.py'
       - 'stock-lab/official-schema-registry.json'
   schedule:
-    - cron: '40 7 * * 1-5'
+    # Taiwan time 14:20 / 14:50 / 15:20 / 15:50. These are retrieval attempts, not data-ready guarantees.
+    - cron: '20 6 * * 1-5'
+    - cron: '50 6 * * 1-5'
+    - cron: '20 7 * * 1-5'
+    - cron: '50 7 * * 1-5'
 
 permissions:
   contents: write
@@ -25,7 +29,7 @@ jobs:
       - name: Build licensed same-origin cache
         run: |
           python - <<'PY'
-          import csv, io, json, urllib.request, hashlib, time, http.client
+          import csv, io, json, urllib.request, hashlib, time, http.client, os
           from datetime import datetime, timezone
           from urllib.parse import urlparse
           UA={'User-Agent':'StockLab-browser-cache/3.0','Accept':'application/json,text/csv,*/*'}
@@ -89,8 +93,17 @@ jobs:
               'data_gov_dataset':spec['id'],'licence':'OGDL-1.0','licence_verified':True,
               'attribution':spec['attr']
             }
-          with open('stock-lab/browser-data.json','w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,separators=(',',':'))
-          print({k:v['count'] for k,v in out['meta'].items()})
+          path='stock-lab/browser-data.json'
+          old=None
+          try:
+            with open(path,encoding='utf-8') as f:old=json.load(f)
+          except Exception: pass
+          same=bool(old and old.get('schema_version')==2 and set(old.get('meta',{}))==set(out['meta']) and all(old['meta'][k].get('sha256')==out['meta'][k]['sha256'] for k in out['meta']))
+          if same:
+            print('All source hashes unchanged; keep existing cache timestamp and bytes. Scheduled refresh is not treated as new data.')
+          else:
+            with open(path,'w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,separators=(',',':'))
+            print('Cache updated from changed source bytes', {k:v['count'] for k,v in out['meta'].items()})
           PY
       - name: Validate legal provenance and cache
         run: |
