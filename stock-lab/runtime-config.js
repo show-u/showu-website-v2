@@ -11,7 +11,7 @@ window.STOCKLAB_RUNTIME={
     securityMaster:false,
     corporateActions:false,
     financialSchemaCoverage:false,
-    taiwanRiskState:true,
+    taiwanRiskState:false,
     oosValidation:false
   },
   blockers:[
@@ -19,6 +19,7 @@ window.STOCKLAB_RUNTIME={
     '普通股／ETF／ETN／TDR／特殊商品分類 Gate 尚未完成',
     '除權息／減資／新上市無漲跌幅等參考價事件 Gate 尚未完成',
     '金融／保險／證券期貨／金控／異業財報 schema 尚未完整覆蓋',
+    'TPEx 融資／融券與處置狀態目前尚未完整驗證，未知不得視為正常',
     '正式樣本外驗證尚未建立在已確認合法的歷史資料源上'
   ]
 };
