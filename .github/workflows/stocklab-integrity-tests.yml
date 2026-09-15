@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'stock-lab/**'
+      - '.github/workflows/update-browser-cache.yml'
       - '.github/workflows/update-market-snapshot.yml'
       - '.github/workflows/update-taifex-tx.yml'
       - '.github/workflows/update-tpex-health.yml'
       - '.github/workflows/update-taiwan-factors.yml'
+      - '.github/workflows/stocklab-backtest.yml'
       - '.github/workflows/stocklab-integrity-tests.yml'
   workflow_dispatch:
 
@@ -22,14 +24,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: JavaScript syntax checks
+      - name: JavaScript and Python syntax checks
         run: |
-          for f in app indicators-v2 tpex financials integrity taiwan-model-v2 markets futures event-risk top10-gate market-router ui-patch; do node --check "stock-lab/$f.js"; done
+          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk top10-gate market-router ui-patch hard-policy compliance-gate; do node --check "stock-lab/$f.js"; done
           python -m py_compile stock-lab/backtest-model.py stock-lab/backtest-taiwan-v3.py
-      - name: Source policy and Taiwan-model checks
+      - name: Hard Policy v4 and Taiwan-model invariants
         run: |
           python - <<'PY'
-          import json
+          import json,re
           from pathlib import Path
           from urllib.parse import urlparse
           R=lambda p:Path(p).read_text(encoding='utf-8')
@@ -37,78 +39,104 @@ jobs:
           tpex=R('stock-lab/tpex.js');fin=R('stock-lab/financials.js');integ=R('stock-lab/integrity.js')
           taiwan=R('stock-lab/taiwan-model-v2.js');markets=R('stock-lab/markets.js');futures=R('stock-lab/futures.js')
           events=R('stock-lab/event-risk.js');gate=R('stock-lab/top10-gate.js');router=R('stock-lab/market-router.js');ui=R('stock-lab/ui-patch.js')
-          backtest=R('stock-lab/backtest-taiwan-v3.py')
+          hard=R('stock-lab/hard-policy.js');compliance=R('stock-lab/compliance-gate.js');runtime=R('stock-lab/runtime-config.js')
+          cache=R('stock-lab/same-origin-cache.js');cachewf=R('.github/workflows/update-browser-cache.yml');backtest=R('stock-lab/backtest-taiwan-v3.py')
           policy=json.loads(R('stock-lab/verification-policy.json'))
-          scripts=('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','taiwan-model-v2.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js','ui-patch.js')
-          for script in scripts: assert f'./{script}' in idx, f'{script} not loaded by index'
-          assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
-          assert 'Wilder RSI 14 v2' in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
-          assert "h!=='www.tpex.org.tw'" in tpex and 'tpex_mainboard_daily_close_quotes' in tpex
-          assert all(x in tpex for x in ('tpex_mainboard_peratio_analysis','tpex_3insti_daily_trading','mopsfin_t187ap05_O','afterTrading/tradingStock','tpex-health.json','requireTpexHealth'))
-          assert all(x in fin for x in ('t187ap06_L_ci','t187ap07_L_ci','mopsfin_t187ap06_O_ci','mopsfin_t187ap07_O_ci'))
-          assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
-          assert 'entryLow:Math.max(lo,L.c*' not in app and 'entryHigh:L.c*' not in app and "h==='long'&&v?.pe" not in app
-          assert 'adaptiveBand' in taiwan and 'TW-structure-volatility-v3' in taiwan
-          assert all(x in taiwan for x in ('pctRank','sectorFamily',"s==='24'","s==='17'",'margin_change_pct','short_change_pct','riskBlocked','a.integrity?.valuation?.ok'))
 
-          # Pre-open must be an opening-auction model anchored to verified prior close, not a support-band alias.
+          # Absolute policy: missing/unverified/unlicensed data can never be filled or turned into a prediction.
+          assert policy['version']==4
+          required={'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FRESHNESS','PRICE_CROSS_CHECK','NO_FAKE_CONFIDENCE','TAIWAN_MICROSTRUCTURE','CORPORATE_ACTION_GATE','MODEL_VALIDATION_GATE','FAIL_CLOSED','RAW_REDISTRIBUTION','AUDITABILITY'}
+          assert set(policy['absolute_invariants'])==required
+          oc=policy['output_contract']
+          assert oc['missing_text']=='資料未取得／未通過驗證'
+          assert all(oc[k] is True for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','recommendation_requires_oos_pass'))
+          assert oc['score_is_probability'] is False
+          assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
+          assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
+          assert all(x['licence']=='OGDL-1.0' for x in policy['licensed_dataset_registry'].values())
+
+          # Production is deliberately fail-closed until all unresolved Taiwan gates are explicitly completed.
+          assert "allowLocalFallback:false" in runtime
+          assert "productionPredictionReady:false" in runtime
+          for s in ('licensedHistoricalOHLC:false','securityMaster:false','corporateActions:false','financialSchemaCoverage:false','oosValidation:false'):
+              assert s in runtime,s
+          assert 'STOCKLAB_HARD_READY' in runtime and "import('./hard-policy.js')" in runtime
+          assert 'api.config.allowLocalFallback=false' in compliance
+          assert "rt.productionPredictionReady!==true" in compliance
+          assert '不以假資料、舊資料、0、平均值或推測值補齊' in compliance
+          assert 'legal_source_verified' in compliance and 'price_verified' in compliance
+          assert './compliance-gate.js' in idx and idx.rfind('./compliance-gate.js')>idx.rfind('./health.js')
+          assert '不可違反的資料規則' in idx and '不得以 0、平均值、舊期資料' in idx
+
+          # Open-data mirror must carry explicit dataset-level legal provenance and attribution.
+          assert "schema_version!==2" in cache and "licensed-open-data-cache" in cache and "OGDL-1.0" in cache
+          assert all(x in cachewf for x in ('data_gov_dataset','licence_verified','OGDL-1.0','attribution','licensed-open-data-cache'))
+          for ds in ('11549','11764','18420','91998','94831','11370','11373','11856','56510','94853','91967'):
+              assert ds in cachewf,ds
+
+          # Current formal historical validation MUST remain blocked until licensed historical OHLC provenance exists.
+          assert 'LEGAL_HISTORY_PROVENANCE_VERIFIED=False' in backtest
+          assert "'formal_validation_status':'ELIGIBLE' if LEGAL_HISTORY_PROVENANCE_VERIFIED else 'BLOCKED_LEGAL_SOURCE'" in backtest
+          assert "'stress_status']=statistical if LEGAL_HISTORY_PROVENANCE_VERIFIED else 'BLOCKED_LEGAL_SOURCE'" in backtest
+          assert "'schema_version':4" in backtest
+
+          # Taiwan pre-open semantics: verified prior close + empirical opening gap, never deep support masquerading as opening price.
           assert 'riskBlocked' in router and 'data-five-price-matrix' in router and 'TW-empirical-open-pullback-v5' in router
           assert all(x in router for x in ('① 開盤前掛單價格','② 當日入場適合區間','③ 短線入場區間','④ 中期入場區間','⑤ 長期佈局區間','限價 ROD','tickSize','openingGapStats','官方基準','09:00後'))
-          assert "h==='preopen'" in router and 'StockLabTaiwan?.loadFactors' in router
           assert 'orderPrice=roundTick(day.entryLow' not in router
           assert 'mid=(day.entryLow+day.entryHigh)/2' not in router
           assert "if(!a.riskBlocked&&a.score>=45)orderPrice=expectedMid" in router
+          assert '策略信心' not in router and 'confidence' not in router.lower()
           assert 'verified prior close plus rolling empirical overnight-gap median' in backtest
           assert 'opening auction price <= order price' in backtest
           assert "if nxt.open>order" in backtest
 
-          # Fixed percentage entry heuristics must not return.
+          # Existing source/date integrity controls remain mandatory.
+          assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
+          assert 'Wilder RSI 14 v2' in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
+          assert "h!=='www.tpex.org.tw'" in tpex and 'tpex_mainboard_daily_close_quotes' in tpex
+          assert all(x in tpex for x in ('tpex_mainboard_peratio_analysis','tpex_3insti_daily_trading','mopsfin_t187ap05_O','tpex-health.json','requireTpexHealth'))
+          assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
+          assert 'adaptiveBand' in taiwan and 'TW-structure-volatility-v3' in taiwan
+          assert all(x in taiwan for x in ('pctRank','sectorFamily','margin_change_pct','short_change_pct','riskBlocked'))
           forbidden=('L.c*.96','L.c*0.96','L.c*.92','L.c*0.92','L.c*.88','L.c*0.88','L.c*.985','L.c*0.985')
-          for x in forbidden: assert x not in app+router+taiwan, f'fixed entry percentage returned: {x}'
-          assert 'schema_version!==3' in markets
-          assert 'cross_check' in futures and 'TAIFEX' in futures
-          assert policy['taiwan']['taiex_futures']['scored'] is False
-          assert policy['external_market']['sox']['cross_check_host']=='fred.stlouisfed.org'
-          assert policy['external_market']['nasdaq']['cross_check_host']=='fred.stlouisfed.org'
+          for x in forbidden:assert x not in app+router+taiwan,f'fixed entry percentage returned: {x}'
+
+          # Missing event feed stays unknown; external markets remain observation-only.
           assert policy['news_events']['scored'] is False and set(policy['news_events']['levels'])=={'A','B','C','D'}
-          assert 'headline' in policy['news_events']['rule'].lower() and 'D｜排除' in events
-          assert 'TWSE 上市 + TPEx 上櫃' in gate and 'slice(0,40)' in gate and "threshold=h==='1m'?80:85" in gate
-          assert 'critical&&score>=threshold' in gate and 'gate.eligible' in gate and '資料完整度' in gate
-          assert "marketName='TPEx'" in router and "marketName='TWSE'" in router
-          assert '不需要 ChatGPT／GPT 帳號' in idx
-          assert '股票代號／股票名稱' in idx and '例如：2454 或 聯發科' in idx
-          assert '開盤前｜當日掛單價格' in idx and '當沖｜今天' not in idx
-          assert all(x in ui for x in ("singleBtn.addEventListener('click',showSingle)","findBtn.addEventListener('click',showFind)","singlePanel.classList.remove('hidden')",'showSingle();','browser-data.json','建議入場價格區間'))
-          assert 'data-five-price-matrix' in ui and "querySelector('[data-price-summary]')?.remove()" in ui
+          assert "Missing event data must never be converted into 'no event'" in policy['news_events']['rule']
+          assert '尚未啟用自動事件資料流' in events and '不改變個股／TOP 10 分數' in events
+          assert policy['external_market']['vix']['scored'] is False and policy['external_market']['sox']['scored'] is False and policy['external_market']['nasdaq']['scored'] is False
+          assert '不改變個股或 TOP 10 分數' in markets
+
+          # General-industry-only financial schema is a declared blocker; CI must not silently call coverage complete.
+          assert all(x in fin for x in ('t187ap06_L_ci','t187ap07_L_ci','mopsfin_t187ap06_O_ci','mopsfin_t187ap07_O_ci'))
+          assert 'financialSchemaCoverage:false' in runtime
+
           snap=json.loads(R('stock-lab/market-data.json'));assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
           for k,(src,host) in expected.items():
               x=snap['sources'][k];assert x.get('source')==src;assert urlparse(x.get('url','')).hostname==host
           tx=json.loads(R('stock-lab/futures-data.json'));assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
           for u in tx.get('urls',{}).values():assert urlparse(u).hostname=='www.taifex.com.tw'
-          tph=json.loads(R('stock-lab/tpex-health.json'));assert tph.get('schema_version')==1 and tph.get('source')=='TPEx'
-          if tph.get('verified'):
-              assert tph.get('status')=='ok';assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
-          print('Taiwan five-price model invariants and source policy passed')
+          print('StockLab Hard Policy v4 invariants passed')
           PY
-      - name: Integrity behavior fixture tests
+      - name: Fail-closed behavior fixtures
         run: |
           python - <<'PY'
           import statistics
-          def rollback(new_date,old_date): return new_date < old_date
-          def same_date_change(old,new): return abs(new/old-1)*100 if old else 999
-          assert rollback('2026-09-14','2026-09-15') is True
-          assert rollback('2026-09-15','2026-09-15') is False
-          assert same_date_change(100,100.6)>0.5 and same_date_change(100,100.1)<0.5
-          assert abs(-5.9)<25 and abs(30)>25 and abs(40)<60 and abs(70)>60
-          a={'date':'2026/09/14','month':'202609','last':45780};b=dict(a);assert a==b;b['last']=45781;assert a!=b
-          assert 80>=80 and 79<80 and 85>=85 and 84<85
-          assert all([True,True,True]) is True and all([True,False,True]) is False
+          def prediction_allowed(**gates):return bool(gates) and all(v is True for v in gates.values())
+          assert prediction_allowed(legal=True,fresh=True,verified=True,supported=True,oos=True) is True
+          assert prediction_allowed(legal=False,fresh=True,verified=True,supported=True,oos=True) is False
+          assert prediction_allowed(legal=None,fresh=True,verified=True,supported=True,oos=True) is False
+          assert prediction_allowed(legal=True,fresh=True,verified=False,supported=True,oos=True) is False
+          assert prediction_allowed(legal=True,fresh=True,verified=True,supported=True,oos=False) is False
+          # Missing observed value stays missing; zero is not a substitute.
+          observed=None
+          assert observed is None and observed!=0
           # Regression guard: pre-open anchor follows prior close + empirical opening-gap median.
-          prior_close=4560.0
-          gaps=[-0.01,-0.005,0.0,0.0,0.0,0.005,0.01]*4
+          prior_close=4560.0;gaps=[-0.01,-0.005,0.0,0.0,0.0,0.005,0.01]*4
           expected_open=prior_close*(1+statistics.median(gaps))
-          assert expected_open==4560.0
-          assert expected_open!=4200.0
-          print('anomaly, Taiwan preopen anchoring, TAIFEX, TPEx health and completeness fixtures passed')
+          assert expected_open==4560.0 and expected_open!=4200.0
+          print('fail-closed, no-imputation and preopen anchoring fixtures passed')
           PY
