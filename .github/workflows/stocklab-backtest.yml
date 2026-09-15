@@ -8,6 +8,7 @@ on:
     paths:
       - 'stock-lab/backtest-taiwan-v3.py'
       - 'stock-lab/model-validation-status.json'
+      - 'stock-lab/holding-exit-validation-protocol.json'
       - 'stock-lab/backtest-result.json'
       - 'stock-lab/verification-policy.json'
       - 'stock-lab/runtime-config.js'
@@ -27,12 +28,13 @@ jobs:
           python-version: '3.12'
       - name: Syntax check
         run: python -m py_compile stock-lab/backtest-taiwan-v3.py
-      - name: Run fail-closed v9 model validation gate
+      - name: Run fail-closed v10 model validation gate
         run: |
           python stock-lab/backtest-taiwan-v3.py \
             --status-manifest stock-lab/model-validation-status.json \
+            --holding-protocol stock-lab/holding-exit-validation-protocol.json \
             --out /tmp/stocklab-validation.json
-      - name: Validate v9 separation, zero unlicensed collection, and no false PASS
+      - name: Validate v10 separation, zero unlicensed collection, and no false PASS
         run: |
           python - <<'PY'
           import json
@@ -40,11 +42,13 @@ jobs:
 
           x=json.load(open('/tmp/stocklab-validation.json',encoding='utf-8'))
           manifest=json.load(open('stock-lab/model-validation-status.json',encoding='utf-8'))
+          protocol=json.load(open('stock-lab/holding-exit-validation-protocol.json',encoding='utf-8'))
           expected={'entry_decision_9plus3','entry_scanner_9plus3','holding_exit'}
           allowed_nonpass={'FAIL','INSUFFICIENT','BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER'}
 
-          assert x['schema_version']==9 and x['architecture']=='unified-entry-holding-v9'
-          assert manifest['schema_version']==3 and manifest['architecture']==x['architecture']
+          assert x['schema_version']==10 and x['architecture']=='unified-entry-holding-v10'
+          assert manifest['schema_version']==4 and manifest['architecture']==x['architecture']
+          assert protocol['schema_version']==2 and protocol['protocol_name']=='StockLab TW-holding-exit-v4 OOS Protocol'
           assert x['formal_validation_status'] in allowed_nonpass
           assert x['network_history_collection_performed'] is False
           assert x['network_history_collection_disabled'] is True
@@ -54,6 +58,7 @@ jobs:
               'missing_data_imputed':False,
               'unverified_source_used_as_fact':False,
               'stale_data_relabelled_current':False,
+              'legacy_horizon_buy_model_used':False,
               'oos_required_for_recommendation':True}
           for name in expected:
               status=x['models'][name]
@@ -63,12 +68,14 @@ jobs:
               assert manifest['models'][name]['required_before_pass'],name
 
           src=Path('stock-lab/backtest-taiwan-v3.py').read_text(encoding='utf-8')
-          assert "ARCHITECTURE = 'unified-entry-holding-v9'" in src
+          assert "ARCHITECTURE = 'unified-entry-holding-v10'" in src
           assert 'NETWORK_HISTORY_COLLECTION_DISABLED = True' in src
+          assert "TW-holding-exit-v4 OOS Protocol" in src
           for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
               assert forbidden not in src,forbidden
+          assert not Path('stock-lab/backtest-model.py').exists(),'obsolete horizon backtest-model.py must stay deleted'
 
-          print('PASS: v9 validation gate preserved unified entry/scanner/holding non-PASS states, made zero unlicensed historical requests, and emitted no false PASS')
+          print('PASS: v10 validation gate preserved unified entry/scanner/holding non-PASS states, made zero unlicensed historical requests, and emitted no false PASS')
           PY
       - name: Publish validation artifact
         uses: actions/upload-artifact@v4
