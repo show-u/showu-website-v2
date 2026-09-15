@@ -6,17 +6,16 @@ function normalizePeriod(p){let s=String(p||'').replace(/\D/g,'');if(/^\d{6}$/.t
 function expectedRevenueMinPeriod(){const d=new Date(),cut=d.getDate()>=12?1:2,x=new Date(d.getFullYear(),d.getMonth()-cut,1);return `${x.getFullYear()}${String(x.getMonth()+1).padStart(2,'0')}`}
 function quarterFresh(q){if(!q)return false;const rd=parseTWDate(q.reportDate);if(!rd)return false;const age=(Date.now()-rd.getTime())/86400000;return age>=-2&&age<=220}
 function factorIntegrity(stockDate,v,i,r,q){const valuationDate=v?.date||null,revPeriod=normalizePeriod(r?.period),minRev=expectedRevenueMinPeriod(),instDate=i?.date||null;return{
- price:{ok:!!stockDate,date:stockDate,reason:stockDate?'TWSE 價格日已交叉驗證':'缺少交易日'},
- institution:{ok:!!i&&dateGap(instDate,stockDate)===0,date:instDate,reason:!i?'未取得 T86':dateGap(instDate,stockDate)===0?'法人日期與價格日一致':'法人日期不一致'},
- valuation:{ok:!!v&&dateGap(valuationDate,stockDate)<=7,date:valuationDate,reason:!v?'未取得 BWIBBU':dateGap(valuationDate,stockDate)<=7?'估值日期在容許範圍':'估值日期過舊或不一致'},
+ price:{ok:!!stockDate,date:stockDate,reason:stockDate?'價格日已交叉驗證':'缺少交易日'},
+ institution:{ok:!!i&&dateGap(instDate,stockDate)===0,date:instDate,reason:!i?'未取得法人資料':dateGap(instDate,stockDate)===0?'法人日期與價格日一致':'法人日期不一致'},
+ valuation:{ok:!!v&&dateGap(valuationDate,stockDate)<=7,date:valuationDate,reason:!v?'未取得估值':dateGap(valuationDate,stockDate)<=7?'估值日期在容許範圍':'估值日期過舊或不一致'},
  revenue:{ok:!!r&&!!revPeriod&&revPeriod>=minRev,date:revPeriod,reason:!r?'未取得月營收':revPeriod&&revPeriod>=minRev?'月營收期別符合最新應公布範圍':`月營收期別過舊，最低應為 ${minRev}`},
  quarterly:{ok:quarterFresh(q),date:q?`${q.year||'—'}Q${q.quarter||'—'} / ${q.reportDate||'—'}`:null,reason:q?(quarterFresh(q)?'季報期別與出表日有效':'季報出表日過舊或異常'):'未取得季報'}
 }}
 extras=async function(date){const base=await _integrityExtras(date);for(const [,x] of base.I||[])x.date=date;return base};
 combine=function(a,h,m,v,i,r){a=_integrityCombine(a,h,m,v,i,r);const integ=factorIntegrity(a.last?.iso,v,i,r,a.fin);let correction=0;
- // Undo only factor adjustments whose source-period validation failed.
  if(!integ.institution.ok&&a.instRatio!=null){if(a.instRatio>=.02)correction-=4;else if(a.instRatio<=-.02)correction+=4;a.inst=null;a.instRatio=null;}
- if(!integ.valuation.ok&&h==='long'&&v?.pe){if(v.pe<=35)correction-=3;else if(v.pe>=70)correction+=4;a.val=null;}
+ if(!integ.valuation.ok)a.val=null;
  if(!integ.revenue.ok&&r?.yoy!=null&&h!=='day'){const w=h==='3m'?5:h==='long'?4:3;if(r.yoy>=20)correction-=w;else if(r.yoy<=-15)correction+=w;a.rev=null;}
  if(!integ.quarterly.ok&&a.finDelta){correction-=a.finDelta;a.finDelta=0;a.fin=null;}
  a.integrity=integ;a.integrityCorrection=correction;a.score=Math.max(0,Math.min(100,a.score+correction));a.action=a.score>=75?'偏多｜等拉回可分批':a.score>=60?'觀察｜不追價':a.score>=45?'中性｜等待確認':'偏弱｜暫避';return a};
