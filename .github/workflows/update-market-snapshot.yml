@@ -20,15 +20,25 @@ jobs:
         run: |
           python - <<'PY'
           import csv, hashlib, io, json, re, urllib.request
+          from urllib.parse import urlparse
           from datetime import datetime, timezone, timedelta
 
           NOW=datetime.now(timezone.utc)
           UA={'User-Agent':'Mozilla/5.0 StockLab/2.0 (+source-verification)'}
-          def get(url):
+          OFFICIAL_HOSTS={
+            'vix':{'cdn.cboe.com'},
+            'sox':{'indexes.nasdaq.com'},
+            'nasdaq':{'indexes.nasdaq.com'}
+          }
+
+          def get(url,key):
               req=urllib.request.Request(url,headers=UA)
               with urllib.request.urlopen(req,timeout=30) as r:
                   body=r.read()
                   final_url=r.geturl()
+                  host=(urlparse(final_url).hostname or '').lower()
+                  if host not in OFFICIAL_HOSTS[key]:
+                      raise ValueError(f'unexpected final host: {host}')
                   ctype=r.headers.get('Content-Type','')
                   return body.decode('utf-8','replace'),final_url,ctype,hashlib.sha256(body).hexdigest()
 
@@ -39,7 +49,6 @@ jobs:
               raise ValueError(f'unsupported date: {s}')
 
           def valid_date(d):
-              # Official source date must never be materially in the future.
               if d > NOW + timedelta(days=1):
                   raise ValueError('source date is in the future')
               return True
@@ -59,10 +68,8 @@ jobs:
             }
           }
 
-          # CBOE VIX: official daily history CSV.
           try:
-              s=out['sources']['vix']; txt,final_url,ctype,sha=get(s['url'])
-              if 'cboe.com' not in urllib.request.urlparse(final_url).hostname if False else False: pass
+              s=out['sources']['vix']; txt,final_url,ctype,sha=get(s['url'],'vix')
               rows=list(csv.DictReader(io.StringIO(txt)))
               clean=[r for r in rows if r.get('DATE') and r.get('CLOSE')]
               if len(clean)<2: raise ValueError('insufficient CBOE rows')
@@ -82,7 +89,7 @@ jobs:
           def parse_nasdaq(key):
               s=out['sources'][key]
               try:
-                  html,final_url,ctype,sha=get(s['url'])
+                  html,final_url,ctype,sha=get(s['url'],key)
                   text=re.sub(r'<[^>]+>',' ',html)
                   text=re.sub(r'\s+',' ',text)
                   m=re.search(r'DATA AS OF\s+(\d{1,2}/\d{1,2}/\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?[\d,]+(?:\.\d+)?)\s+([+-]?[\d.]+)%',text,re.I)
@@ -93,7 +100,6 @@ jobs:
                   prev=value-chg
                   if prev<=0: raise ValueError('implied previous close invalid')
                   calc=chg/prev*100
-                  # Website percentage is rounded; tolerate only small rounding difference.
                   if abs(calc-pct)>0.20: raise ValueError(f'change percent mismatch: page={pct}, recomputed={calc:.4f}')
                   s.update({'date':date,'value':value,'change':chg,'change_pct':pct,'recomputed_change_pct':calc,
                             'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
@@ -116,17 +122,21 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          from urllib.parse import urlparse
           p='stock-lab/market-data.json'
           x=json.load(open(p,encoding='utf-8'))
           assert x.get('schema_version')==2
           assert x.get('status') in {'ok','partial','failed'}
           assert set(x.get('sources',{}))=={'vix','sox','nasdaq'}
+          expected={'vix':'CBOE','sox':'Nasdaq','nasdaq':'Nasdaq'}
+          hosts={'vix':'cdn.cboe.com','sox':'indexes.nasdaq.com','nasdaq':'indexes.nasdaq.com'}
           for k,v in x['sources'].items():
-              assert v.get('source') in {'CBOE','Nasdaq'}
-              assert str(v.get('url','')).startswith('https://')
+              assert v.get('source')==expected[k]
+              assert urlparse(v.get('url','')).hostname==hosts[k]
               if v.get('verified'):
                   assert v.get('date') and isinstance(v.get('value'),(int,float))
                   assert v.get('raw_sha256') and len(v['raw_sha256'])==64
+                  assert 'official_host' in v.get('validation',[])
           print('snapshot integrity checks passed')
           PY
       - name: Commit snapshot if changed
