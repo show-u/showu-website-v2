@@ -1,4 +1,4 @@
-// Backend-first API client. Core algorithms can move server-side without changing the UI.
+// Backend-first API client. Public UI exposes only the three current decision contracts.
 (function(){
   const rt=window.STOCKLAB_RUNTIME||{};
   const base=String(rt.apiBase||'').replace(/\/$/,'');
@@ -7,7 +7,7 @@
     enabled:/^https:\/\//i.test(base),
     allowLocalFallback:rt.allowLocalFallback!==false,
     timeoutMs:12000,
-    version:'2026.09-api-v2'
+    version:'2026.09-api-v3'
   };
   async function request(path,payload){
     if(!CFG.enabled)throw Object.assign(new Error('private backend not configured'),{code:'BACKEND_DISABLED'});
@@ -23,8 +23,9 @@
       return j;
     }finally{clearTimeout(timer)}
   }
-  async function analyze(code,horizon){return request('/v1/analyze',{ticker:String(code),horizon});}
-  async function scan(strategy){return request('/v1/scan',{strategy:String(strategy)});}
+  async function analyze(code){return request('/v1/analyze',{ticker:String(code),strategy:'entry'});}
+  async function scan(){return request('/v1/scan',{strategy:'entry'});}
+  async function holding(code,position){return request('/v1/holding',{ticker:String(code),position});}
   function mode(){return CFG.enabled?'private-backend':'local-fallback'}
-  window.StockLabAPI={config:CFG,request,analyze,scan,mode};
+  window.StockLabAPI={config:CFG,request,analyze,scan,holding,mode};
 })();
