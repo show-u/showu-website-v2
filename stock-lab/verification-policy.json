@@ -1,7 +1,7 @@
 {
-  "version": 8,
+  "version": 9,
   "policy_name": "StockLab Taiwan Truth Rules",
-  "principle": "No legally usable, source-identified, fresh and verified data => no scored factor or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
+  "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
     "TW_MARKET_SCOPE": "Only instruments and rules explicitly supported by the Taiwan model may be analysed. Unsupported security types, special trading states or market-rule exceptions must be blocked rather than forced through the common-stock model.",
     "LEGAL_SOURCE_ONLY": "Every scored or predictive input must come from a source whose access and intended use are explicitly permitted. A public URL is not by itself a licence.",
@@ -21,15 +21,19 @@
     "FAIL_CLOSED": "When a required gate cannot be evaluated, the result is blocked. Unknown is never treated as pass.",
     "RAW_REDISTRIBUTION": "Raw official datasets may be mirrored publicly only when the specific dataset licence/authorisation permits redistribution and attribution obligations are satisfied.",
     "AUDITABILITY": "Model version, source status, data date and blockers/warnings must be visible or recoverable for every generated result.",
-    "BUY_HOLDING_SEPARATION": "A buy-entry model and an existing-position exit model are different decisions. Short/mid/long structural support bands must never be shown as currently executable buy prices merely because they are below market.",
+    "ENTRY_DECISION_CONTRACT": "Single-stock entry analysis uses one contract only: nine core entry factors plus verified US-market context, TAIFEX TX context and international-event context. No investment-horizon label may create a different buy model or replace a missing factor.",
+    "ENTRY_NINE_FACTORS": "The nine required entry factors are price trend/support/resistance, volume, moving averages, institutional/chip data, MACD, RSI, KD/KDJ, MA crossovers and candlestick structure. Each factor must independently pass its own source/data gate.",
+    "ENTRY_EXTERNAL_CONTEXT": "A complete entry conclusion requires verified US-market context, verified TAIFEX TX context and verified international-event context. Missing event data is unknown, never 'no event'.",
+    "UNIFIED_ENTRY_SCANNER": "TOP10 uses the same 9+3 entry contract as single-stock analysis. It may not create separate rankings by investment horizon or silently use a different factor set.",
+    "BUY_HOLDING_SEPARATION": "A buy-entry model and an existing-position exit model are different decisions. A deep support level may not be presented as a currently executable buy price merely because it is below market.",
     "TARGET_SESSION_BY_DATA_DATE": "The model's target trading session is determined from the latest verified completed official session, not from the user's clock alone. Clock time only controls whether an order type is currently executable.",
     "NEXT_SESSION_INPUT_COMPLETENESS": "A new next-session plan may be generated only after the latest completed official session has advanced and every input required by that model for the target session has independently passed legal-source, schema, date and integrity checks. A scheduled refresh time is never proof that data is ready.",
     "NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED": "Without a legally licensed real-time or delayed market-data feed, StockLab must not create a revised same-day executable price after 09:00 or describe any stale/daily-close value as the current market price. The original plan may remain visible only as a labelled reference/audit record.",
     "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a wait/re-entry condition. It must not be labelled as a current buy recommendation unless the model can establish that the price is actionable for the target session.",
     "POSITION_INPUT_PROVENANCE": "Holding cost, shares and buy date are user-supplied facts. They must be labelled as user input and never inferred from market data.",
-    "EXIT_MODEL_SEPARATION": "Exit timing must use the holder's cost basis, position size, holding duration, verified price structure and risk state. A former buy-entry band may not be renamed into an exit recommendation.",
-    "SCANNER_OBJECTIVE_SEPARATION": "Momentum, growth, income and long-term total-return scanners are separate models with separate required factors and OOS validation. A single ranking must never be relabelled as multiple investment horizons or objectives.",
-    "TOP10_REASON_REQUIRED": "Every TOP10 candidate must disclose at least two strategy-specific, source-traceable inclusion reasons and at least one material risk. A naked rank or score is insufficient.",
+    "EXIT_MODEL_SEPARATION": "Exit timing must use the holder's cost basis, position size, verified price structure, the same verified market contexts and active risk state. A former buy-entry band may not be renamed into an exit recommendation.",
+    "TOP10_REASON_REQUIRED": "Every TOP10 candidate must disclose at least two source-traceable inclusion reasons and at least one material risk. A naked rank or score is insufficient.",
+    "NO_HORIZON_BUY_MODEL": "StockLab must not ask the user to choose short/mid/long as a condition for entry analysis or generate multiple buy prices by investment horizon.",
     "DIVIDEND_TRUTH": "Cash dividends, stock dividends, dividend yield, distribution year and ex-right/ex-dividend dates must come from licensed verified datasets. Missing or not-yet-announced dividend fields remain unavailable and must never be converted to zero or guessed dates."
   },
   "provenance_classes": {
@@ -54,9 +58,9 @@
     "twse_margin_short": {"data_gov_dataset": 11680, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
     "twse_disposition": {"data_gov_dataset": 29082, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
     "twse_attention_cumulative": {"data_gov_dataset": 33999, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true, "scoring": false},
-    "twse_dividend_distribution": {"data_gov_dataset": 31612, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true, "fields": ["cash_dividend_per_share", "stock_dividend_per_share", "distribution_year", "resolution_status"]},
-    "twse_exright_prepost": {"data_gov_dataset": 89748, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true, "fields": ["ex_date", "cash_dividend", "stock_dividend_ratio"]},
     "twse_t86_stock_institution": {"licence": "unverified", "redistribution": false, "automated_collection": false, "scoring": false, "status": "blocked_pending_explicit_licence_or_contract"},
+    "twse_dividend_distribution": {"data_gov_dataset": 31612, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
+    "twse_exright_prepost": {"data_gov_dataset": 89748, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣證券交易所", "redistribution": true},
     "tpex_daily_close": {"data_gov_dataset": 11370, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "tpex_valuation": {"data_gov_dataset": 11373, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "tpex_institution": {"data_gov_dataset": 11856, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
@@ -65,51 +69,41 @@
     "tpex_revenue": {"data_gov_dataset": 56510, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "tpex_income_general": {"data_gov_dataset": 94853, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "tpex_balance_general": {"data_gov_dataset": 91967, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
-    "tpex_dividend_distribution": {"data_gov_dataset": 58285, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true, "fields": ["cash_dividend_per_share", "stock_dividend_per_share", "distribution_year", "resolution_status"]},
-    "tpex_exright_prepost": {"data_gov_dataset": 11634, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true, "fields": ["ex_date", "cash_dividend", "stock_dividend_ratio"]},
-    "tpex_exright_daily": {"data_gov_dataset": 11633, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true, "fields": ["ex_date", "reference_price", "cash_dividend", "stock_dividend"]},
+    "tpex_dividend_distribution": {"data_gov_dataset": 58285, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_exright_prepost": {"data_gov_dataset": 11634, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
+    "tpex_exright_daily": {"data_gov_dataset": 11633, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／證券櫃檯買賣中心", "redistribution": true},
     "taifex_institution_contract": {"data_gov_dataset": 11596, "licence": "OGDL-1.0", "attribution": "金融監督管理委員會證券期貨局／臺灣期貨交易所", "redistribution": true}
   },
   "history_requirements": {
     "buy_session": {"minimum_valid_bars": 60, "minimum_gap_pairs": 40, "max_latest_age_calendar_days": 4},
-    "holding_short": {"minimum_valid_bars": 80, "max_latest_age_calendar_days": 4},
-    "holding_swing": {"minimum_valid_bars": 120, "max_latest_age_calendar_days": 4},
-    "holding_long": {"minimum_valid_bars": 220, "max_latest_age_calendar_days": 4},
-    "dividend_history_min_years": 3,
+    "holding_exit": {"minimum_valid_bars": 120, "max_latest_age_calendar_days": 4},
     "max_unexplained_calendar_gap_days": 15
   },
   "workflow_contract": {
     "buy": {
-      "purpose": "Decide whether and how to enter the next applicable trading session from the latest verified completed official session.",
-      "forbidden": ["short/mid/long deep support bands presented as current buy prices", "real-time wording without a licensed live feed", "automatic switch to tomorrow solely because clock passed 09:00 or 13:30", "same-day repricing after 09:00 without a licensed live/delayed feed"],
-      "time_rule": "08:30-09:00 controls whether a pre-open limit ROD plan is in its execution window. After 09:00 the same plan may remain visible only as a labelled reference/audit record; without a licensed live/delayed feed StockLab must not create a revised same-day executable price. A new next-session plan is generated only after the official latest completed-session date has advanced AND every model-required target-session input has passed its legal-source, schema, freshness and integrity gates.",
-      "refresh_policy": {"attempts_taipei": ["14:20", "14:50", "15:20", "15:50"], "rule": "These are retrieval attempts, not promises of availability. Plan readiness is determined by verified data dates and required-input completeness, never by the scheduled job time."}
+      "purpose": "Decide whether a stock is suitable to enter using the unified 9+3 contract, and only after that expose a next-session execution plan if all execution gates pass.",
+      "nine_factors": ["price_trend_support_resistance", "volume", "moving_averages", "institution_chips", "macd", "rsi", "kd_kdj", "ma_crossovers", "candlestick"],
+      "market_context": ["us_market", "taifex_tx", "international_events"],
+      "forbidden": ["investment-horizon-specific buy models", "deep support shown as current buy recommendation", "real-time wording without a licensed live feed", "automatic switch to tomorrow solely because clock passed 09:00 or 13:30", "same-day repricing after 09:00 without a licensed live/delayed feed", "filling a missing factor with guessed or stale data"],
+      "time_rule": "08:30-09:00 controls whether a pre-open limit ROD plan is in its execution window. After 09:00 the same plan may remain visible only as a labelled reference/audit record; without a licensed live/delayed feed StockLab must not create a revised same-day executable price. A new next-session plan is generated only after the official latest completed-session date has advanced AND every model-required target-session input has passed its legal-source, schema, freshness and integrity gates."
     },
     "holding": {
       "required_user_inputs": ["ticker", "average_cost", "shares"],
-      "optional_user_inputs": ["first_buy_date", "intended_holding_horizon"],
-      "purpose": "Manage an existing position and decide hold/reduce/take-profit/exit conditions using the holder's own cost basis and verified market structure.",
-      "forbidden": ["renaming buy-entry bands as exit advice", "inferring user cost or shares", "claiming current unrealized P/L from stale or unverified price as if live"]
+      "optional_user_inputs": ["first_buy_date"],
+      "purpose": "Manage an existing position and decide hold/reduce/take-profit/exit conditions using the holder's own cost basis and the verified 9+3 market context.",
+      "forbidden": ["asking for a short/mid/long horizon to select a different exit model", "renaming buy-entry bands as exit advice", "inferring user cost or shares", "claiming current unrealized P/L from stale or unverified price as if live"]
     },
     "scanner": {
-      "purpose": "Find research candidates by investment objective, not by relabelling one generic ranking as short/mid/long.",
-      "strategies": {
-        "momentum": "Short-horizon price/volume/liquidity structure and Taiwan trading-risk state.",
-        "growth": "Revenue acceleration, earnings/financial quality and valuation sanity for growth/swing candidates.",
-        "income": "Verified cash/stock dividends, dividend yield, multi-year distribution history, earnings support and valuation.",
-        "total_return": "Growth, financial quality, valuation and verified dividend contribution combined for long-term total return."
-      },
-      "required_output": ["strategy", "at_least_two_reasons_per_candidate", "at_least_one_risk_per_candidate", "data_date", "model_version"],
-      "forbidden": ["same ordered list relabelled across strategies", "scanner entry-price bands", "dividend values inferred from missing fields"]
+      "strategy": "entry",
+      "purpose": "Find research candidates with the exact same unified 9+3 entry contract used by single-stock analysis.",
+      "required_output": ["strategy_entry", "nine_verified_entry_factors", "verified_us_market_context", "verified_taifex_tx_context", "verified_international_event_context", "at_least_two_reasons_per_candidate", "at_least_one_risk_per_candidate", "data_date", "model_version"],
+      "forbidden": ["separate short/mid/long rankings", "different factor sets between scanner and single-stock entry", "scanner buy-price bands", "filling fewer than ten qualified candidates with failed candidates"]
     }
   },
   "prediction_requirements": {
-    "buy_session": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known", "target_session_inputs_complete", "oos_validation_passed"], "order_rule": "08:30-09:00 limit ROD only. Outside that window, a stored/modelled pre-open value is reference-only. No same-day repricing is allowed after 09:00 without a licensed live/delayed feed."},
-    "holding_exit": {"required": ["user_average_cost", "user_shares", "legal_source", "supported_security", "verified_latest_close", "sufficient_ohlc_history", "corporate_action_checked", "active_disposition_state_known", "holding_exit_oos_validation_passed"]},
-    "scanner_momentum": {"required": ["legal_source", "supported_security", "verified_price", "technical_structure", "liquidity", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
-    "scanner_growth": {"required": ["legal_source", "supported_security", "verified_price", "monthly_revenue", "quarterly_financials_supported_accounting_class", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
-    "scanner_income": {"required": ["legal_source", "supported_security", "verified_price", "valuation", "verified_dividend_distribution", "minimum_three_year_dividend_history", "quarterly_financials_supported_accounting_class", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]},
-    "scanner_total_return": {"required": ["legal_source", "supported_security", "verified_price", "valuation", "monthly_revenue", "verified_dividend_distribution_even_if_zero", "quarterly_financials_supported_accounting_class", "active_disposition_state_known", "strategy_specific_oos_validation_passed"]}
+    "buy_session": {"required": ["legal_source", "supported_security", "verified_latest_close", "same_session_cross_check", "sufficient_ohlc_history", "corporate_action_checked", "taiwan_tick_rule", "active_disposition_state_known", "nine_entry_factors_verified", "us_market_context_verified", "taifex_tx_context_verified", "international_events_verified", "target_session_inputs_complete", "oos_validation_passed"]},
+    "holding_exit": {"required": ["user_average_cost", "user_shares", "legal_source", "supported_security", "verified_latest_close", "sufficient_ohlc_history", "corporate_action_checked", "active_disposition_state_known", "entry_context_9plus3_complete", "holding_exit_oos_validation_passed"]},
+    "scanner_entry": {"required": ["legal_source", "supported_security", "verified_price", "nine_entry_factors_verified", "us_market_context_verified", "taifex_tx_context_verified", "international_events_verified", "active_disposition_state_known", "entry_scanner_oos_validation_passed"]}
   },
   "output_contract": {
     "missing_text": "資料未取得／未通過驗證",
@@ -119,10 +113,12 @@
     "forbid_probability_without_calibration": true,
     "forbid_deep_support_as_current_buy": true,
     "forbid_intraday_reprice_without_live_feed": true,
+    "forbid_horizon_specific_buy_prices": true,
     "next_session_requires_all_inputs_complete": true,
     "target_session_must_follow_verified_data_date": true,
     "score_is_probability": false,
     "recommendation_requires_oos_pass": true,
+    "scanner_must_use_same_entry_contract": true,
     "scanner_must_explain_reasons": true,
     "scanner_must_explain_risks": true,
     "scanner_must_not_emit_buy_price": true
@@ -137,25 +133,29 @@
     "chronological_oos_required": true,
     "oos_parameter_freeze_required": true,
     "production_formula_match_required": true,
-    "strategy_specific_oos_required": true,
+    "unified_entry_oos_required": true,
+    "holding_exit_oos_required": true,
     "insufficient_result_label": "INSUFFICIENT"
   },
   "taiwan": {
     "regular_session": {"orders_begin": "08:30", "open": "09:00", "continuous_end": "13:25", "close": "13:30", "preopen_order_type": "limit ROD"},
-    "price": {"hosts": ["openapi.twse.com.tw", "www.tpex.org.tw"], "cross_check_required": true, "latest_completed_session_required": true, "scored": true},
+    "price": {"cross_check_required": true, "latest_completed_session_required": true, "scored": true},
     "twse_institution": {"source": "T86", "legal_status": "blocked_pending_explicit_licence_or_contract", "scored": false},
     "tpex_institution": {"must_match_stock_trade_date": true, "legal_status": "OGDL-1.0", "scored": true},
     "valuation": {"max_gap_from_stock_date_days": 7, "scored": true},
     "monthly_revenue": {"period_validation_required": true, "scored": true},
     "quarterly_income": {"report_date_required": true, "industry_schema_required": true, "scored": true},
     "quarterly_balance": {"report_date_required": true, "industry_schema_required": true, "scored": true},
-    "dividend": {"cash_and_stock_dividend_separate": true, "history_required_for_income_strategy": true, "unannounced_ex_date_is_null": true, "missing_is_not_zero": true},
-    "taiex_futures": {"source": "TAIFEX", "cross_check_required": true, "scored": false}
+    "taiex_futures": {"source": "TAIFEX", "cross_check_required": true, "required_for_entry_context": true}
   },
   "external_market": {
-    "vix": {"source": "CBOE", "host": "cdn.cboe.com", "scored": false},
-    "sox": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_host": "fred.stlouisfed.org", "scored": false},
-    "nasdaq": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_host": "fred.stlouisfed.org", "scored": false}
+    "vix": {"source": "CBOE", "host": "cdn.cboe.com", "required_for_entry_context": true},
+    "sox": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_host": "fred.stlouisfed.org", "required_for_semiconductor_and_electronics": true},
+    "nasdaq": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_host": "fred.stlouisfed.org", "required_for_entry_context": true}
   },
-  "news_events": {"scored": false, "levels": {"A": "official filing/rule", "B": "company IR or two independent quality sources", "C": "single reputable media observation", "D": "excluded"}, "rule": "A headline alone must never alter a stock score. Missing event data must never be converted into 'no event'."}
+  "news_events": {
+    "required_for_entry_context": true,
+    "levels": {"A": "official filing/rule", "B": "company IR or two independent quality sources", "C": "single reputable media observation only", "D": "excluded"},
+    "rule": "Missing event data must remain unknown. A headline alone must never alter a stock decision, and missing event data must never be converted into 'no event'."
+  }
 }
