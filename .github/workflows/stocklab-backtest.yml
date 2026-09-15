@@ -15,7 +15,7 @@ permissions:
 jobs:
   backtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,24 +23,22 @@ jobs:
           python-version: '3.12'
       - name: Syntax check
         run: python -m py_compile stock-lab/backtest-model.py
-      - name: Run Taiwan-stock model comparison
-        run: python stock-lab/backtest-model.py 2409 2454 3017 3044 8210 --months 72 --out stock-lab/backtest-result.json
+      - name: Run broad Taiwan stress test
+        run: python stock-lab/backtest-model.py --months 60 --twse 50 --tpex 30 --out stock-lab/backtest-result.json
       - name: Validate result
         run: |
           python - <<'PY'
           import json
-          p='stock-lab/backtest-result.json'
-          x=json.load(open(p,encoding='utf-8'))
-          assert x['schema_version']==1 and x['market']=='TWSE'
-          assert len(x['tickers'])==5
-          for s in x['tickers']:
-              assert 'error' not in s, s
-              assert s['bars']>=250, s
-              for h in ('short','swing','long'):
-                  a=s['models'][h]['legacy_fixed_pct']
-                  b=s['models'][h]['adaptive_support_atr']
-                  assert a['n']>0 and b['n']>0, (s['ticker'],h,a,b)
-          print('backtest result validated')
+          x=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
+          assert x['schema_version']==2 and x['market']=='TWSE+TPEx'
+          assert x['universe_requested']>=60, x['universe_requested']
+          assert x['universe_ok']>=30, x['universe_ok']
+          for mode in ('preopen','short','swing','long'):
+              z=x['aggregate'][mode]
+              assert z['all']['n']>0, (mode,z)
+              assert z['oos']['n']>0, (mode,z)
+              assert z['stress_status'] in ('PASS','FAIL','INSUFFICIENT')
+          print('Broad Taiwan OOS backtest validated',x['universe_ok'],x['aggregate'])
           PY
       - name: Persist result when changed
         run: |
@@ -48,7 +46,7 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add stock-lab/backtest-result.json
-            git commit -m 'update StockLab Taiwan backtest result'
+            git commit -m 'update broad Taiwan out-of-sample backtest result'
             git pull --rebase origin main
             git push origin HEAD:main
           else
