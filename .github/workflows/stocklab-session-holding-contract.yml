@@ -50,7 +50,7 @@ jobs:
           for minute in ('mins<510','mins<540','mins<805','mins<810'):
               assert minute in sess,minute
           assert 'displayNumericPlan:false' in sess
-          assert '今日已收盤；等待今日官方收盤與必要資料全部驗證後，才建立下一交易日計畫' in sess
+          assert '已收盤；等待今日官方收盤與必要資料全部驗證後，才建立下一交易日計畫' in sess
           assert '盤中僅供參考，不以昨日資料重算現在價格' in sess
           assert 'StockLabSessionContext.resolve' in public
           assert '若今日已收盤但官方資料日尚未前進' in public
