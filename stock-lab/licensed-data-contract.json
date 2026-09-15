@@ -20,6 +20,7 @@
     "created_at",
     "provider",
     "license",
+    "sources",
     "coverage",
     "datasets"
   ],
@@ -39,6 +40,11 @@
       "local_storage_allowed"
     ],
     "rule": "A public URL, API endpoint or official website is not itself proof of reusable rights. evidence_reference must identify the applicable open-data licence, contract, written permission or equivalent legal basis."
+  },
+  "source_registry_contract": {
+    "required_fields": ["source_id", "provider", "dataset_name", "evidence_reference", "provenance_class"],
+    "required_provenance_class": "observed",
+    "rule": "Every source_id used by a dataset manifest entry or observation must resolve to one source registry entry."
   },
   "required_datasets": {
     "security_master": {
