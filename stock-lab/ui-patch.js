@@ -1,4 +1,4 @@
-// UX patch: three-way navigation plus ticker/company-name resolution for buy and holding workflows.
+// UX patch: three-way navigation plus exact-schema ticker/company-name resolution.
 (function(){
   const input=document.querySelector('#ticker'),btn=document.querySelector('#analyzeBtn'),horizon=document.querySelector('#horizon');
   const holdInput=document.querySelector('#holdTicker'),holdAnalyze=document.querySelector('#holdAnalyzeBtn');
@@ -11,21 +11,20 @@
     const showFind=()=>activate(findBtn,findPanel);
     const showHold=()=>{activate(holdBtn,holdPanel);holdInput?.focus()};
     singleBtn.addEventListener('click',showSingle);findBtn.addEventListener('click',showFind);holdBtn.addEventListener('click',showHold);
-    if(horizon)horizon.value='buy';
-    showFind();
+    if(horizon)horizon.value='buy';showFind();
   }
   let cachePromise=null;
   const norm=s=>String(s||'').trim().replace(/\s+/g,'').toLowerCase();
-  function pick(o,keys){for(const k of keys){if(o&&o[k]!=null&&String(o[k]).trim()!=='')return o[k]}return null}
+  const has=(o,k)=>o&&Object.prototype.hasOwnProperty.call(o,k);
   async function loadUniverse(){
     if(cachePromise)return cachePromise;
     cachePromise=fetch('./browser-data.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('股票名稱索引暫時無法讀取');return r.json()}).then(x=>{
-      if(x.schema_version!==2||x.source!=='licensed-open-data-cache')throw Error('股票名稱索引授權／版本驗證未通過');
+      if(x.schema_version!==2||x.source!=='licensed-open-data-cache'||!String(x.licence||'').includes('OGDL'))throw Error('股票名稱索引授權／版本驗證未通過');
       const d=x.datasets||{},out=[];
-      for(const r of d.twse_snapshot||[]){const code=String(r.Code||'').trim(),name=String(r.Name||'').trim();if(code&&name)out.push({code,name,market:'TWSE'})}
-      for(const r of d.tpex_snapshot||[]){const code=String(pick(r,['SecuritiesCompanyCode','Code','證券代號','代號'])||'').trim(),name=String(pick(r,['CompanyName','SecuritiesCompanyName','Name','證券名稱','名稱'])||'').trim();if(code&&name)out.push({code,name,market:'TPEx'})}
+      for(const r of d.twse_snapshot||[]){if(!has(r,'Code')||!has(r,'Name'))throw Error('TWSE 股票名稱索引 schema 不符');const code=String(r.Code).trim(),name=String(r.Name).trim();if(code&&name)out.push({code,name,market:'TWSE'})}
+      for(const r of d.tpex_snapshot||[]){if(!has(r,'SecuritiesCompanyCode')||!has(r,'CompanyName'))throw Error('TPEx 股票名稱索引 schema 不符');const code=String(r.SecuritiesCompanyCode).trim(),name=String(r.CompanyName).trim();if(code&&name)out.push({code,name,market:'TPEx'})}
       return out;
-    });return cachePromise;
+    }).catch(e=>{cachePromise=null;throw e});return cachePromise;
   }
   async function resolveQuery(q){
     q=String(q||'').trim();if(/^\d{4,6}$/.test(q))return q;if(!q)throw Error('請輸入股票代號或名稱');
@@ -35,11 +34,6 @@
   }
   if(input&&btn){const original=btn.onclick;btn.onclick=async function(ev){try{input.value=await resolveQuery(input.value)}catch(e){alert(e.message);return}return original&&original.call(this,ev)}}
   if(holdInput&&holdAnalyze){holdAnalyze.addEventListener('click',async()=>{try{holdInput.value=await resolveQuery(holdInput.value)}catch(e){alert(e.message)}} ,true)}
-
-  // Buy-plan and holding renderers own their presentation. Never inject the former legacy generic price summary.
-  const observer=new MutationObserver(()=>{
-    document.querySelector('#result [data-price-summary]')?.remove();
-    document.querySelectorAll('#top10 .item').forEach(item=>item.querySelectorAll('.mini').forEach(el=>{if(el.textContent.includes('收盤 '))el.textContent=el.textContent.replace('收盤 ','最新官方收盤 ')}));
-  });
+  const observer=new MutationObserver(()=>{document.querySelector('#result [data-price-summary]')?.remove();document.querySelectorAll('#top10 .item').forEach(item=>item.querySelectorAll('.mini').forEach(el=>{if(el.textContent.includes('收盤 '))el.textContent=el.textContent.replace('收盤 ','最新官方收盤 ')}))});
   observer.observe(document.body,{subtree:true,childList:true});
 })();
