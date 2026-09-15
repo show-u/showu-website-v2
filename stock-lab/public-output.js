@@ -35,6 +35,18 @@
     try{if(window.StockLabSessionContext?.resolve)session=await window.StockLabSessionContext.resolve({market:meta.market,dataDate:date})}catch(e){session={verified:false,state:'SESSION_GATE_ERROR',label:`交易時段驗證失敗：${e.message||e}`}}
     return{code,name:meta.name,market:meta.market,close,date,ageDays:age,session,provenance:'observed_close'};
   }
+  async function historyReadiness(){
+    const r=await fetch('./history-ogdl/manifest.json',{cache:'no-store'});if(!r.ok)throw Error('合法歷史資料準備度尚未取得');
+    const m=await r.json();if(m.schema_version!==1||m.source_class!=='ogdl_daily_archive'||m.licence!=='OGDL-1.0'||m.no_imputation!==true)throw Error('合法歷史資料準備度驗證未通過');
+    const q=m.coverage_metrics||{},o=q.overall||{},holdingMin=Number(q.holding_exit_minimum_valid_bars)||120,entryMin=Number(q.entry_minimum_valid_bars)||60;
+    return{firstDate:m.first_date||null,lastDate:m.last_date||null,entryMin,holdingMin,maxBars:Number(o.max_valid_bars_per_security)||0,securities:Number(o.securities)||0,securitiesEntry:Number(o.securities_at_least_60_bars)||0,securitiesHolding:Number(o.securities_at_least_120_bars)||0,historyOnly:q.thresholds_are_history_only===true,noOosPass:q.does_not_imply_model_oos_pass===true};
+  }
+  function historyHtml(h,buyDate){
+    if(!h)return `<div class=source-note><b>合法歷史資料準備度</b><div class=mini>${MISSING}</div></div>`;
+    const before=!!(buyDate&&h.firstDate&&buyDate<h.firstDate),max=Math.min(h.maxBars,h.holdingMin),ratio=h.holdingMin?Math.min(100,Math.round(max/h.holdingMin*100)):0;
+    const buyWarning=before?`<br><b class=bad>你的首次買入日 ${esc(buyDate)} 早於目前合法歷史起點 ${esc(h.firstDate)}。</b> 未取得有明確授權的歷史回補前，不能重建自買入日起的完整持股路徑；單靠未來每天累積也不會補回這段過去資料。`:'';
+    return `<div class=source-note><b>合法歷史資料準備度｜只代表資料量，不代表模型已通過</b><div class=mini>目前合法 OGDL 歷史 ${esc(h.firstDate||'—')}～${esc(h.lastDate||'—')}；全庫單一標的最多 ${money(h.maxBars)}/${money(h.holdingMin)} 根有效日線（約 ${ratio}% 的最低持股歷史門檻）；達到 ${money(h.holdingMin)} 根的標的 ${money(h.securitiesHolding)}/${money(h.securities)}。<br>即使日線數達標，仍需另外通過正式 OOS、出場可執行性、公司行動／注意處置與信心校準，才可解鎖出場建議。${buyWarning}</div></div>`;
+  }
   function sessionHtml(s){const label=s?.label||'交易時段未驗證',bad=s?.verified===false||s?.state==='WAITING_TODAY_CLOSE_DATA';return `<div class=source-note><b${bad?' class=bad':''}>交易時段／資料截點</b><div class=mini>${esc(label)}</div></div>`}
   const analyze=document.querySelector('#analyzeBtn');
   if(analyze){const original=analyze.onclick;analyze.onclick=async function(ev){
@@ -49,8 +61,9 @@
     const box=document.querySelector('#holdResult');try{
       const resolver=window.StockLabTickerResolver,x=await observation(document.querySelector('#holdTicker')?.value),p=window.StockLabPositionInput?.collect?.();if(!resolver||!p)throw Error('持股輸入尚未完成');
       const totalCost=p.averageCost*p.shares,closeBasedValue=x.close*p.shares,pnl=closeBasedValue-totalCost,pct=totalCost>0?100*pnl/totalCost:null;
-      box.innerHTML=`<div class=toprow><div><h2>${esc(x.name)}／${esc(x.code)}</h2><div class=muted>${esc(x.market)}｜已持有｜持倉管理</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>首次買入日</b>${p.buyDate?esc(p.buyDate):MISSING}</div><div class=sourceitem><b>持倉總成本</b>${money(totalCost)}<br><span class=mini>由你的成本均價 × 目前持有股數計算</span></div><div class=sourceitem><b>最新已驗證收盤</b>${esc(x.date)}｜${money(x.close)}<br><span class=mini>非盤中即時價</span></div><div class=sourceitem><b>依該收盤估算市值</b>${money(closeBasedValue)}</div><div class=sourceitem><b>依該收盤估算損益</b>${pnl>=0?'+':''}${money(pnl)}${pct!=null?`｜${pct>=0?'+':''}${pct.toFixed(2)}%`:''}</div><div class=sourceitem><b>出場判斷</b>尚未通過正式驗證</div></div>${sessionHtml(x.session)}<div class=source-note><b class=bad>暫不提供出場時機／觸發價格／信心指數</b><div class=mini>持股出場模型的正式 OOS、實際可執行性與信心校準尚未全部通過；目前只顯示你的持股事實、由持股事實推導的總成本，以及最新已驗證收盤所計算的估算市值與估算損益。不捏造賣出價，也不把收盤價冒充盤中即時價。</div></div>`;
+      let hist=null;try{hist=await historyReadiness()}catch{}
+      box.innerHTML=`<div class=toprow><div><h2>${esc(x.name)}／${esc(x.code)}</h2><div class=muted>${esc(x.market)}｜已持有｜持倉管理</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>首次買入日</b>${p.buyDate?esc(p.buyDate):MISSING}</div><div class=sourceitem><b>持倉總成本</b>${money(totalCost)}<br><span class=mini>由你的成本均價 × 目前持有股數計算</span></div><div class=sourceitem><b>最新已驗證收盤</b>${esc(x.date)}｜${money(x.close)}<br><span class=mini>非盤中即時價</span></div><div class=sourceitem><b>依該收盤估算市值</b>${money(closeBasedValue)}</div><div class=sourceitem><b>依該收盤估算損益</b>${pnl>=0?'+':''}${money(pnl)}${pct!=null?`｜${pct>=0?'+':''}${pct.toFixed(2)}%`:''}</div><div class=sourceitem><b>出場判斷</b>尚未通過正式驗證</div></div>${sessionHtml(x.session)}${historyHtml(hist,p.buyDate)}<div class=source-note><b class=bad>暫不提供出場時機／觸發價格／信心指數</b><div class=mini>持股出場模型的正式 OOS、實際可執行性與信心校準尚未全部通過；目前只顯示你的持股事實、由持股事實推導的總成本，以及最新已驗證收盤所計算的估算市值與估算損益。不捏造賣出價，也不把收盤價冒充盤中即時價。</div></div>`;
     }catch(e){box.innerHTML=conciseBlock('已持有','資料驗證未完成',e.message||String(e))}
   }}
-  window.StockLabPublicOutput={productionReady:ready,observation,normalizeTradeDate,dateAgeDays,sessionHtml};
+  window.StockLabPublicOutput={productionReady:ready,observation,historyReadiness,normalizeTradeDate,dateAgeDays,sessionHtml};
 })();
