@@ -2,14 +2,17 @@ name: Update StockLab licensed OHLC history
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '10 8 * * 1-5'
   push:
     paths:
+      - 'stock-lab/browser-data.json'
       - 'stock-lab/archive-ogdl-daily.py'
       - 'stock-lab/official-schema-registry.json'
       - 'stock-lab/history-source-contract.json'
       - '.github/workflows/update-ogdl-history.yml'
+
+concurrency:
+  group: stocklab-ogdl-history-writer
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -23,58 +26,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Fetch only licensed daily OHLC snapshots
+      - name: Validate committed licensed source cache
         run: |
           python - <<'PY'
-          import concurrent.futures,hashlib,http.client,json,time,urllib.request
-          from datetime import datetime,timezone
-          from urllib.parse import urlparse
-          SOURCES={
-            'twse_snapshot':{
-              'url':'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',
-              'data_gov_dataset':11549,
-              'attribution':'金融監督管理委員會證券期貨局／臺灣證券交易所'},
-            'tpex_snapshot':{
-              'url':'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',
-              'data_gov_dataset':11370,
-              'attribution':'金融監督管理委員會證券期貨局／證券櫃檯買賣中心'}
-          }
-          ALLOWED={'openapi.twse.com.tw','www.tpex.org.tw'}
-          UA={'User-Agent':'StockLab-OGDL-history/1.0','Accept':'application/json'}
-          def get(item):
-            name,s=item;last=None
-            for attempt in range(1,4):
-              try:
-                req=urllib.request.Request(s['url'],headers=UA)
-                with urllib.request.urlopen(req,timeout=45) as r:
-                  host=(urlparse(r.geturl()).hostname or '').lower()
-                  if host not in ALLOWED:raise RuntimeError(f'{name}: unexpected host {host}')
-                  expected=r.headers.get('Content-Length');raw=r.read()
-                  if expected and len(raw)!=int(expected):raise http.client.IncompleteRead(raw,int(expected)-len(raw))
-                  rows=json.loads(raw.decode('utf-8'))
-                  if not isinstance(rows,list) or not rows:raise RuntimeError(f'{name}: empty/non-list')
-                  return name,s,rows,hashlib.sha256(raw).hexdigest(),r.geturl()
-              except Exception as e:
-                last=e
-                if attempt<3:time.sleep(attempt*3)
-            raise RuntimeError(f'{name}: failed after retries: {last}')
-          out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'source':'licensed-open-data-cache','licence':'政府資料開放授權條款-第1版 / OGDL-1.0','licence_url':'https://data.gov.tw/license','datasets':{},'meta':{}}
-          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-            futures=[ex.submit(get,x) for x in SOURCES.items()]
-            for f in concurrent.futures.as_completed(futures):
-              name,s,rows,sha,final=f.result();out['datasets'][name]=rows;out['meta'][name]={'count':len(rows),'sha256':sha,'url':s['url'],'final_url':final,'data_gov_dataset':s['data_gov_dataset'],'licence':'OGDL-1.0','licence_verified':True,'attribution':s['attribution']}
-          assert set(out['datasets'])==set(SOURCES)
-          with open('/tmp/stocklab-daily-cache.json','w',encoding='utf-8') as f:json.dump(out,f,ensure_ascii=False,separators=(',',':'))
-          print({k:v['count'] for k,v in out['meta'].items()})
+          import json
+          x=json.load(open('stock-lab/browser-data.json',encoding='utf-8'))
+          assert x['schema_version']==2 and x['source']=='licensed-open-data-cache'
+          assert 'OGDL' in x['licence']
+          for name,dataset in (('twse_snapshot',11549),('tpex_snapshot',11370)):
+            rows=x['datasets'].get(name);m=x['meta'].get(name) or {}
+            assert isinstance(rows,list) and rows,name
+            assert m.get('data_gov_dataset')==dataset,(name,m)
+            assert m.get('licence')=='OGDL-1.0' and m.get('licence_verified') is True,name
+            assert m.get('attribution'),name
+            assert len(str(m.get('sha256') or ''))==64,name
+          print('committed OGDL cache validated; history will use these exact bytes only')
           PY
-      - name: Exact-schema archive
+      - name: Exact-schema archive from committed cache only
         run: |
           python -m py_compile stock-lab/archive-ogdl-daily.py
           python stock-lab/archive-ogdl-daily.py \
-            --cache /tmp/stocklab-daily-cache.json \
+            --cache stock-lab/browser-data.json \
             --registry stock-lab/official-schema-registry.json \
             --out-dir stock-lab/history-ogdl
-      - name: Validate no-imputation archive
+      - name: Validate no-imputation archive and readiness metrics
         run: |
           python - <<'PY'
           import json,glob
@@ -85,15 +60,20 @@ jobs:
           assert set(m['markets'])=={'TWSE','TPEx'}
           assert m['rows']>0 and m['first_date'] and m['last_date']
           assert glob.glob('stock-lab/history-ogdl/*.jsonl')
+          q=m.get('coverage_metrics') or {}
+          assert q.get('entry_minimum_valid_bars')==60
+          assert q.get('holding_exit_minimum_valid_bars')==120
+          assert q.get('thresholds_are_history_only') is True
+          assert q.get('does_not_imply_model_oos_pass') is True
           for market,dataset in (('TWSE',11549),('TPEx',11370)):
             x=m['latest_ingest'][market]
             assert x['accepted']>0 and x['data_gov_dataset']==dataset
             assert len(x['raw_sha256'])==64 and x['source_schema']
-          print('OGDL history ready',m['last_date'],m['rows'])
+          print('OGDL history validated',m['last_date'],m['rows'],q.get('overall'))
           PY
-      - name: Commit new official trade date only
+      - name: Commit history only when observations or manifest changed
         run: |
-          if [ -z "$(git status --porcelain -- stock-lab/history-ogdl)" ]; then echo 'No new official trade date'; exit 0; fi
+          if [ -z "$(git status --porcelain -- stock-lab/history-ogdl)" ]; then echo 'No new official observations'; exit 0; fi
           git config user.name 'stocklab-bot'
           git config user.email 'stocklab-bot@users.noreply.github.com'
           git add stock-lab/history-ogdl
