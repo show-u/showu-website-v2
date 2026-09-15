@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "generated_at": null,
+  "status": "pending",
+  "source": "TAIFEX",
+  "contract": "TX",
+  "verified": false,
+  "urls": {
+    "report": "https://www.taifex.com.tw/cht/3/futDailyMarketReport?commodityId=TX",
+    "excel": "https://www.taifex.com.tw/cht/3/futDailyMarketExcel?commodity_id=TX"
+  }
+}
