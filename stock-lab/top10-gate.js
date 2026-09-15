@@ -6,7 +6,7 @@
   const FACTOR_KEYS=['trend','volume','movingAverages','institution','macd','rsi','kd','crossovers','candlestick'];
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function renderCached(html){const box=document.querySelector('#top10');box.innerHTML=html;box.classList.remove('hidden')}
-  function blocked(reason){renderCached(`<div class=toprow><div><h2>入場候選 TOP 10</h2><div class=muted>目前無法形成正式排名</div></div></div><h3 class=bad>⛔ 暫不產生 TOP 10</h3><p>${esc(reason)}</p><div class=disclaimer><b>資料規則</b>任何必要資料、合法性、樣本外驗證、進場區間可達性或信心校準缺漏，都不以舊模型或假資料補排名。</div>`)}
+  function blocked(reason){renderCached(`<div class=toprow><div><h2>入場候選 TOP 10</h2><div class=muted>目前無法形成正式排名</div></div></div><h3 class=bad>⛔ 暫不產生正式候選</h3><p>${esc(reason)}</p><div class=disclaimer><b>資料規則</b>任何必要資料、合法性、樣本外驗證、進場區間可達性或信心校準缺漏，都不以舊模型或假資料補排名。</div>`)}
   function textArray(v){return Array.isArray(v)?v.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()):[]}
   function factorAuditOK(x){const f=x?.entry_factors;if(!f||typeof f!=='object')return false;return FACTOR_KEYS.every(k=>f[k]?.verified===true&&['positive','neutral','negative'].includes(f[k]?.state))}
   function contextAuditOK(x){const c=x?.market_context||{};return c.us?.verified===true&&c.tx?.verified===true&&c.events?.verified===true}
@@ -24,11 +24,13 @@
     return null;
   }
   function renderPrivate(j){
+    const hp=window.StockLabHardPolicy?.backendResult?.(j,'scanner');if(hp&&hp.ok!==true)return blocked(`後端 TOP10 未通過硬規則：${hp.blockers.join('；')}`);
     const d=j?.data||{},items=Array.isArray(d.items)?d.items:[];
     if(j?.ok!==true||!j?.model_version||!d.data_date||d.strategy!==STRATEGY||d.audit?.legal_source_verified!==true||d.audit?.price_verified!==true||d.audit?.oos_validation_passed!==true)return blocked('後端 TOP10 稽核尚未完整通過。');
     for(const x of items){const err=validateItem(x);if(err)return blocked(err)}
-    if(items.length<10)return blocked(`通過全部 Gate 的股票只有 ${items.length} 檔；不以不合格股票補滿 10 檔。`);
-    const html=`<div class=toprow><div><h2>目前值得研究的 TOP 10</h2><div class=muted>資料基準 ${esc(d.data_date)}｜${esc(j.model_version)}</div></div></div><div class=list>${items.slice(0,10).map((x,i)=>{const label=x.name?`${x.name}／${x.ticker||'—'}`:(x.ticker||'—'),ci=Math.round(Number(x.confidence_index));return `<div class=item><div class=rank>#${i+1}</div><div><b>${esc(label)}</b><div class=mini>${esc(x.exchange||'—')}｜${esc(x.action||'研究候選')}</div><div style="margin-top:5px"><b>進場 ${fmt(Number(x.entry_low))}–${fmt(Number(x.entry_high))}</b></div></div><div class=price>${ci}<br><span class=mini>信心指數<br>非上漲機率</span></div></div>`}).join('')}</div><div class=disclaimer><b>顯示原則</b>九項入場因子、美股、台指期與國際時事只在內部模型與 audit 使用，不在簡潔頁面逐項展開。</div>`;
+    const n=Math.min(10,items.length),title=n?`目前值得研究的 TOP ${n}`:'目前沒有通過全部 Gate 的入場候選';
+    const list=n?`<div class=list>${items.slice(0,10).map((x,i)=>{const label=x.name?`${x.name}／${x.ticker||'—'}`:(x.ticker||'—'),ci=Math.round(Number(x.confidence_index));return `<div class=item><div class=rank>#${i+1}</div><div><b>${esc(label)}</b><div class=mini>${esc(x.exchange||'—')}｜${esc(x.action||'研究候選')}</div><div style="margin-top:5px"><b>進場 ${fmt(Number(x.entry_low))}–${fmt(Number(x.entry_high))}</b></div></div><div class=price>${ci}<br><span class=mini>信心指數<br>非上漲機率</span></div></div>`}).join('')}</div>`:`<div class=source-note><b>0 檔符合</b><div class=mini>沒有任何股票通過完整資料、模型、可達性與信心校準 Gate；維持 0 檔，不補入較差或未驗證標的。</div></div>`;
+    const html=`<div class=toprow><div><h2>${title}</h2><div class=muted>資料基準 ${esc(d.data_date)}｜目標交易日 ${esc(d.target_session_date||'—')}｜${esc(j.model_version)}</div></div></div>${list}<div class=disclaimer><b>顯示原則</b>最多顯示 10 檔；只有 ${n} 檔合格就顯示 ${n} 檔。九項入場因子、美股、台指期與國際時事只在內部模型與 audit 使用，不在簡潔頁面逐項展開。</div>`;
     scanCache.set('private:entry',{at:Date.now(),html});renderCached(html)
   }
   btn.onclick=async()=>{
