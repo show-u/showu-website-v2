@@ -26,7 +26,7 @@ jobs:
           from urllib.parse import urlparse
           from datetime import datetime, timezone, timedelta
           NOW=datetime.now(timezone.utc)
-          UA={'User-Agent':'Mozilla/5.0 StockLab/3.2 (+source-verification)'}
+          UA={'User-Agent':'Mozilla/5.0 StockLab/3.3 (+source-verification)'}
           OFFICIAL_HOSTS={'vix':{'cdn.cboe.com'},'sox':{'indexes.nasdaq.com'},'nasdaq':{'indexes.nasdaq.com'}}
           EXPECTED_TYPES={'vix':('text/csv','text/plain','application/octet-stream'),'sox':('text/html','application/xhtml+xml'),'nasdaq':('text/html','application/xhtml+xml')}
           path='stock-lab/market-data.json'; previous={}
@@ -78,21 +78,23 @@ jobs:
           def parse_nasdaq(key):
               s=out['sources'][key]
               try:
-                  raw,final_url,ctype,sha=get(s['url'],key); text=re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',raw))
-                  m=re.search(r'DATA AS OF\s+(\d{1,2}/\d{1,2}/\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?[\d,]+(?:\.\d+)?)',text,re.I)
-                  if not m: raise ValueError('Nasdaq DATA AS OF date/value/change not found')
-                  date,value,chg=m.groups(); d=parse_date(date); validate_date(d); value=float(value.replace(',','')); chg=float(chg.replace(',',''))
-                  if value<=0: raise ValueError('index value must be positive')
-                  implied=value-chg
-                  candidates=[float(x.replace(',','')) for x in re.findall(r'Previous Close\s+([\d,]+(?:\.\d+)?)',text,re.I)]
-                  if not candidates: raise ValueError('Nasdaq Previous Close candidates not found')
-                  prev=min(candidates,key=lambda x:abs(x-implied)); tolerance=max(0.02,abs(implied)*0.000002)
-                  if abs(prev-implied)>tolerance: raise ValueError(f'no Previous Close candidate matches implied={implied:.4f}; nearest={prev}')
+                  raw,final_url,ctype,sha=get(s['url'],key)
+                  text=re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',raw))
+                  dm=re.search(r'DATA AS OF\s+(\d{1,2}/\d{1,2}/\d{4})',text,re.I)
+                  if not dm: raise ValueError('Nasdaq DATA AS OF date not found')
+                  date=dm.group(1); d=parse_date(date); validate_date(d)
+                  sm=re.search(r'Summary Details\s+Last\s+([\d,]+(?:\.\d+)?)\s+Net Change\s+([+\-]?[\d,]+(?:\.\d+)?)\s+Net Change\(%\)\s+([+\-]?[\d.]+)%.*?Previous Close\s+([\d,]+(?:\.\d+)?)',text,re.I)
+                  if not sm: raise ValueError('Nasdaq Summary Details block not found')
+                  value,chg,pct_page,prev=sm.groups(); value=float(value.replace(',','')); chg=float(chg.replace(',','')); pct_page=float(pct_page); prev=float(prev.replace(',',''))
+                  if value<=0 or prev<=0: raise ValueError('index value/previous close must be positive')
+                  implied=value-chg; tol=max(0.02,prev*0.000002)
+                  if abs(implied-prev)>tol: raise ValueError(f'Summary arithmetic mismatch last-change={implied:.4f}, previous={prev}')
                   calc=(value/prev-1)*100
+                  if abs(calc-pct_page)>0.03: raise ValueError(f'Summary percent mismatch page={pct_page}, recomputed={calc:.4f}')
                   if abs(calc)>25: raise ValueError(f'index daily move anomaly {calc:.2f}%')
-                  s.update({'date':date,'value':value,'previous_close':prev,'change':chg,'change_pct':calc,'previous_close_candidates':len(candidates),'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
-                  s['validation']=['official_host','content_type_ok','date_parsed','date_not_future','value_positive','previous_close_candidate_crosscheck','change_recomputed','daily_move_bounds_ok']; historical_guard(key,s); s['verified']=True
-              except Exception as e:s['error']=str(e)[:240]
+                  s.update({'date':date,'value':value,'previous_close':prev,'change':chg,'change_pct':calc,'page_change_pct':pct_page,'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
+                  s['validation']=['official_host','content_type_ok','date_parsed','date_not_future','summary_block_scoped','last_change_previous_crosscheck','change_percent_crosscheck','daily_move_bounds_ok']; historical_guard(key,s); s['verified']=True
+              except Exception as e:s['error']=str(e)[:260]
           parse_nasdaq('sox'); parse_nasdaq('nasdaq')
           verified=sum(1 for x in out['sources'].values() if x.get('verified')); out['status']='failed' if verified==0 else ('partial' if verified<len(out['sources']) else 'ok')
           with open(path,'w',encoding='utf-8') as f: json.dump(out,f,ensure_ascii=False,indent=2)
