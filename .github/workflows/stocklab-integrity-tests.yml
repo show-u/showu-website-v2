@@ -65,7 +65,6 @@ jobs:
           assert 'afterTrading/tradingStock' in tpex and 'tpex-health.json' in tpex and 'requireTpexHealth' in tpex
           assert 't187ap06_L_ci' in fin and 't187ap07_L_ci' in fin and 'mopsfin_t187ap06_O_ci' in fin and 'mopsfin_t187ap07_O_ci' in fin
           assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
-          # Taiwan methodology invariants: no legacy fixed-discount entry model and no universal PE35/70 core score.
           assert 'entryLow:Math.max(lo,L.c*' not in app
           assert 'entryHigh:L.c*' not in app
           assert "h==='long'&&v?.pe" not in app
@@ -87,6 +86,10 @@ jobs:
           assert "marketName='TPEx'" in router and "marketName='TWSE'" in router
           assert '不需要 ChatGPT／GPT 帳號' in idx
           assert '股票代號／股票名稱' in idx and '例如：2454 或 聯發科' in idx
+          assert 'id="singlePanel"' in idx and 'id="singleBtn"' in idx and 'id="findBtn"' in idx
+          assert "singleBtn.addEventListener('click',showSingle)" in ui
+          assert "findBtn.addEventListener('click',showFind)" in ui
+          assert "singlePanel.classList.remove('hidden')" in ui
           assert '開盤前｜當日掛單價格' in idx and '當沖｜今天' not in idx
           assert "h==='preopen'" in router and '今日建議掛單價格' in router and 'ATR14' in router and 'tickSize' in router
           assert '固定價格百分比' in router
