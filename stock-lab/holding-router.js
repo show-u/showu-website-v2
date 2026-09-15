@@ -8,7 +8,7 @@
   function positionFacts(code,name,p){
     return `<div class=toprow><div><h2>${esc(name?`${name}／${code}`:code)}</h2><div class=muted>已持有｜出場時機</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>首次買入日</b>${p.buyDate?esc(p.buyDate):MISSING}</div></div>`;
   }
-  function blockersHtml(reasons){return `<div class=source-note><b class=bad>暫不提供出場價格</b><div class=mini>${reasons.map(esc).join('；')}</div></div><div class=disclaimer><b>資料規則</b>持股事實可以保留，但必要資料、正式 OOS 或信心校準未通過時，不輸出可執行賣出價格，也不以假資料補值。</div>`}
+  function blockersHtml(reasons){return `<div class=source-note><b class=bad>暫不提供出場價格</b><div class=mini>${reasons.map(esc).join('；')}</div></div><div class=disclaimer><b>資料規則</b>持股事實可以保留，但必要資料、正式 OOS、出場執行驗證或信心校準未通過時，不輸出可執行賣出價格，也不以假資料補值。</div>`}
   function runtimeBlockers(p){
     const rt=window.STOCKLAB_RUNTIME||{},g=rt.gates||{},r=[];
     if(!p.buyDate)r.push('缺少首次買入日');
@@ -18,6 +18,7 @@
     if(g.corporateActions!==true)r.push('公司行動／參考價尚未完成');
     if(g.taiwanRiskState!==true)r.push('注意／處置等交易狀態尚未完成');
     if(g.holdingExitValidation!==true)r.push('持股出場模型正式 OOS 尚未通過');
+    if(g.holdingExitExecutionValidation!==true)r.push('出場價格／條件 OOS 可執行性尚未通過');
     if(g.holdingConfidenceCalibration!==true)r.push('持股信心指數尚未完成樣本外校準');
     return r
   }
@@ -44,6 +45,7 @@
     const hp=window.StockLabHardPolicy?.backendResult?.(j,'holding');if(hp&&hp.ok!==true)throw Error(`後端持股結果未通過硬規則：${hp.blockers.join('；')}`);
     const d=j?.data||{},name=d.name||'',facts=positionFacts(code,name,p),ci=Number(d.confidence_index),cal=d.audit?.confidence_calibrated===true,lo=Number(d.exit_low),hi=Number(d.exit_high),single=Number(d.exit_price),hasRange=Number.isFinite(lo)&&Number.isFinite(hi)&&lo>0&&hi>=lo,hasSingle=Number.isFinite(single)&&single>0;
     if(d.audit?.legal_source_verified!==true||d.audit?.price_verified!==true||d.audit?.oos_validation_passed!==true)throw Error('後端持股結果缺少合法來源／價格／OOS 驗證');
+    if(d.audit?.exit_execution_validated!==true)throw Error('後端出場價格／條件尚未通過 OOS 可執行性驗證');
     if(!cal||!Number.isFinite(ci)||ci<0||ci>100)throw Error('持股信心指數尚未完成正式樣本外校準');
     if(!hasRange&&!hasSingle)throw Error('後端沒有提供有效的出場價格／區間');
     const exitText=hasRange?`${money(lo)}–${money(hi)}`:money(single),pnl=d.unrealized_pnl!=null?money(d.unrealized_pnl):MISSING,pct=d.unrealized_pnl_pct!=null?`${Number(d.unrealized_pnl_pct).toFixed(2)}%`:MISSING;
