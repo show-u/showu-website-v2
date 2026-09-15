@@ -1,0 +1,87 @@
+name: StockLab no-bypass truth gate
+
+on:
+  push:
+    paths:
+      - 'stock-lab/**'
+      - '.github/workflows/stocklab-no-bypass.yml'
+  workflow_dispatch:
+
+jobs:
+  no-bypass:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enforce Taiwan truth and no-bypass invariants
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          R=lambda p:Path(p).read_text(encoding='utf-8')
+          idx=R('stock-lab/index.html')
+          router=R('stock-lab/market-router.js')
+          holding=R('stock-lab/holding-router.js')
+          top10=R('stock-lab/top10-gate.js')
+          pos=R('stock-lab/position-input.js')
+          cache=R('stock-lab/same-origin-cache.js')
+          hard=R('stock-lab/hard-policy.js')
+          runtime=R('stock-lab/runtime-config.js')
+          policy=json.loads(R('stock-lab/verification-policy.json'))
+
+          # 1. Old horizon-specific buy-price UX must never return.
+          banned=('短線入場區間','中期入場區間','長期佈局區間','fivePricePlan','data-five-price-matrix','id="horizon"','scanHorizon','<option value="1m"','<option value="3m"','<option value="long"')
+          for x in banned:
+              assert x not in idx+router+top10, f'legacy horizon buy path returned: {x}'
+
+          # 2. Executable buy/scan/holding numbers are backend-only.
+          assert 'api.analyze(code)' in router
+          assert 'api.scan()' in top10
+          assert 'api.holding(code,p)' in holding
+          assert '正式私有分析後端尚未啟用' in router+top10+holding
+          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan','localHolding(','StockLabHolding?.analyze','StockLabLicensedHistory'):
+              assert forbidden not in router+holding, f'local production formula bypass returned: {forbidden}'
+
+          # Strip comments before checking that a hard-coded OOS PASS cannot execute in browser holding route.
+          executable='\n'.join(line for line in holding.splitlines() if not line.lstrip().startswith('//'))
+          assert "oosStatus:'PASS'" not in executable
+          assert 'imputation_used===true' in holding
+          assert "backendResult(j,'holding')" in holding
+
+          # 3. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
+          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'):
+              assert x in pos,x
+          assert 'market-data inference' in pos
+          assert 'averageCost:a' in pos and 'shares:s' in pos
+
+          # 4. Same-origin data must be explicitly licensed and has no network fallback.
+          assert "source!=='licensed-open-data-cache'" in cache
+          assert "licence!=='政府資料開放授權條款-第1版 / OGDL-1.0'" in cache
+          assert 'licence_verified!==true' in cache
+          assert 'data_gov_dataset' in cache and 'attribution' in cache
+          assert 'No remote fallback' in cache
+          assert 'remoteFallback:false' in cache
+          assert 'remoteJget' not in cache
+
+          # 5. TOP10 may not silently compute a browser-local replacement ranking.
+          for forbidden in ('jget(','hist(','tech(','combine(','adaptiveBand','entryLow','entryHigh'):
+              assert forbidden not in top10, f'local TOP10 fallback returned: {forbidden}'
+          assert 'oos_validation_passed!==true' in top10
+          assert 'entry_range_execution_validated!==true' in top10
+          assert 'confidence_calibrated!==true' in top10
+
+          # 6. Hard policy rejects missing legality, imputation, unverified OOS, uncalibrated confidence.
+          for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
+              assert x in hard,x
+          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS'):
+              assert k in policy['absolute_invariants'],k
+
+          # 7. Public runtime remains closed until independently validated production gates are changed deliberately.
+          assert 'allowLocalFallback:false' in runtime
+          assert 'productionPredictionReady:false' in runtime
+
+          print('StockLab no-bypass truth gate passed')
+          PY
