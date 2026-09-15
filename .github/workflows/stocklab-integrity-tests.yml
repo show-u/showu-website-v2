@@ -26,7 +26,8 @@ jobs:
 
       - name: Syntax checks
         run: |
-          for f in app indicators-v2 tpex financials same-origin-cache integrity taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate api-client runtime-config; do
+          for f in app tpex same-origin-cache taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate api-client runtime-config; do
+            test -f "stock-lab/$f.js"
             node --check "stock-lab/$f.js"
           done
           python -m py_compile stock-lab/backtest-taiwan-v3.py
@@ -75,6 +76,8 @@ jobs:
           for legacy in ('id="horizon"','id="scanObjective"','holdHorizon','<option value="1m"','<option value="3m"','<option value="long"','短線｜約1個月','波段｜約3個月','長期｜1年以上'):
               assert legacy not in idx,legacy
           assert '9項入場因子' not in idx and '美股、台指期 TX、國際時事' not in idx
+          for removed in ('./indicators-v2.js','./financials.js','./integrity.js'):
+              assert removed not in idx,removed
           assert './entry-decision.js' in idx and './position-input.js' in idx and './holding-model.js' in idx and './holding-router.js' in idx
           assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js')
           assert 'showSingle();' in ui
