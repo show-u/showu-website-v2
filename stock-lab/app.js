@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s),TW='https://www.twse.com.tw',OA='https://openapi.twse.com.tw';
 // T86 is intentionally NOT included: no automated/scored use until an explicit reusable licence or contract is registered.
 const U={stock:`${TW}/rwd/zh/afterTrading/STOCK_DAY`,index:`${TW}/indicesReport/MI_5MINS_HIST`,snap:`${OA}/v1/exchangeReport/STOCK_DAY_ALL`,val:`${OA}/v1/exchangeReport/BWIBBU_ALL`,rev:`${OA}/v1/opendata/t187ap05_L`};
-const okHost=u=>{const h=new URL(u).hostname;if(!['www.twse.com.tw','openapi.twse.com.tw'].includes(h))throw Error('非核准官方來源');return h},n=v=>{const x=Number(String(v??'').replace(/,/g,''));return Number.isFinite(x)?x:null},avg=a=>{a=a.filter(Number.isFinite);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null},fmt=x=>x==null?'—':Number(x).toLocaleString('zh-TW',{maximumFractionDigits:2});
+const okHost=u=>{const h=new URL(u).hostname;if(!['www.twse.com.tw','openapi.twse.com.tw'].includes(h))throw Error('非核准官方來源');return h},n=v=>{if(v==null)return null;const s=String(v).trim();if(!s||['-','--','—','N/A','NA','null','undefined'].includes(s))return null;const x=Number(s.replace(/,/g,'').replace(/%$/,''));return Number.isFinite(x)?x:null},avg=a=>{a=a.filter(Number.isFinite);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null},fmt=x=>x==null?'—':Number(x).toLocaleString('zh-TW',{maximumFractionDigits:2});
 function roc(s){const m=String(s||'').match(/(\d{2,3})\/(\d{2})\/(\d{2})/);return m?`${+m[1]+1911}-${m[2]}-${m[3]}`:null}
 function old(iso){return iso?Math.floor((Date.now()-new Date(iso+'T00:00:00+08:00'))/864e5):999}
 function months(c){const d=new Date(),a=[];for(let i=0;i<c;i++){const x=new Date(d.getFullYear(),d.getMonth()-i,1);a.push(`${x.getFullYear()}${String(x.getMonth()+1).padStart(2,'0')}01`)}return a}
