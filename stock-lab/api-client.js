@@ -1,9 +1,11 @@
 // Backend-first API client. Core algorithms can move server-side without changing the UI.
 (function(){
+  const rt=window.STOCKLAB_RUNTIME||{};
+  const base=String(rt.apiBase||'').replace(/\/$/,'');
   const CFG={
-    base:(window.STOCKLAB_API_BASE||'').replace(/\/$/,''),
-    enabled:!!window.STOCKLAB_API_BASE,
-    allowLocalFallback:true,
+    base,
+    enabled:/^https:\/\//i.test(base),
+    allowLocalFallback:rt.allowLocalFallback!==false,
     timeoutMs:12000,
     version:'2026.09-api-v1'
   };
@@ -13,7 +15,7 @@
     try{
       const r=await fetch(`${CFG.base}${path}`,{
         method:'POST',headers:{'content-type':'application/json','accept':'application/json'},
-        body:JSON.stringify(payload),signal:ctrl.signal,credentials:'omit',cache:'no-store'
+        body:JSON.stringify(payload),signal:ctrl.signal,credentials:'omit',cache:'no-store',redirect:'error'
       });
       if(!r.ok)throw new Error(`backend ${r.status}`);
       const j=await r.json();
