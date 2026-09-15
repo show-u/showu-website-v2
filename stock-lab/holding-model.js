@@ -1,6 +1,7 @@
 // Existing-position model. Holding/exit is separate from buy-entry analysis.
 // Formal decisions remain fail-closed until the dedicated holding-exit OOS gate passes.
 (function(){
+  const MIN_BARS=120;
   function num(v){if(v==null)return null;const s=String(v).trim();if(!s||['-','--','—','N/A','NA','null','undefined'].includes(s))return null;const x=Number(s.replace(/,/g,''));return Number.isFinite(x)?x:null}
   function avg(a){const v=a.filter(Number.isFinite);return v.length?v.reduce((x,y)=>x+y,0)/v.length:null}
   function qtile(a,q){const v=a.filter(Number.isFinite).sort((x,y)=>x-y);if(!v.length)return null;const p=(v.length-1)*q,l=Math.floor(p),h=Math.ceil(p);return l===h?v[l]:v[l]+(v[h]-v[l])*(p-l)}
@@ -38,7 +39,7 @@
 
   function analyze(input,bars,ctx={}){
     const p=positionInput(input);
-    if(!Array.isArray(bars)||bars.length<60)throw Error(`持股出場模型有效日線不足：${bars?.length||0}/60`);
+    if(!Array.isArray(bars)||bars.length<MIN_BARS)throw Error(`持股出場模型有效日線不足：${bars?.length||0}/${MIN_BARS}`);
     if(ctx.legalSource!==true)throw Error('歷史行情來源授權未通過');
     if(ctx.priceVerified!==true)throw Error('最新官方收盤未完成交叉驗證');
     if(ctx.activeRiskKnown!==true)throw Error('注意／處置／特殊交易狀態尚未完整驗證');
@@ -76,5 +77,5 @@
       provenance:{position:p.provenance,latestClose:'observed',holdingTradingDays:'derived_from_verified_trading_sessions',structure:'derived',decision:'model_estimate'}
     };
   }
-  window.StockLabHolding={analyze,positionInput,holdingProfile,requiredBars:()=>60};
+  window.StockLabHolding={analyze,positionInput,holdingProfile,requiredBars:()=>MIN_BARS};
 })();
