@@ -68,8 +68,9 @@ jobs:
               assert oc[k] is True,k
 
           # Public UX has only the three real decisions and is deliberately concise.
-          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','建議進場區間','信心指數','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
+          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','信心指數','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
               assert text in idx,text
+          assert '建議進場區間' in router and '建議出場價格' in hold_router
           assert 'internal-only' in idx
           for legacy in ('id="horizon"','id="scanObjective"','holdHorizon','<option value="1m"','<option value="3m"','<option value="long"','短線｜約1個月','波段｜約3個月','長期｜1年以上'):
               assert legacy not in idx,legacy
@@ -90,10 +91,9 @@ jobs:
           for k in factor_keys: assert f"'{k}'" in entry,k
           assert 'StockLabEntryDecision.evaluate' in router
           assert "STRATEGY='entry'" in top10
-          assert '短／中／長' in router  # comment explicitly forbids old architecture
           assert 'adaptiveBand' not in tw
-          for legacy in ("h==='1m'","h==='3m'","h==='long'",'TW-structure-volatility-v4'):
-              assert legacy not in tw,legacy
+          for legacy in ("h==='1m'","h==='3m'","h==='long'",'TW-structure-volatility-v4','短線入場區間','中期入場區間','長期佈局區間'):
+              assert legacy not in router+tw,legacy
           assert '<h3>九項入場判斷</h3>' not in router
           assert '<h3>美股／台指期／國際時事</h3>' not in router
           assert '<b>九項訊號</b>' not in top10
