@@ -15,7 +15,7 @@ permissions:
 jobs:
   backtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,21 +24,21 @@ jobs:
       - name: Syntax check
         run: python -m py_compile stock-lab/backtest-model.py
       - name: Run broad Taiwan stress test
-        run: python stock-lab/backtest-model.py --months 60 --twse 50 --tpex 30 --out stock-lab/backtest-result.json
+        run: python stock-lab/backtest-model.py --months 60 --twse 100 --tpex 60 --out stock-lab/backtest-result.json
       - name: Validate result
         run: |
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/backtest-result.json',encoding='utf-8'))
-          assert x['schema_version']==2 and x['market']=='TWSE+TPEx'
-          assert x['universe_requested']>=60, x['universe_requested']
-          assert x['universe_ok']>=30, x['universe_ok']
+          assert x['schema_version']>=2 and x['market']=='TWSE+TPEx'
+          assert x['universe_requested']>=120, x['universe_requested']
+          assert x['universe_ok']>=60, x['universe_ok']
+          c=x['cost_assumptions'];assert c['commission_each_side_pct']>0 and c['normal_stock_sell_tax_pct']>0 and c['daytrade_sell_tax_pct']>0
           for mode in ('preopen','short','swing','long'):
               z=x['aggregate'][mode]
-              assert z['all']['n']>0, (mode,z)
-              assert z['oos']['n']>0, (mode,z)
+              assert z['all']['n']>0,(mode,z);assert z['oos']['n']>0,(mode,z)
               assert z['stress_status'] in ('PASS','FAIL','INSUFFICIENT')
-          print('Broad Taiwan OOS backtest validated',x['universe_ok'],x['aggregate'])
+          print('Large Taiwan OOS stress test validated',x['universe_ok'],x['aggregate'])
           PY
       - name: Persist result when changed
         run: |
@@ -46,7 +46,7 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add stock-lab/backtest-result.json
-            git commit -m 'update broad Taiwan out-of-sample backtest result'
+            git commit -m 'update large Taiwan out-of-sample backtest result'
             git pull --rebase origin main
             git push origin HEAD:main
           else
