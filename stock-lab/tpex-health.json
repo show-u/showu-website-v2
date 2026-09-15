@@ -1,10 +1,71 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-15T02:07:05.031785+00:00",
-  "status": "failed",
-  "verified": false,
+  "generated_at": "2026-09-15T02:08:08.382267+00:00",
+  "status": "ok",
+  "verified": true,
   "source": "TPEx",
-  "checks": {},
-  "policy": "TPEx official OpenAPI schema/date/count gate; unhealthy source is blocked from analysis and ranking",
-  "error": "IncompleteRead(3407465 bytes read, 998282 more expected)"
+  "checks": {
+    "snapshot": {
+      "verified": true,
+      "endpoint": "tpex_mainboard_daily_close_quotes",
+      "count": 11289,
+      "raw_sha256": "17b5ca054bd68cf96caf7306fe423822624d2293b0ed17b7a91e0494a59dda55",
+      "content_type": "application/json",
+      "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
+      "bytes": 4405747,
+      "download_attempt": 2,
+      "latest_date": "2026-09-14"
+    },
+    "valuation": {
+      "verified": true,
+      "endpoint": "tpex_mainboard_peratio_analysis",
+      "count": 886,
+      "raw_sha256": "a259c7012e681b917cd8baf0dd6aa49adc23f091f9b2f8871c4ed91187ffb28e",
+      "content_type": "application/json",
+      "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis",
+      "bytes": 156105,
+      "download_attempt": 1
+    },
+    "institution": {
+      "verified": true,
+      "endpoint": "tpex_3insti_daily_trading",
+      "count": 903,
+      "raw_sha256": "d0247ebde645198d7b53bd975c129681a704f2f241a73621a783cd0ef6a4d33a",
+      "content_type": "application/json",
+      "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading",
+      "bytes": 854252,
+      "download_attempt": 1
+    },
+    "revenue": {
+      "verified": true,
+      "endpoint": "mopsfin_t187ap05_O",
+      "count": 891,
+      "raw_sha256": "0c25bc7cf64cb8d100cf48efbdb2b7883c29790f176814da3162891c019ff777",
+      "content_type": "application/json",
+      "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O",
+      "bytes": 496010,
+      "download_attempt": 1
+    },
+    "income": {
+      "verified": true,
+      "endpoint": "mopsfin_t187ap06_O_ci",
+      "count": 883,
+      "raw_sha256": "c9f4113da5de4a7faa66f88ded0c37e49ca1751a3354a3fb57db65d96902a0fa",
+      "content_type": "application/json",
+      "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci",
+      "bytes": 1180687,
+      "download_attempt": 1
+    },
+    "balance": {
+      "verified": true,
+      "endpoint": "mopsfin_t187ap07_O_ci",
+      "count": 883,
+      "raw_sha256": "545d68aaed80ea22c082e34c43fda19b38b737844f38cb06b173648ae61a061d",
+      "content_type": "application/json",
+      "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap07_O_ci",
+      "bytes": 758855,
+      "download_attempt": 1
+    }
+  },
+  "policy": "TPEx official OpenAPI schema/date/count gate; unhealthy source is blocked from analysis and ranking"
 }
