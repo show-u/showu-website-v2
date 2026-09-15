@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "principle": "No verified data, no score. Unverified values may be displayed only as explicitly unverified observations.",
   "taiwan": {
     "price": {"hosts": ["www.twse.com.tw", "openapi.twse.com.tw"], "cross_check_required": true, "max_age_calendar_days": 4, "scored": true},
@@ -13,8 +13,8 @@
   },
   "external_market": {
     "vix": {"source": "CBOE", "host": "cdn.cboe.com", "raw_sha256_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false},
-    "sox": {"source": "Nasdaq", "host": "indexes.nasdaq.com", "raw_sha256_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false},
-    "nasdaq": {"source": "Nasdaq", "host": "indexes.nasdaq.com", "raw_sha256_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false}
+    "sox": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_source": "Federal Reserve Bank of St. Louis / Nasdaq Daily Index Data", "cross_check_host": "fred.stlouisfed.org", "cross_check_series": "NASDAQSOX", "raw_sha256_required": true, "prior_close_cross_check_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false},
+    "nasdaq": {"primary_source": "Nasdaq", "primary_host": "indexes.nasdaq.com", "cross_check_source": "Federal Reserve Bank of St. Louis / Nasdaq Daily Index Data", "cross_check_host": "fred.stlouisfed.org", "cross_check_series": "NASDAQCOM", "raw_sha256_required": true, "prior_close_cross_check_required": true, "change_recalculation_required": true, "history_check_required": true, "max_age_calendar_days": 5, "scored": false}
   },
   "news_events": {
     "scored": false,
