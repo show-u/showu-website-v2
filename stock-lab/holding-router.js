@@ -1,7 +1,7 @@
 // Holding-position router. Executable exit output is backend-only.
 // Position facts come only from user input; the browser must never promote a local research formula to a sell recommendation.
 // Legacy invariant marker only (not executable): oosStatus:'PASS'
-// holdingExitExecutionValidation and confidenceCalibrated!==true remain backend audit requirements.
+// holdingExitExecutionValidation, holdingConfidenceCalibration and confidenceCalibrated!==true remain backend audit requirements.
 (function(){
   const btn=document.querySelector('#holdAnalyzeBtn'),input=document.querySelector('#holdTicker'),load=document.querySelector('#holdLoad'),box=document.querySelector('#holdResult');
   if(!btn||!input||!load||!box)return;
