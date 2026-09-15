@@ -1,17 +1,22 @@
-// Public data-health panel. Reads only verified snapshots; never changes scores.
+// Compact public data-health display. Engineering details stay out of the main decision flow.
 (function(){
-  const host=document.querySelector('#marketCard');if(!host)return;
-  const box=document.createElement('div');box.className='source-note';box.id='dataHealth';box.innerHTML='<b>資料健康狀態</b><div class="mini">載入驗證快照中…</div>';host.appendChild(box);
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
-  const badge=(ok,label,detail)=>`<div class="sourceitem"><b>${ok?'✅':'⚠️'} ${esc(label)}</b><span class="mini">${esc(detail)}</span></div>`;
+  const host=document.querySelector('#marketDetailsBody'),summary=document.querySelector('#dataHealthSummary');if(!host||!summary)return;
+  const box=document.createElement('div');box.id='dataHealth';
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const age=d=>{if(!d)return null;const x=new Date(d);return Number.isFinite(x.getTime())?Math.floor((Date.now()-x.getTime())/864e5):null};
   async function get(path){try{const r=await fetch(path,{cache:'no-store'});if(!r.ok)throw Error(String(r.status));return await r.json()}catch{return null}}
-  Promise.all([get('./tpex-health.json'),get('./market-data.json'),get('./futures-data.json')]).then(([tp,mk,tx])=>{
-    const rows=[],api=window.StockLabAPI,privateMode=api?.mode?.()==='private-backend';
-    rows.push(badge(privateMode,'分析引擎',privateMode?'私有後端｜核心演算法不下發':'過渡本地 fallback｜私有 API 尚未切換'));
-    const tpok=!!(tp&&tp.verified&&tp.status==='ok'&&age(tp.generated_at)<=2);rows.push(badge(tpok,'TPEx 上櫃',tpok?`官方 6 類資料通過｜行情 ${tp.checks?.snapshot?.latest_date||'—'}`:`${tp?.status||'無快照'}｜上櫃資料暫不採用`));
-    for(const [k,name] of [['vix','VIX'],['sox','SOX'],['nasdaq','NASDAQ']]){const x=mk?.sources?.[k],ok=!!(x?.verified&&age(x.fetched_at)<=5);rows.push(badge(ok,name,ok?`${x.date}｜${Number(x.value).toLocaleString('zh-TW',{maximumFractionDigits:2})}`:`${x?.error||'尚未驗證'}｜不計分`));}
-    const txok=!!(tx?.verified&&tx.status==='ok'&&age(tx.generated_at)<=4);rows.push(badge(txok,'台指期 TX',txok?`${tx.trade_date}｜${tx.contract_month}｜${tx.last_price}`:`${tx?.status||'無快照'}${tx?.source_dates?`｜${tx.source_dates.report} / ${tx.source_dates.excel}`:''}｜不計分`));
-    box.innerHTML=`<b>資料健康狀態</b><div class="sourcegrid" style="margin-top:8px">${rows.join('')}</div><div class="mini" style="margin-top:8px">未通過來源／日期／期別驗證的資料只顯示狀態，不進入任何股票分數。</div>`;
+  const row=(ok,label,detail)=>`<div class="sourceitem"><b>${ok?'✅':'⚠️'} ${esc(label)}</b><span class="mini">${esc(detail)}</span></div>`;
+  Promise.all([get('./browser-data.json'),get('./tpex-health.json'),get('./market-data.json'),get('./futures-data.json')]).then(([cache,tp,mk,tx])=>{
+    const core=[];const optional=[];
+    const cacheOk=!!(cache&&cache.schema_version===2&&cache.source==='licensed-open-data-cache'&&String(cache.licence||'').includes('OGDL')&&age(cache.generated_at)<=4);
+    core.push({ok:cacheOk,label:'台股核心公開資料',detail:cacheOk?`授權與快取有效｜${String(cache.generated_at||'').slice(0,10)}`:'授權、版本、日期或快取驗證未通過'});
+    const tpok=!!(tp&&tp.verified&&tp.status==='ok'&&age(tp.generated_at)<=2);
+    core.push({ok:tpok,label:'TPEx 上櫃資料',detail:tpok?`官方資料通過｜行情 ${tp.checks?.snapshot?.latest_date||'—'}`:'上櫃資料目前不納入預測'});
+    for(const [k,name] of [['vix','VIX'],['sox','SOX'],['nasdaq','NASDAQ']]){const x=mk?.sources?.[k],ok=!!(x?.verified&&age(x.fetched_at)<=5);optional.push({ok,label:name,detail:ok?`${x.date}｜${Number(x.value).toLocaleString('zh-TW',{maximumFractionDigits:2})}`:'未通過驗證；僅略過，不補值'})}
+    const txok=!!(tx?.verified&&tx.status==='ok'&&age(tx.generated_at)<=4);optional.push({ok:txok,label:'台指期 TX',detail:txok?`${tx.trade_date}｜${tx.contract_month}｜${tx.last_price}`:'未通過驗證；不計分'});
+    const corePass=core.filter(x=>x.ok).length,optPass=optional.filter(x=>x.ok).length;
+    summary.textContent=`核心 ${corePass}/${core.length}｜外部 ${optPass}/${optional.length}`;
+    box.innerHTML=`<h3 style="margin-top:0">資料狀態</h3><div class="sourcegrid">${core.map(x=>row(x.ok,x.label,x.detail)).join('')}</div><h3>外部觀察資料</h3><div class="sourcegrid">${optional.map(x=>row(x.ok,x.label,x.detail)).join('')}</div><div class="mini" style="margin-top:8px">未通過來源、授權、日期或內容驗證的資料會被略過；不以 0、舊值、平均值或推測值補入。</div>`;
+    host.appendChild(box);
   });
 })();
