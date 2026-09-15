@@ -80,11 +80,11 @@ jobs:
           assert 'slice(0,40)' in gate
           assert "threshold=h==='1m'?80:85" in gate
           assert 'critical&&score>=threshold' in gate
-          assert '資料不足者不得進榜' in gate
+          assert 'gate.eligible' in gate and '資料完整度' in gate
           assert "marketName='TPEx'" in router and "marketName='TWSE'" in router
           assert '不需要 ChatGPT／GPT 帳號' in idx
           assert '股票代號／股票名稱' in idx and '例如：2454 或 聯發科' in idx
-          assert 'browser-data.json' in ui and '建議入場價格區間' in ui and '現在價格' in ui
+          assert 'browser-data.json' in ui and '建議入場價格區間' in ui and '現在價格' in ui and '最新官方收盤價' in ui
           snap=json.loads(Path('stock-lab/market-data.json').read_text(encoding='utf-8'))
           assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
@@ -100,7 +100,7 @@ jobs:
           if tph.get('verified'):
               assert tph.get('status')=='ok'
               assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
-          print('source-policy, UI search, price labels, Wilder RSI, TPEx health and TOP10 gate checks passed')
+          print('source-policy, UI search, explicit price presentation, Wilder RSI, TPEx health and TOP10 gate checks passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
