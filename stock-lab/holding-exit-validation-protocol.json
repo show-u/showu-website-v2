@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "protocol_name": "StockLab TW-holding-exit-v3 OOS Protocol",
+  "frozen_before_historical_oos": true,
+  "purpose": "Evaluate whether the actual-position holding model improves exit/hold decisions without using future information or fabricated inputs.",
+  "non_negotiable_rules": {
+    "no_horizon_selector": true,
+    "holding_age_drives_structure": true,
+    "cost_basis_is_position_specific": true,
+    "shares_do_not_change_signal_without_portfolio_risk_budget": true,
+    "missing_inputs_are_not_imputed": true,
+    "corporate_actions_must_be_adjusted_or_episode_excluded": true,
+    "active_taiwan_risk_state_must_be_known": true,
+    "production_formula_must_equal_test_formula": true,
+    "chronological_oos_required": true,
+    "oos_parameters_may_not_be_tuned_after_viewing_results": true
+  },
+  "required_data": {
+    "daily_ohlc": "legally reusable, provenance-identified TWSE/TPEx daily OHLC",
+    "security_master": "historical supported-security classification; ordinary stock model only",
+    "trading_calendar": "official Taiwan trading calendar",
+    "corporate_actions": "ex-right/ex-dividend, capital reduction, split, new-listing/reference-price discontinuities",
+    "risk_states": "attention/disposition/suspension and other model-relevant restrictions valid for each session",
+    "market_context": "the same verified 9+3 context contract used by production holding logic where historically available"
+  },
+  "position_episode_generation": {
+    "method": "deterministic historical pseudo-positions generated only from information available on or before each entry date",
+    "entry_dates": "sample supported securities across multiple market regimes and entry dates; no cherry-picking by future outcome",
+    "cost_basis": "official entry-session executable price rule fixed before OOS; cost is not optimized to improve later exit results",
+    "initial_shares": "normalized shares for signal evaluation; monetary P/L may use a fixed notional. Share count must not alter the exit signal.",
+    "holding_age": "derived from episode entry date exactly as production TW-holding-exit-v3 derives lookback",
+    "episode_overlap": "no overlapping episode for the same security in the same test stream unless the protocol explicitly treats it as one continuing position"
+  },
+  "evaluation": {
+    "decision_frequency": "once per completed official trading session; no intraday information unless a separately licensed production feed exists",
+    "execution": "an exit condition observed at completed-session close may execute no earlier than the next legally tradable session using the frozen execution rule",
+    "costs": [
+      "broker commission on executed exit",
+      "applicable Taiwan stock transaction tax",
+      "slippage assumption fixed before OOS"
+    ],
+    "comparators": [
+      "hold-to-fixed-horizon baseline",
+      "simple MA-based trailing exit baseline",
+      "buy-and-hold through the episode evaluation window"
+    ],
+    "metrics": [
+      "net return after costs",
+      "max drawdown while held",
+      "drawdown from peak before exit",
+      "profit capture ratio when definable without look-ahead in the decision rule",
+      "false-exit rate followed by recovery",
+      "time in market",
+      "exit frequency",
+      "worst-tail outcomes",
+      "benchmark-relative return"
+    ]
+  },
+  "split_and_statistics": {
+    "split": "chronological development period followed by untouched OOS period",
+    "walk_forward": "required when enough licensed history exists",
+    "minimum_oos_episodes_total": 300,
+    "minimum_oos_securities": 80,
+    "minimum_regime_coverage": ["bull", "bear", "sideways"],
+    "confidence_intervals": "bootstrap or another documented resampling method on security/episode clusters",
+    "report_all_results": true
+  },
+  "pass_rule": {
+    "status_before_requirements_met": "INSUFFICIENT",
+    "required": [
+      "all legal/provenance gates pass",
+      "minimum OOS episode and security counts pass",
+      "all required market regimes represented",
+      "no material look-ahead or survivorship defect found",
+      "production formula hash/version matches tested formula",
+      "net-of-cost outcome is not materially worse than both frozen baselines on primary risk-adjusted measures",
+      "no catastrophic tail-risk deterioration relative to baselines"
+    ],
+    "prohibited": [
+      "declaring PASS from win rate alone",
+      "retuning thresholds on the untouched OOS set",
+      "dropping losing securities/episodes after seeing results",
+      "converting INSUFFICIENT to PASS because the UI needs a recommendation"
+    ]
+  }
+}
