@@ -1,0 +1,39 @@
+name: StockLab public smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 */6 * * *'
+  push:
+    paths:
+      - 'stock-lab/index.html'
+      - 'stock-lab/health.js'
+      - 'stock-lab/top10-gate.js'
+      - '.github/workflows/stocklab-public-smoke.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify public StockLab deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://www.showujapan.com/stock-lab'
+          # GitHub Pages can take a short moment after a push. Retry without weakening content checks.
+          curl -fsSL --retry 6 --retry-delay 10 --retry-all-errors --max-time 20 "$base/" -o /tmp/index.html
+          grep -q 'StockLab 台股投資分析器' /tmp/index.html
+          grep -q './health.js' /tmp/index.html
+          grep -q './indicators-v2.js' /tmp/index.html
+          grep -q './top10-gate.js' /tmp/index.html
+          for f in health.js indicators-v2.js top10-gate.js tpex-health.json market-data.json futures-data.json; do
+            curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors --max-time 20 "$base/$f" -o "/tmp/$f"
+            test -s "/tmp/$f"
+          done
+          python - <<'PY'
+          import json
+          for p in ('/tmp/tpex-health.json','/tmp/market-data.json','/tmp/futures-data.json'):
+              with open(p,encoding='utf-8') as f: json.load(f)
+          print('public StockLab smoke checks passed')
+          PY
