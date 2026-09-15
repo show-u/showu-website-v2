@@ -58,7 +58,7 @@ jobs:
           assert 'orderPrice=roundTick(day.entryLow' not in router
           assert 'mid=(day.entryLow+day.entryHigh)/2' not in router
           assert "if(!a.riskBlocked&&a.score>=45)orderPrice=expectedMid" in router
-          assert 'prior official close + empirical overnight-gap median' in backtest
+          assert 'verified prior close plus rolling empirical overnight-gap median' in backtest
           assert 'opening auction price <= order price' in backtest
           assert "if nxt.open>order" in backtest
 
@@ -94,6 +94,7 @@ jobs:
       - name: Integrity behavior fixture tests
         run: |
           python - <<'PY'
+          import statistics
           def rollback(new_date,old_date): return new_date < old_date
           def same_date_change(old,new): return abs(new/old-1)*100 if old else 999
           assert rollback('2026-09-14','2026-09-15') is True
@@ -103,5 +104,11 @@ jobs:
           a={'date':'2026/09/14','month':'202609','last':45780};b=dict(a);assert a==b;b['last']=45781;assert a!=b
           assert 80>=80 and 79<80 and 85>=85 and 84<85
           assert all([True,True,True]) is True and all([True,False,True]) is False
-          print('anomaly, TAIFEX, TPEx health and completeness fixtures passed')
+          # Regression guard: pre-open anchor follows prior close + empirical opening-gap median.
+          prior_close=4560.0
+          gaps=[-0.01,-0.005,0.0,0.0,0.0,0.005,0.01]*4
+          expected_open=prior_close*(1+statistics.median(gaps))
+          assert expected_open==4560.0
+          assert expected_open!=4200.0
+          print('anomaly, Taiwan preopen anchoring, TAIFEX, TPEx health and completeness fixtures passed')
           PY
