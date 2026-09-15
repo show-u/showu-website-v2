@@ -30,7 +30,7 @@ jobs:
             node --check "stock-lab/$f.js"
           done
 
-      - name: StockLab Truth Rules v9 invariants
+      - name: StockLab Truth Rules v9 + architecture v10 invariants
         run: |
           python - <<'PY'
           import json
@@ -122,11 +122,13 @@ jobs:
           assert 'totalCost=used.reduce' in position and 'weighted=totalShares?totalCost/totalShares:null' in position
           assert "if(!(a>0)||!(s>0)||!d)throw Error('逐筆買入明細尚未完整')" in position
 
-          # Holding is cost/position/buy-date based; actual holding age selects structure automatically.
-          assert all(x in holding for x in ('averageCost','shares','buyDate','entryContextComplete','TW-holding-exit-v3','user_observed','holdingProfile','estimatedTradingDays','sharesAffectSignal:false'))
+          # Holding is cost/position/buy-date based; exact verified trading sessions determine holding age.
+          assert all(x in holding for x in ('averageCost','shares','buyDate','exitContextComplete','TW-holding-exit-v4','user_observed','holdingProfile','holdingTradingDays','sharesAffectSignal:false'))
+          assert 'estimatedTradingDays' not in holding
           assert 'horizonConfig' not in holding and 'holdHorizon' not in compliance
           assert '正式出場模型需要有效首次買入日' in holding
           assert '持有股數只用於計算市值與金額損益' in holding
+          assert '首次買入日不在目前合法且驗證通過的歷史交易日序列中' in holding
 
           # Runtime and hard policy remain fail closed until all new gates are explicitly passed.
           assert 'hardPolicyVersion:9' in runtime
@@ -143,9 +145,10 @@ jobs:
           assert '不以 0、平均值、舊值或 AI 補齊' in compliance
 
           # Validation status explicitly supersedes legacy horizon results.
-          assert validation['schema_version']==3 and validation['architecture']=='unified-entry-holding-v9'
+          assert validation['schema_version']==4 and validation['architecture']=='unified-entry-holding-v10'
           assert validation['legacy_horizon_entry_results_are_production_valid'] is False
           assert set(validation['models'])=={'entry_decision_9plus3','entry_scanner_9plus3','holding_exit'}
+          assert validation['models']['holding_exit']['candidate_formula']=='TW-holding-exit-v4'
           for name,item in validation['models'].items():
             assert item['status'] in {'BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER','FAIL','INSUFFICIENT'},(name,item)
 
@@ -153,7 +156,7 @@ jobs:
           assert 'licensed-open-data-cache' in cache and 'OGDL-1.0' in cache and 'schema_version!==2' in cache
           assert all(x in cachewf for x in ('data_gov_dataset','licence_verified','OGDL-1.0','attribution','licensed-open-data-cache'))
 
-          print('StockLab Taiwan Truth Rules v9 unified entry + actual-position holding invariants passed')
+          print('StockLab Truth Rules v9 + architecture v10 unified entry + exact-session holding invariants passed')
           PY
 
       - name: Fail-closed behavior fixtures
@@ -187,10 +190,11 @@ jobs:
           provenance={'official_close':'observed','gap_median':'derived','entry_price':'model_estimate','missing_factor':'unavailable'}
           assert provenance['entry_price']!='observed' and provenance['missing_factor']=='unavailable'
 
-          # Holding structure follows actual holding age rather than a user-selected short/mid/long label.
-          def lookback(days): return max(20,min(120,round(days*5/7)))
-          assert lookback(14)==20
-          assert 60<=lookback(90)<=70
-          assert lookback(365)==120
-          print('v9 no-imputation, unified-entry and actual-position holding fixtures passed')
+          # Holding structure uses exact verified trading-session count, never a calendar-day approximation.
+          def structure_lookback(holding_trading_days): return max(20,min(240,holding_trading_days))
+          assert structure_lookback(14)==20
+          assert structure_lookback(90)==90
+          assert structure_lookback(365)==240
+          assert structure_lookback(20)==20
+          print('v10 no-imputation, unified-entry and exact-session holding fixtures passed')
           PY
