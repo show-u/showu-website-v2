@@ -1,9 +1,49 @@
 {
-  "generated_at": null,
-  "status": "pending",
+  "schema_version": 3,
+  "generated_at": "2026-09-15T01:48:19.482117+00:00",
+  "status": "partial",
+  "policy": "official-primary; source/date/schema/value/history checks; invalid data display-blocked and never scored",
   "sources": {
-    "vix": {"verified": false, "source": "CBOE", "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"},
-    "sox": {"verified": false, "source": "Nasdaq", "url": "https://indexes.nasdaq.com/Index/Overview/SOX"},
-    "nasdaq": {"verified": false, "source": "Nasdaq", "url": "https://indexes.nasdaq.com/Index/Overview/COMP"}
+    "vix": {
+      "verified": true,
+      "source": "CBOE",
+      "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+      "fetched_at": "2026-09-15T01:48:19.482117+00:00",
+      "validation": [
+        "official_host",
+        "content_type_ok",
+        "date_parsed",
+        "date_not_future",
+        "chronology_ok",
+        "value_bounds_ok",
+        "change_recomputed"
+      ],
+      "anomalies": [],
+      "date": "09/14/2026",
+      "value": 17.1,
+      "change": 1.2600000000000016,
+      "change_pct": 7.954545454545459,
+      "raw_sha256": "9148183f463cb27743267d605a743241fa3e4c134eb1275e5871a41ce0837b8a",
+      "content_type": "text/csv",
+      "final_url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+    },
+    "sox": {
+      "verified": false,
+      "source": "Nasdaq",
+      "url": "https://indexes.nasdaq.com/Index/Overview/SOX",
+      "fetched_at": "2026-09-15T01:48:19.482117+00:00",
+      "validation": [],
+      "anomalies": [],
+      "error": "change percent mismatch page=0.0, recomputed=-5.8585"
+    },
+    "nasdaq": {
+      "verified": false,
+      "source": "Nasdaq",
+      "url": "https://indexes.nasdaq.com/Index/Overview/COMP",
+      "fetched_at": "2026-09-15T01:48:19.482117+00:00",
+      "validation": [],
+      "anomalies": [],
+      "error": "change percent mismatch page=0.0, recomputed=-0.5632"
+    }
   }
 }
