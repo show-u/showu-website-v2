@@ -7,7 +7,16 @@
   function num(v){const x=Number(v);return Number.isFinite(x)?x:null}
   function quantile(a,q){const v=a.filter(Number.isFinite).sort((x,y)=>x-y);if(!v.length)return null;const p=(v.length-1)*q,l=Math.floor(p),h=Math.ceil(p);return l===h?v[l]:v[l]+(v[h]-v[l])*(p-l)}
   function atr(r,p=14){if(!r||r.length<=p)return null;const t=[];for(let i=r.length-p;i<r.length;i++){const x=r[i],pc=r[i-1].c;t.push(Math.max(x.h-x.l,Math.abs(x.h-pc),Math.abs(x.l-pc)))}return avg(t)}
-  function sectorFamily(industry){const s=String(industry||'');if(/金融|銀行|保險|證券|金控/.test(s))return'financial';if(/半導體/.test(s))return'semiconductor';if(/電子|電腦|通信|光電|電子零組件|資訊服務|其他電子/.test(s))return'electronics';if(/航運/.test(s))return'shipping';if(/生技|醫療/.test(s))return'biotech';if(/營建|建材/.test(s))return'construction';return'general'}
+  function sectorFamily(industry){
+    const s=String(industry||'').trim();
+    if(s==='17'||/金融|銀行|保險|證券|金控/.test(s))return'financial';
+    if(s==='24'||/半導體/.test(s))return'semiconductor';
+    if(['25','26','27','28','29','30','31'].includes(s)||/電子|電腦|通信|光電|電子零組件|資訊服務|其他電子/.test(s))return'electronics';
+    if(s==='15'||/航運/.test(s))return'shipping';
+    if(s==='22'||/生技|醫療/.test(s))return'biotech';
+    if(s==='14'||/營建|建材/.test(s))return'construction';
+    return'general';
+  }
   function tickSize(p){if(p<10)return .01;if(p<50)return .05;if(p<100)return .1;if(p<500)return .5;if(p<1000)return 1;return 5}
   function roundTick(p,mode='nearest'){const t=tickSize(Math.max(.01,p)),q=p/t,z=mode==='up'?Math.ceil(q):mode==='down'?Math.floor(q):Math.round(q);return +(z*t).toFixed(t<.1?2:t<1?1:0)}
   function adaptiveBand(r,h){
@@ -46,10 +55,10 @@
   tech=function(r,h){const a=_techTW(r,h);if(h==='day')return a;const b=adaptiveBand(r,h);a.entryLow=b.entryLow;a.entryHigh=b.entryHigh;a.support=b.support;a.resist=b.resist;a.atr=b.atr;a.priceModel='TW-adaptive-v2';return a};
   extras=async function(date){const x=await _extrasTW(date);await loadFactors();return x};
   combine=function(a,h,m,v,i,r){a=_combineTW(a,h,m,v,i,r);const code=v?.code||r?.code||i?.code||a.fin?.code||null,f=code?stockFactor(code):{};
-    // Remove the legacy long-horizon fixed PE adjustment from the old core before applying sector-aware valuation.
     if(h==='long'&&v?.pe){if(v.pe<=35)a.score-=3;else if(v.pe>=70)a.score+=4;}
     const vd=code?sectorValuationDelta(code,v):0;a.sectorValuationDelta=vd;a.score=Math.max(0,Math.min(100,a.score+vd));a.industry=f.industry||null;a.sectorFamily=sectorFamily(a.industry);
     let riskDelta=0;const risk=[];
+    if(f.market==='TPEx'){const os=FACTORS.market?.otc_state;if(os==='偏多'){riskDelta+=3;risk.push('OTC市場偏多')}else if(os==='偏空'){riskDelta-=4;risk.push('OTC市場偏空')}}
     if(f.disposition){riskDelta-=30;risk.push('處置股票');a.riskBlocked=true;}
     else if(f.attention){riskDelta-=8;risk.push('注意股票');}
     if(num(f.margin_change_pct)!=null&&f.margin_change_pct>=12){riskDelta-=3;risk.push('融資餘額快速增加');}
@@ -59,6 +68,6 @@
     if(a.riskBlocked){a.action='處置股｜不納入一般推薦或開盤前掛單';if(a.integrity?.price)a.integrity.price.ok=false;}
     else a.action=a.score>=75?'偏多｜等拉回可分批':a.score>=60?'觀察｜不追價':a.score>=45?'中性｜等待確認':'偏弱｜暫避';
     return a};
-  render=function(code,a,h,vf){_renderTW(code,a,h,vf);if(!vf.complete)return;const box=document.querySelector('#result');if(!box)return;const f=a.taiwanRisk||{};const p=document.createElement('div');p.innerHTML=`<h3>台股專用因子</h3><div class=sourcegrid><div class=sourceitem><b>產業</b>${a.industry||'未取得'}｜${a.sectorFamily||'general'}</div><div class=sourceitem><b>產業估值調整</b>${a.sectorValuationDelta>0?'+':''}${a.sectorValuationDelta||0}</div><div class=sourceitem><b>融資餘額變化</b>${f.margin_change_pct!=null?Number(f.margin_change_pct).toFixed(1)+'%':'未取得'}</div><div class=sourceitem><b>注意／處置</b>${f.disposition?'⛔ 處置':f.attention?'⚠️ 注意':'✅ 無旗標'}</div><div class=sourceitem><b>OTC 市場環境</b>${FACTORS.market?.otc_state||'未取得'}</div><div class=sourceitem><b>價格模型</b>${a.priceModel||'TW-adaptive-v2'}</div></div>`;box.appendChild(p);const bubble=box.querySelector('.bubble');if(bubble)bubble.textContent=a.score;};
+  render=function(code,a,h,vf){_renderTW(code,a,h,vf);if(!vf.complete)return;const box=document.querySelector('#result');if(!box)return;const f=a.taiwanRisk||{};const p=document.createElement('div');p.innerHTML=`<h3>台股專用因子</h3><div class=sourcegrid><div class=sourceitem><b>產業代碼</b>${a.industry||'未取得'}｜${a.sectorFamily||'general'}</div><div class=sourceitem><b>產業估值調整</b>${a.sectorValuationDelta>0?'+':''}${a.sectorValuationDelta||0}</div><div class=sourceitem><b>融資餘額變化</b>${f.margin_change_pct!=null?Number(f.margin_change_pct).toFixed(1)+'%':'未取得'}</div><div class=sourceitem><b>注意／處置</b>${f.disposition?'⛔ 處置':f.attention?'⚠️ 注意':'✅ 無旗標'}</div><div class=sourceitem><b>OTC 市場環境</b>${FACTORS.market?.otc_state||'未取得'}</div><div class=sourceitem><b>價格模型</b>${a.priceModel||'TW-adaptive-v2'}</div></div>`;box.appendChild(p);const bubble=box.querySelector('.bubble');if(bubble)bubble.textContent=a.score;};
   window.StockLabTaiwan={loadFactors,adaptiveBand,sectorFamily,stockFactor,roundTick,get factors(){return FACTORS}};
 })();
