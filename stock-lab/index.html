@@ -6,14 +6,14 @@
 <title>StockLab 台股投資分析器</title>
 <style>
 :root{--bg:#0b1020;--card:#131a2c;--line:#26314b;--txt:#eef3ff;--muted:#9aa8c7;--accent:#7dd3fc;--green:#34d399;--yellow:#fbbf24;--red:#fb7185}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#09101e,#0d1324);color:var(--txt);font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif}.wrap{max-width:860px;margin:auto;padding:18px}.hero{padding:12px 0 4px}.hero h1{margin:0 0 4px;font-size:27px}.hero p,.muted{color:var(--muted);line-height:1.55}.card{background:rgba(19,26,44,.94);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.grid{grid-template-columns:1fr}}label{font-size:13px;color:var(--muted)}input,select,button{width:100%;border-radius:12px;border:1px solid var(--line);padding:13px;font-size:16px}input,select{background:#0d1425;color:white;margin-top:6px}button{background:linear-gradient(90deg,#38bdf8,#818cf8);color:#08111f;font-weight:800;border:0}.ghost{background:#192237;color:#dbeafe}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tabs button{min-height:62px;padding:10px 6px}@media(max-width:520px){.tabs button{font-size:14px;min-height:58px}}.hidden{display:none}.toprow{display:flex;justify-content:space-between;gap:10px;align-items:center}.bubble{width:70px;height:70px;border-radius:50%;display:grid;place-items:center;font-size:24px;font-weight:900;background:#0d1425;border:7px solid var(--accent)}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}.kpi,.sourceitem{background:#0d1425;padding:12px;border-radius:12px}.kpi b{font-size:18px;display:block}.kpi span,.mini{font-size:12px;color:var(--muted)}.sourcegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}@media(max-width:640px){.sourcegrid{grid-template-columns:1fr}}.sourceitem b{display:block;margin-bottom:4px}.list{display:grid;gap:10px}.item{background:#0d1425;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:start}@media(max-width:620px){.item{grid-template-columns:48px 1fr}.item .price{grid-column:2}}.rank{font-weight:900;font-size:20px}.price{font-weight:900}.reason{line-height:1.7;color:#dbe4f8}.bad{color:var(--red)}.loader{text-align:center;padding:18px;color:var(--accent)}.foot{font-size:12px;color:var(--muted);line-height:1.7;padding:12px 4px 8px}.disclaimer{background:#101827;border:1px solid #334155;border-radius:16px;padding:14px;margin:10px 0 28px;font-size:12px;color:#b8c3d9;line-height:1.75}.disclaimer b{display:block;color:#e5edf9;font-size:13px;margin-bottom:6px}.source-note{background:#0d1425;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}.compact-note{padding:10px 12px}.compact-note b{font-size:13px}.detail-card{padding:0;overflow:hidden}.detail-card summary{cursor:pointer;list-style:none;padding:13px 16px;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:10px}.detail-card summary::-webkit-details-marker{display:none}.detail-card summary:after{content:'＋';color:var(--muted);font-size:20px}.detail-card[open] summary:after{content:'－'}.detail-card[open] summary{border-bottom:1px solid var(--line)}.detail-body{padding:14px 16px}.detail-status{font-size:12px;color:var(--muted);font-weight:600}.section-lead{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.55}.simple-rule{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6}.why{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;line-height:1.6}.strategy-note{margin-top:10px;padding:10px 12px;border-radius:12px;background:#0d1425;color:var(--muted);font-size:12px;line-height:1.6}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#09101e,#0d1324);color:var(--txt);font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif}.wrap{max-width:860px;margin:auto;padding:18px}.hero{padding:12px 0 4px}.hero h1{margin:0 0 4px;font-size:27px}.hero p,.muted{color:var(--muted);line-height:1.55}.card{background:rgba(19,26,44,.94);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.grid{grid-template-columns:1fr}}label{font-size:13px;color:var(--muted)}input,select,button{width:100%;border-radius:12px;border:1px solid var(--line);padding:13px;font-size:16px}input,select{background:#0d1425;color:white;margin-top:6px}button{background:linear-gradient(90deg,#38bdf8,#818cf8);color:#08111f;font-weight:800;border:0}.ghost{background:#192237;color:#dbeafe}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tabs button{min-height:62px;padding:10px 6px}@media(max-width:520px){.tabs button{font-size:14px;min-height:58px}}.hidden{display:none}.toprow{display:flex;justify-content:space-between;gap:10px;align-items:center}.bubble{width:70px;height:70px;border-radius:50%;display:grid;place-items:center;font-size:20px;font-weight:900;background:#0d1425;border:7px solid var(--accent)}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}.kpi,.sourceitem{background:#0d1425;padding:12px;border-radius:12px}.kpi b{font-size:18px;display:block}.kpi span,.mini{font-size:12px;color:var(--muted)}.sourcegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}@media(max-width:640px){.sourcegrid{grid-template-columns:1fr}}.sourceitem b{display:block;margin-bottom:4px}.list{display:grid;gap:10px}.item{background:#0d1425;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:start}@media(max-width:620px){.item{grid-template-columns:48px 1fr}.item .price{grid-column:2}}.rank{font-weight:900;font-size:20px}.price{font-weight:900}.reason{line-height:1.7;color:#dbe4f8}.bad{color:var(--red)}.loader{text-align:center;padding:18px;color:var(--accent)}.foot{font-size:12px;color:var(--muted);line-height:1.7;padding:12px 4px 8px}.disclaimer{background:#101827;border:1px solid #334155;border-radius:16px;padding:14px;margin:10px 0 28px;font-size:12px;color:#b8c3d9;line-height:1.75}.disclaimer b{display:block;color:#e5edf9;font-size:13px;margin-bottom:6px}.source-note{background:#0d1425;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}.compact-note{padding:10px 12px}.compact-note b{font-size:13px}.detail-card{padding:0;overflow:hidden}.detail-card summary{cursor:pointer;list-style:none;padding:13px 16px;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:10px}.detail-card summary::-webkit-details-marker{display:none}.detail-card summary:after{content:'＋';color:var(--muted);font-size:20px}.detail-card[open] summary:after{content:'－'}.detail-card[open] summary{border-bottom:1px solid var(--line)}.detail-body{padding:14px 16px}.detail-status{font-size:12px;color:var(--muted);font-weight:600}.section-lead{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.55}.simple-rule{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6}.why{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;line-height:1.6}.strategy-note{margin-top:10px;padding:10px 12px;border-radius:12px;background:#0d1425;color:var(--muted);font-size:12px;line-height:1.6}
 </style>
 </head>
 <body>
 <main class="wrap">
   <section class="hero">
     <h1>StockLab 台股投資分析器</h1>
-    <p>只用通過合法性、日期與內容驗證的資料；缺資料就停止預測，不補假值。</p>
+    <p>只用合法、正確、可追溯且驗證通過的資料；缺資料就停止判斷，不補假值。</p>
   </section>
 
   <section id="marketCard" class="card">
@@ -35,16 +35,20 @@
       <button id="singleBtn" class="ghost">想買這檔</button>
       <button id="holdBtn" class="ghost">已持有</button>
     </div>
-    <div class="section-lead">找股票、買入判斷、持股出場是三個不同問題，分開使用不同模型。</div>
+    <div class="section-lead">找標的、判斷是否入場、持股出場是三個不同問題；不再用短／中／長三套價格。</div>
   </section>
 
   <section id="singlePanel" class="card hidden">
     <label>股票代號／股票名稱<input id="ticker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <select id="horizon" class="hidden" aria-hidden="true"><option value="buy" selected>下一交易時段買入分析</option></select>
-    <p class="simple-rule">依「最新已完成且驗證通過的交易日」建立下一交易時段計畫。08:30–09:00 只決定盤前限價 ROD 是否正在執行窗口；09:00 後若沒有合法即時行情，不會重算一個假裝是盤中的新價格。收盤後也不以時鐘直接切換成明日價格，必須等官方資料日期真的前進且所有必要 Gate 都通過。</p>
-    <div class="strategy-note">公開資料目前於台灣時間 14:20、14:50、15:20、15:50 嘗試更新；這些是「抓取嘗試時間」，不是資料可用保證。只有最新官方交易日與必要資料都驗證完成後，才會解鎖新的下一交易時段計畫。</div>
-    <button id="analyzeBtn">分析是否適合買入</button>
-    <div id="singleLoad" class="loader hidden">正在驗證資料來源、資料日與模型 Gate…</div>
+    <select id="horizon" class="hidden" aria-hidden="true"><option value="buy" selected>入場判斷</option></select>
+    <p class="simple-rule">只回答一件事：依最新合法且驗證通過的資料，這檔股票現在／下一個可判斷交易時段是否適合入場。</p>
+    <details class="source-note">
+      <summary><b>判斷基準：9項入場因子＋3個市場背景</b></summary>
+      <div class="mini" style="margin-top:8px">9項：價格趨勢與支撐／壓力、成交量、均線、法人／籌碼、MACD、RSI、KD/KDJ、黃金／死亡交叉、K線型態。<br>市場背景：美股、台指期 TX、國際時事。任何必要資料未取得或未通過驗證，就不能形成完整入場結論。</div>
+    </details>
+    <div class="strategy-note">若沒有合法即時／延遲行情，09:00 後不會假裝知道目前成交價。新計畫只在官方最新完成交易日真的更新、且所有必要資料 Gate 都通過後才建立。</div>
+    <button id="analyzeBtn">判斷是否適合入場</button>
+    <div id="singleLoad" class="loader hidden">正在驗證九項因子、美股、台指期與國際時事…</div>
   </section>
 
   <section id="result" class="card hidden"></section>
@@ -55,34 +59,29 @@
       <label>總量成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label>
       <label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label>
       <label>首次買入日（選填）<input id="holdBuyDate" type="date"></label>
-      <label>原本預計持有期間<select id="holdHorizon"><option value="1m">短線｜數日～約1個月</option><option value="3m" selected>波段｜約1～3個月</option><option value="long">中長期｜6個月以上</option></select></label>
     </div>
-    <p class="simple-rule">短／中／長只在持股分析使用，用來決定趨勢失效、減碼與出場尺度，不再產生「可能永遠買不到」的低價。</p>
+    <p class="simple-rule">持股頁只分析你的成本、部位、買入時間、最新已驗證價格、九項市場訊號與風險狀態，目的是判斷續抱、減碼或出場，不再要求選短／中／長。</p>
     <button id="holdAnalyzeBtn">查看持股狀態與出場條件</button>
-    <div id="holdLoad" class="loader hidden">正在驗證持股資料…</div>
-    <div id="holdResult" class="source-note compact-note"><b>現在就能查</b><div class="mini">可先依最新已驗證收盤計算持有成本、市值與未實現損益；正式「續抱／減碼／停利／出場」建議仍須等獨立 OOS Gate 通過，未通過前不會假裝有答案。</div></div>
+    <div id="holdLoad" class="loader hidden">正在驗證持股資料與市場訊號…</div>
+    <div id="holdResult" class="source-note compact-note"><b>資料規則</b><div class="mini">成本、股數、買入日只採你的輸入；市場資料缺漏就標示未知，不推測、不補值。</div></div>
   </section>
 
   <section id="findPanel" class="card">
-    <label>投資目的<select id="scanObjective">
-      <option value="momentum" selected>短線價差｜價格動能＋成交結構</option>
-      <option value="growth">成長波段｜營收／獲利加速</option>
-      <option value="income">股息收益｜配息／配股＋財務承受力</option>
-      <option value="total_return">長期總報酬｜成長＋股利＋估值</option>
-    </select></label>
-    <div class="strategy-note">不再用同一套「短／中／長」排名。四種目的必須使用不同必要資料、不同因子與不同 OOS 驗證；如果資料不足就不排名。TOP10 只回答「為什麼值得研究」，不在這裡硬塞買入價；要買哪一檔，再進「想買這檔」取得下一交易時段計畫。</div>
-    <button id="scanBtn">找出符合投資目的的 10 檔</button>
-    <div id="scanLoad" class="loader hidden">正在驗證候選資料與策略必要因子…</div>
+    <h2 style="margin-top:0">目前最適合研究入場的 10 檔</h2>
+    <p class="muted">全市場候選都使用同一套「9項入場因子＋美股＋台指期＋國際時事」判斷。不是依投資期間分成不同排行榜，也不拿缺資料股票補滿十檔。</p>
+    <input id="scanObjective" type="hidden" value="entry">
+    <button id="scanBtn">找出目前最適合入場的 10 檔</button>
+    <div id="scanLoad" class="loader hidden">正在驗證候選股票的 9＋3 項資料…</div>
   </section>
 
   <section id="top10" class="card hidden"></section>
 
   <details class="source-note">
-    <summary><b>資料規則與授權</b></summary>
-    <div class="mini" style="margin-top:8px">必要資料必須同時通過：合法可用來源、商品類型、資料日期、內容一致性、台股交易規則與對應模型 OOS Gate。缺資料只能顯示「未取得／未通過驗證」，不得以 0、平均值、過期值、其他網站未驗證值、推估值或 AI 生成值補入。公開快取只使用已登錄可再利用授權的資料集；即時／延遲交易資訊未取得必要契約前不納入公開版預測。</div>
+    <summary><b>絕對不能違反的資料規則</b></summary>
+    <div class="mini" style="margin-top:8px">①只使用明確合法可用的資料來源；公開網址不等於授權。②資料日期、商品、欄位與來源必須可追溯。③未取得、過期、欄位不符、交叉驗證失敗或授權不明，一律維持「未取得／未通過驗證」。④不得以 0、平均值、前期值、其他網站未驗證值、AI 生成值或任何推估值假裝成已取得資料。⑤事實、衍生計算、模型估計必須分開標示。⑥未通過正式樣本外驗證，不得標示勝率、機率、信心或可執行推薦。</div>
   </details>
 
-  <div class="disclaimer"><b>投資風險聲明</b>本工具提供的分析、評分與排名僅供研究與資訊參考，不構成投資建議或收益保證。模型分數不是上漲機率；未通過正式樣本外驗證的模型不標示為已驗證預測。</div>
+  <div class="disclaimer"><b>投資風險聲明</b>本工具提供的分析、評分與排名僅供研究與資訊參考，不構成投資建議或收益保證。未通過必要資料與樣本外驗證 Gate 時，系統只能顯示已驗證事實與缺口，不能產生完整入場結論。</div>
 </main>
 <script src="./runtime-config.js"></script>
 <script src="./api-client.js"></script>
@@ -96,6 +95,7 @@
 <script src="./markets.js"></script>
 <script src="./futures.js"></script>
 <script src="./event-risk.js"></script>
+<script src="./entry-decision.js"></script>
 <script src="./top10-gate.js"></script>
 <script src="./market-router.js"></script>
 <script src="./holding-model.js"></script>
