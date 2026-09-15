@@ -7,6 +7,7 @@ on:
       - 'stock-lab/public-output.js'
       - 'stock-lab/holding-model.js'
       - 'stock-lab/holding-router.js'
+      - 'stock-lab/hard-policy.js'
       - 'stock-lab/verification-policy.json'
       - 'stock-lab/index.html'
       - '.github/workflows/stocklab-session-holding-contract.yml'
@@ -29,6 +30,7 @@ jobs:
           node --check stock-lab/public-output.js
           node --check stock-lab/holding-model.js
           node --check stock-lab/holding-router.js
+          node --check stock-lab/hard-policy.js
       - name: Session and holding invariants
         run: |
           python - <<'PY'
@@ -40,6 +42,7 @@ jobs:
           public=R('stock-lab/public-output.js')
           hold=R('stock-lab/holding-model.js')
           router=R('stock-lab/holding-router.js')
+          hard=R('stock-lab/hard-policy.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
 
           # Session state is data-date driven, with Taiwan market phases used only for executability/labels.
@@ -55,6 +58,13 @@ jobs:
           assert 'StockLabSessionContext.resolve' in public
           assert '若今日已收盤但官方資料日尚未前進' in public
 
+          # Backend results must identify the data session and exact later trading session explicitly.
+          for text in ('validISODate','sessionPairOK','trading_calendar_verified','base_session_date','target_session_date','next_eligible_session_date'):
+              assert text in hard,text
+          assert "if(ctx.targetSessionVerified!==true)" in hard
+          assert "if(ctx.nextExecutionSessionVerified!==true)" in hard
+          assert "if(!sessionPairOK(base,target))" in hard
+
           # Holding structure needs enough pre-entry context, while holding age remains exact from the user buy date.
           assert 'const MIN_BARS=120' in hold
           assert 'requiredBars:()=>MIN_BARS' in hold
@@ -66,5 +76,5 @@ jobs:
 
           # Policy must keep the same 120-bar floor.
           assert int(policy['history_requirements']['holding_exit']['minimum_valid_bars']) == 120
-          print('PASS: target-session truth and holding-history contracts enforced')
+          print('PASS: target-session truth, backend session dates and holding-history contracts enforced')
           PY
