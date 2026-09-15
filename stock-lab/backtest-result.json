@@ -1,17 +1,21 @@
 {
-  "schema_version": 7,
-  "architecture": "buy-holding-strategy-scanner-v7",
-  "formal_validation_status": "BLOCKED_LEGAL_SOURCE",
+  "schema_version": 9,
+  "architecture": "unified-entry-holding-v9",
+  "formal_validation_status": "BLOCKED_DATA_LAYER",
   "network_history_collection_performed": false,
-  "legacy_preopen_short_swing_long_result_is_production_valid": false,
-  "reason": "No dataset-specific legally reusable historical OHLC bundle is connected. Legacy website-history diagnostics cannot validate the v7 production architecture, and each scanner strategy requires its own OOS test.",
+  "network_history_collection_disabled": true,
+  "legacy_horizon_entry_results_are_production_valid": false,
+  "reason": "StockLab v9 has no connected dataset-specific legally reusable historical OHLC/universe bundle sufficient for production-equivalent chronological OOS. No website-history request is used to fill that gap, and no blocked model is labelled PASS.",
   "models": {
-    "buy_session": "BLOCKED_LEGAL_SOURCE",
-    "holding_exit": "BLOCKED_LEGAL_SOURCE",
-    "scanner_momentum": "BLOCKED_LEGAL_SOURCE",
-    "scanner_growth": "BLOCKED_LEGAL_SOURCE",
-    "scanner_income": "BLOCKED_DATA_LAYER",
-    "scanner_total_return": "BLOCKED_DATA_LAYER"
+    "entry_decision_9plus3": "BLOCKED_DATA_LAYER",
+    "entry_scanner_9plus3": "BLOCKED_DATA_LAYER",
+    "holding_exit": "BLOCKED_DATA_LAYER"
   },
-  "next_gate": "Connect legally reusable historical OHLC/universe data, connect the registered OGDL dividend-history layer, then run separate production-equivalent OOS validation for buy_session, holding_exit, momentum, growth, income and total_return."
+  "truth_contract": {
+    "missing_data_imputed": false,
+    "unverified_source_used_as_fact": false,
+    "stale_data_relabelled_current": false,
+    "oos_required_for_recommendation": true
+  },
+  "next_gate": "Connect legally reusable historical OHLC/universe data, complete security/trading-calendar/corporate-action/Taiwan-risk/context gates, then run production-equivalent chronological OOS separately for unified entry, scanner and TW-holding-exit-v3."
 }
