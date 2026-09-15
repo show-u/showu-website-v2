@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "architecture": "buy-holding-separate-v6",
+  "generated_rule": "Status is fail-closed. PASS may only be written by a workflow using a dataset-specific legally reusable historical feed and the production-equivalent model formula.",
+  "legacy_preopen_short_swing_long_result_is_production_valid": false,
+  "models": {
+    "buy_session": {
+      "status": "BLOCKED_LEGAL_SOURCE",
+      "reason": "No dataset-specific legally reusable 60-month historical OHLC feed is connected to the production-equivalent next-session buy model.",
+      "required_before_pass": ["licensed historical OHLC", "security master", "trading calendar", "corporate-action adjustments", "Taiwan active risk states", "chronological OOS", "cost/slippage", "production-formula match"]
+    },
+    "holding_exit": {
+      "status": "BLOCKED_LEGAL_SOURCE",
+      "reason": "The new cost-aware holding-exit model is separate from the old entry model and has not been OOS validated on a legally reusable historical feed.",
+      "required_before_pass": ["licensed historical OHLC", "synthetic/historical position protocol", "user-cost-aware formula freeze", "corporate-action adjustments", "Taiwan active risk states", "chronological OOS", "cost/slippage", "production-formula match"]
+    },
+    "scanner": {
+      "status": "BLOCKED_LEGAL_SOURCE",
+      "reason": "Candidate-ranking OOS cannot be certified from unlicensed website-history collection.",
+      "required_before_pass": ["licensed survivorship-safe universe/history", "TWSE+TPEx", "sector/accounting-class coverage", "chronological OOS", "benchmark", "cost/slippage where trades are simulated"]
+    }
+  }
+}
