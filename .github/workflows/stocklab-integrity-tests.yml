@@ -33,6 +33,7 @@ jobs:
           node --check stock-lab/event-risk.js
           node --check stock-lab/top10-gate.js
           node --check stock-lab/market-router.js
+          node --check stock-lab/ui-patch.js
       - name: Source policy and snapshot checks
         run: |
           python - <<'PY'
@@ -50,8 +51,9 @@ jobs:
           events=Path('stock-lab/event-risk.js').read_text(encoding='utf-8')
           gate=Path('stock-lab/top10-gate.js').read_text(encoding='utf-8')
           router=Path('stock-lab/market-router.js').read_text(encoding='utf-8')
+          ui=Path('stock-lab/ui-patch.js').read_text(encoding='utf-8')
           policy=json.loads(Path('stock-lab/verification-policy.json').read_text(encoding='utf-8'))
-          for script in ('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js'):
+          for script in ('app.js','indicators-v2.js','tpex.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js','top10-gate.js','market-router.js','ui-patch.js'):
               assert f'./{script}' in idx, f'{script} not loaded by index'
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
           assert "Wilder RSI 14 v2" in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
@@ -81,7 +83,8 @@ jobs:
           assert '資料不足者不得進榜' in gate
           assert "marketName='TPEx'" in router and "marketName='TWSE'" in router
           assert '不需要 ChatGPT／GPT 帳號' in idx
-          assert 'Wilder 14 日平滑算法' in idx
+          assert '股票代號／股票名稱' in idx and '例如：2454 或 聯發科' in idx
+          assert 'browser-data.json' in ui and '建議入場價格區間' in ui and '現在價格' in ui
           snap=json.loads(Path('stock-lab/market-data.json').read_text(encoding='utf-8'))
           assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
@@ -97,7 +100,7 @@ jobs:
           if tph.get('verified'):
               assert tph.get('status')=='ok'
               assert set(tph.get('checks',{}))=={'snapshot','valuation','institution','revenue','income','balance'}
-          print('source-policy, Wilder RSI, TPEx health and TOP10 gate checks passed')
+          print('source-policy, UI search, price labels, Wilder RSI, TPEx health and TOP10 gate checks passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
