@@ -1,65 +1,28 @@
 {
-  "schema_version": 3,
-  "architecture": "unified-entry-holding-v9",
+  "schema_version": 4,
+  "architecture": "unified-entry-holding-v10",
   "generated_rule": "Status is fail-closed. PASS may only be written by a workflow using legally reusable data, the production-equivalent formula and chronological out-of-sample validation. Missing factors or market contexts may not be imputed.",
   "legacy_horizon_entry_results_are_production_valid": false,
   "models": {
     "entry_decision_9plus3": {
       "status": "BLOCKED_DATA_LAYER",
-      "reason": "The production entry contract now requires nine verified entry factors plus verified US-market, TAIFEX TX and international-event contexts. Legal historical OHLC, TWSE institutional input, international-event feed and production-equivalent OOS validation are not all complete.",
-      "required_before_pass": [
-        "licensed historical OHLC",
-        "supported security master",
-        "trading calendar",
-        "corporate-action adjustments",
-        "Taiwan active risk states",
-        "all nine entry factors verified",
-        "verified US-market context",
-        "verified TAIFEX TX context",
-        "verified international-event context",
-        "chronological OOS",
-        "cost/slippage",
-        "production-formula match"
-      ]
+      "reason": "The production entry contract requires nine verified entry factors plus verified US-market, TAIFEX TX and international-event contexts. Legal historical OHLC, TWSE institutional input, international-event feed and production-equivalent OOS validation are not all complete.",
+      "required_before_pass": ["licensed historical OHLC", "supported security master", "trading calendar", "corporate-action adjustments", "Taiwan active risk states", "all nine entry factors verified", "verified US-market context", "verified TAIFEX TX context", "verified international-event context", "chronological OOS", "cost/slippage", "production-formula match"]
     },
     "entry_scanner_9plus3": {
       "status": "BLOCKED_DATA_LAYER",
       "reason": "TOP10 must use exactly the same 9+3 contract as single-stock entry analysis across a survivorship-safe TWSE+TPEx universe. No former horizon or objective ranking may substitute.",
-      "required_before_pass": [
-        "licensed survivorship-safe TWSE+TPEx universe/history",
-        "all nine entry factors for every candidate",
-        "verified US-market context",
-        "verified TAIFEX TX context",
-        "verified international-event context",
-        "Taiwan active risk states",
-        "chronological OOS",
-        "benchmark",
-        "production-formula match"
-      ]
+      "required_before_pass": ["licensed survivorship-safe TWSE+TPEx universe/history", "all nine entry factors for every candidate", "verified US-market context", "verified TAIFEX TX context", "verified international-event context", "Taiwan active risk states", "chronological OOS", "benchmark", "production-formula match"]
     },
     "holding_exit": {
       "status": "BLOCKED_DATA_LAYER",
-      "candidate_formula": "TW-holding-exit-v3",
+      "candidate_formula": "TW-holding-exit-v4",
       "validation_protocol": "stock-lab/holding-exit-validation-protocol.json",
       "position_input_contract": "Current broker average cost + current shares + first buy date, or user-entered remaining lots (buy date + buy price + currently held shares) with weighted average derived from those user inputs. No inferred position fields.",
-      "time_structure_contract": "No user-selected short/mid/long horizon. The candidate model derives its structural lookback from actual holding age, bounded to 20-120 trading-day-equivalent observations.",
+      "time_structure_contract": "No short/mid/long selector. Actual holding age is the exact count of verified trading-session bars from the user buy date through the latest completed session. Calendar-day approximations are forbidden. Structural lookback may be bounded separately for model stability but must never be labelled as actual holding age.",
       "position_size_rule": "Share count may calculate market value and monetary P/L only. Without total portfolio assets and risk budget it must not change the exit signal or claim that the position is too large/small.",
-      "reason": "The actual-position holding-exit model is separate from entry analysis. Its OOS protocol was frozen before legal historical OOS data became available. It still requires user cost/shares/buy date, verified market structure and 9+3 context, Taiwan active-risk/corporate-action gates, and independent production-equivalent OOS validation before any executable exit recommendation may be shown.",
-      "required_before_pass": [
-        "licensed historical OHLC",
-        "frozen holding-exit-validation-protocol.json satisfied without post-OOS retuning",
-        "historical position episodes covering different entry dates and cost bases",
-        "TW-holding-exit-v3 formula freeze",
-        "corporate-action adjustments",
-        "Taiwan active risk states",
-        "verified 9+3 context",
-        "chronological OOS and walk-forward when sufficient history exists",
-        "minimum 300 OOS episodes and 80 OOS securities",
-        "bull bear sideways regime coverage",
-        "non-overlapping position episodes",
-        "transaction cost/slippage assumptions for exit evaluation",
-        "production-formula match"
-      ]
+      "reason": "The actual-position holding-exit model is separate from entry analysis. The v4 protocol is frozen before OOS. It requires the exact buy trading session to exist in legally reusable history, verified market/risk/corporate-action context, and independent production-equivalent OOS validation before any executable exit recommendation may be shown.",
+      "required_before_pass": ["licensed historical OHLC covering the exact buy session", "frozen holding-exit-validation-protocol.json satisfied without post-OOS retuning", "historical position episodes covering different entry dates and cost bases", "TW-holding-exit-v4 formula freeze", "corporate-action adjustments", "Taiwan active risk states", "verified exit-context inputs", "chronological OOS and walk-forward when sufficient history exists", "minimum 300 OOS episodes and 80 OOS securities", "bull bear sideways regime coverage", "non-overlapping position episodes", "transaction cost/slippage assumptions for exit evaluation", "production-formula match"]
     }
   }
 }
