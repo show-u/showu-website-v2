@@ -33,3 +33,4 @@ jobs:
           assert all(isinstance(x['datasets'][k],list) and len(x['datasets'][k])>0 for k in req)
           print('same-origin datasets verified')
           PY
+# rerun after first browser-data snapshot was committed
