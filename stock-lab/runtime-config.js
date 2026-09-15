@@ -18,8 +18,11 @@ window.STOCKLAB_RUNTIME={
     txFuturesContext:false,
     internationalEventFeed:false,
     entryDecisionOosValidation:false,
+    entryConfidenceCalibration:false,
     holdingExitValidation:false,
-    entryScannerOosValidation:false
+    holdingConfidenceCalibration:false,
+    entryScannerOosValidation:false,
+    scannerConfidenceCalibration:false
   },
   blockers:[
     '合法歷史 OHLC 尚未形成足夠長期、可重現樣本；九項技術入場因子與正式 OOS 驗證因此維持 BLOCKED_LEGAL_SOURCE',
@@ -30,8 +33,9 @@ window.STOCKLAB_RUNTIME={
     '美股背景只接受通過來源、日期、內容與雜湊驗證的 NASDAQ／SOX／VIX；缺任何必要項目就標示未知，不補值',
     '台指期 TX 必須通過 TAIFEX 來源與交叉驗證；未通過就不能形成完整入場結論',
     '國際時事自動資料流尚未完成合法來源、事件日、發布日與交叉驗證；未知不得寫成「沒有重大事件」',
-    'TOP10 已改成單一「目前入場適合度」模型；每檔都必須完成相同的九項因子＋美股＋台指期＋國際時事與正式 OOS',
-    '每一檔 TOP10 必須輸出可追溯的入榜理由與主要風險；合格不足 10 檔時不得補滿',
+    'TOP10 與單股入場都使用同一套九項因子＋美股＋台指期＋國際時事模型；這些因素只供內部判斷，不在簡潔頁面逐項展開',
+    '信心指數必須由正式樣本外結果校準；沒有 calibration PASS 時不得用正向因子數、主觀權重或 heuristic 冒充信心指數',
+    '每一檔 TOP10 必須保留可稽核的入榜理由與主要風險；公開頁面可簡化顯示，但後端 audit 不得刪除',
     '沒有合法即時／延遲行情授權時，09:00 後禁止重算「當日可執行價格」；只能保留原計畫作標示清楚的參考紀錄',
     '收盤後排程時間不是資料完成證明；只有官方資料日期前進且所有必要輸入都驗證通過，才能建立新計畫'
   ]
