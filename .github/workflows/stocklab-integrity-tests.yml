@@ -43,7 +43,6 @@ jobs:
           cache=R('stock-lab/same-origin-cache.js');cachewf=R('.github/workflows/update-browser-cache.yml');backtest=R('stock-lab/backtest-taiwan-v3.py')
           policy=json.loads(R('stock-lab/verification-policy.json'))
 
-          # Absolute policy: missing/unverified/unlicensed data can never be filled or turned into a prediction.
           assert policy['version']==5 and policy['policy_name']=='StockLab Taiwan Truth Rules'
           required={
             'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY',
@@ -65,26 +64,26 @@ jobs:
           t86=registry['twse_t86_stock_institution']
           assert t86['licence']=='unverified' and t86['automated_collection'] is False and t86['scoring'] is False
 
-          # Formal backtest standards are stricter than merely producing trades.
           bt=policy['backtest_validation']
           assert bt['requested_universe']==160 and bt['minimum_valid_universe']>=120
           assert bt['minimum_oos_trades_per_mode']>=100 and bt['minimum_oos_unique_stocks_per_mode']>=30
           assert bt['costs_required'] and bt['chronological_oos_required'] and bt['oos_parameter_freeze_required']
 
-          # Production is deliberately fail-closed until all unresolved Taiwan gates are explicitly completed.
+          # Prediction stays fail-closed, while licensed verified facts remain queryable.
           assert "allowLocalFallback:false" in runtime
           assert "productionPredictionReady:false" in runtime
           for s in ('licensedHistoricalOHLC:false','securityMaster:false','corporateActions:false','financialSchemaCoverage:false','taiwanRiskState:false','oosValidation:false'):
               assert s in runtime,s
           assert 'STOCKLAB_HARD_READY' in runtime and "import('./hard-policy.js')" in runtime
           assert 'api.config.allowLocalFallback=false' in compliance
-          assert "rt.productionPredictionReady!==true" in compliance
-          assert '不以假資料、舊資料、0、平均值或推測值補齊' in compliance
+          assert "rt.productionPredictionReady===true" in compliance
+          assert 'VERIFIED FACTS ONLY' in compliance and 'licensed-open-data-cache' in compliance and 'OGDL' in compliance
+          assert '預測／推薦暫不輸出' in compliance and '不以舊資料、0、平均值或推測值補齊' in compliance
+          assert 'renderFacts' in compliance and 'renderHoldingFacts' in compliance and 'renderMarketFacts' in compliance
           assert 'legal_source_verified' in compliance and 'price_verified' in compliance
           assert './compliance-gate.js' in idx and idx.rfind('./compliance-gate.js')>idx.rfind('./health.js')
           assert '不可違反的資料規則' in idx and '不得以 0、平均值、舊期資料' in idx
 
-          # Numeric parsing: missing/blank/sentinel values must remain null; explicit zero remains valid zero.
           assert "if(v==null)return null" in app
           assert "if(v==null)return null" in taiwan
           assert "['-','--','—','N/A','NA','null','undefined']" in app
@@ -92,19 +91,16 @@ jobs:
           assert "Number(String(v??'')" not in app
           assert "function num(v){const x=Number(v)" not in taiwan
 
-          # Open-data mirror must carry explicit dataset-level legal provenance and attribution.
           assert "schema_version!==2" in cache and "licensed-open-data-cache" in cache and "OGDL-1.0" in cache
           assert all(x in cachewf for x in ('data_gov_dataset','licence_verified','OGDL-1.0','attribution','licensed-open-data-cache'))
           for ds in ('11549','11764','18420','91998','94831','11370','11373','11856','56510','94853','91967'):
               assert ds in cachewf,ds
 
-          # Current formal historical validation MUST remain blocked until licensed historical OHLC provenance exists.
           assert 'LEGAL_HISTORY_PROVENANCE_VERIFIED=False' in backtest
           assert "'formal_validation_status':'ELIGIBLE' if LEGAL_HISTORY_PROVENANCE_VERIFIED else 'BLOCKED_LEGAL_SOURCE'" in backtest
           assert "'stress_status']=statistical if LEGAL_HISTORY_PROVENANCE_VERIFIED else 'BLOCKED_LEGAL_SOURCE'" in backtest
           assert "'schema_version':4" in backtest
 
-          # Taiwan pre-open semantics: verified prior close + empirical opening gap, never deep support masquerading as opening price.
           assert 'riskBlocked' in router and 'data-five-price-matrix' in router and 'TW-empirical-open-pullback-v5' in router
           assert all(x in router for x in ('① 開盤前掛單價格','② 當日入場適合區間','③ 短線入場區間','④ 中期入場區間','⑤ 長期佈局區間','限價 ROD','tickSize','openingGapStats','官方基準','09:00後'))
           assert 'orderPrice=roundTick(day.entryLow' not in router
@@ -115,7 +111,6 @@ jobs:
           assert 'opening auction price <= order price' in backtest
           assert "if nxt.open>order" in backtest
 
-          # Existing source/date/schema integrity controls remain mandatory.
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
           assert 'Wilder RSI 14 v2' in indicators and 'avgGain*(p-1)' in indicators and 'avgLoss*(p-1)' in indicators
           assert "h!=='www.tpex.org.tw'" in tpex and 'tpex_mainboard_daily_close_quotes' in tpex
@@ -127,14 +122,12 @@ jobs:
           forbidden=('L.c*.96','L.c*0.96','L.c*.92','L.c*0.92','L.c*.88','L.c*0.88','L.c*.985','L.c*0.985')
           for x in forbidden:assert x not in app+router+taiwan,f'fixed entry percentage returned: {x}'
 
-          # Missing event feed stays unknown; external markets remain observation-only.
           assert policy['news_events']['scored'] is False and set(policy['news_events']['levels'])=={'A','B','C','D'}
           assert "Missing event data must never be converted into 'no event'" in policy['news_events']['rule']
           assert '尚未啟用自動事件資料流' in events and '不改變個股／TOP 10 分數' in events
           assert policy['external_market']['vix']['scored'] is False and policy['external_market']['sox']['scored'] is False and policy['external_market']['nasdaq']['scored'] is False
           assert '不改變個股或 TOP 10 分數' in markets
 
-          # General-industry-only financial schema is a declared blocker; CI must not silently call coverage complete.
           assert all(x in fin for x in ('t187ap06_L_ci','t187ap07_L_ci','mopsfin_t187ap06_O_ci','mopsfin_t187ap07_O_ci'))
           assert 'financialSchemaCoverage:false' in runtime
 
@@ -156,7 +149,6 @@ jobs:
           assert prediction_allowed(legal=None,fresh=True,verified=True,supported=True,oos=True) is False
           assert prediction_allowed(legal=True,fresh=True,verified=False,supported=True,oos=True) is False
           assert prediction_allowed(legal=True,fresh=True,verified=True,supported=True,oos=False) is False
-          # Missing observed value stays missing; zero is not a substitute.
           def strict_num(v):
               if v is None:return None
               s=str(v).strip()
@@ -167,7 +159,6 @@ jobs:
               assert strict_num(v) is None,(v,strict_num(v))
           assert strict_num('0')==0 and strict_num(0)==0
           assert strict_num('0.00')==0 and strict_num('1,234.5')==1234.5
-          # Regression guard: pre-open anchor follows prior close + empirical opening-gap median.
           prior_close=4560.0;gaps=[-0.01,-0.005,0.0,0.0,0.005,0.01]*5
           expected_open=prior_close*(1+statistics.median(gaps))
           assert expected_open==4560.0 and expected_open!=4200.0
