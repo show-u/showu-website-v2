@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-09-15",
+  "purpose": "Candidate-source audit only. This file does not activate any runtime data gate and is not a licensed-data manifest.",
+  "licence_baseline": {
+    "name": "政府資料開放授權條款-第1版",
+    "evidence_reference": "https://data.gov.tw/license",
+    "finding": "Open-data datasets explicitly released under this licence permit use, reproduction, distribution, public transmission, editing and adaptation for any purpose, subject to attribution and the licence terms.",
+    "attribution_required": true
+  },
+  "open_data_candidates": [
+    {
+      "role": "TWSE daily OHLC forward archive",
+      "dataset_id": "11549",
+      "dataset_name": "盤後資訊 > 個股日成交資訊",
+      "evidence_reference": "https://data.gov.tw/dataset/11549",
+      "licence": "政府資料開放授權條款-第1版",
+      "fields_include": ["日期","證券代號","開盤價","最高價","最低價","收盤價","成交股數","成交金額","成交筆數"],
+      "status": "LEGAL_FOR_OPEN_DATA_USE",
+      "historical_backfill": "NOT_ESTABLISHED",
+      "note": "Suitable for lawful daily archiving from collection start. Do not assume the current resource supplies five years of per-stock daily history."
+    },
+    {
+      "role": "TPEx daily OHLC forward archive",
+      "dataset_id": "11370",
+      "dataset_name": "上櫃股票行情",
+      "evidence_reference": "https://data.gov.tw/dataset/11370",
+      "licence": "政府資料開放授權條款-第1版",
+      "fields_include": ["資料日期","代號","開盤","最高","最低","收盤","成交股數","成交金額","成交筆數"],
+      "status": "LEGAL_FOR_OPEN_DATA_USE",
+      "historical_backfill": "NOT_ESTABLISHED"
+    },
+    {
+      "role": "TWSE security master / industry",
+      "dataset_id": "18419",
+      "dataset_name": "上市公司基本資料",
+      "evidence_reference": "https://data.gov.tw/dataset/18419",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_FOR_OPEN_DATA_USE"
+    },
+    {
+      "role": "TPEx security master / industry",
+      "dataset_id": "25036",
+      "dataset_name": "上櫃公司基本資料",
+      "evidence_reference": "https://data.gov.tw/dataset/25036",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_FOR_OPEN_DATA_USE"
+    },
+    {
+      "role": "TWSE disposition state",
+      "dataset_id": "29082",
+      "dataset_name": "集中市場處置有價證券資訊",
+      "evidence_reference": "https://data.gov.tw/dataset/29082",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_FOR_OPEN_DATA_USE"
+    },
+    {
+      "role": "TWSE attention precursor / cumulative anomaly",
+      "dataset_id": "33999",
+      "dataset_name": "集中市場當日公布注意累計次數異常資訊",
+      "evidence_reference": "https://data.gov.tw/dataset/33999",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_BUT_NOT_PROVEN_COMPLETE_FOR_ATTENTION_STATE",
+      "note": "Do not use this dataset alone as a complete attention-stock state until full coverage is confirmed."
+    },
+    {
+      "role": "TPEx attention state",
+      "dataset_id": "11395",
+      "dataset_name": "上櫃公布注意股票資訊",
+      "evidence_reference": "https://data.gov.tw/dataset/11395",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_FOR_OPEN_DATA_USE"
+    },
+    {
+      "role": "TPEx disposition state",
+      "dataset_id": "11396",
+      "dataset_name": "上櫃處置有價證券資訊",
+      "evidence_reference": "https://data.gov.tw/dataset/11396",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_FOR_OPEN_DATA_USE"
+    },
+    {
+      "role": "TWSE ex-right/ex-dividend corporate actions",
+      "dataset_id": "89748",
+      "dataset_name": "上市股票除權除息預告表",
+      "evidence_reference": "https://data.gov.tw/dataset/89748",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_BUT_CORPORATE_ACTION_COVERAGE_INCOMPLETE"
+    },
+    {
+      "role": "TPEx ex-right/ex-dividend corporate actions",
+      "dataset_id": "11633",
+      "dataset_name": "上櫃股票除權除息計算結果表",
+      "evidence_reference": "https://data.gov.tw/dataset/11633",
+      "licence": "政府資料開放授權條款-第1版",
+      "status": "LEGAL_BUT_CORPORATE_ACTION_COVERAGE_INCOMPLETE"
+    }
+  ],
+  "historical_oos_backfill": {
+    "status": "BLOCKED_PENDING_PURCHASE_OR_EXPLICIT_HISTORICAL_LICENSE",
+    "reason": "The open-data daily OHLC resources are lawful candidates for forward archiving, but a five-year per-security OHLC backfill is not established by those resources. A government open-data request explicitly notes that the current individual daily dataset provides the updated record rather than arbitrary historical date/code queries.",
+    "evidence_reference": "https://data.gov.tw/suggests/136936",
+    "paid_candidates": [
+      {
+        "market": "TWSE",
+        "provider": "臺灣證券交易所 Data E-Shop",
+        "product": "每日收盤行情",
+        "evidence_reference": "https://eshop.twse.com.tw/zh/product/detail/cfec9a1470e448ec91bfde006db361e8",
+        "status": "CANDIDATE_REQUIRES_ORDER_TERMS_REVIEW",
+        "note": "Product contains daily OHLC and volume. Internal/external-use rights are product-specific; do not activate until the purchased licence/terms are recorded in the bundle manifest."
+      },
+      {
+        "market": "TPEx",
+        "provider": "證券櫃檯買賣中心交易資訊商店",
+        "product": "盤後／歷史資料商品",
+        "evidence_reference": "https://eshop.tpex.org.tw/",
+        "status": "CANDIDATE_REQUIRES_PRODUCT_AND_ORDER_TERMS_REVIEW",
+        "note": "TPEx offers historical-data ordering and external-use terms for post-market products. Exact product coverage and rights must be recorded before use."
+      }
+    ]
+  },
+  "still_blocked": [
+    "five_year_TWSE_daily_OHLC_backfill",
+    "five_year_TPEx_daily_OHLC_backfill",
+    "complete_historical_trading_calendar_bundle",
+    "complete_historical_corporate_actions_including_non_dividend_reference_price_events",
+    "complete_historical_TWSE_attention_state",
+    "production_licence_evidence_for_any_paid_product"
+  ],
+  "activation_decision": "KEEP_ALL_RUNTIME_LICENSED_HISTORY_GATES_FALSE"
+}
