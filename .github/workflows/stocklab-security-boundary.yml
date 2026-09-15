@@ -1,0 +1,45 @@
+name: StockLab security boundary
+
+on:
+  push:
+    paths:
+      - 'stock-lab/**'
+      - '.github/workflows/stocklab-security-boundary.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify backend-first client boundary
+        run: |
+          node --check stock-lab/api-client.js
+          node --check stock-lab/market-router.js
+          node --check stock-lab/top10-gate.js
+          grep -q './api-client.js' stock-lab/index.html
+          grep -q "api.analyze" stock-lab/market-router.js
+          grep -q "api.scan" stock-lab/top10-gate.js
+          grep -q "allowLocalFallback" stock-lab/api-client.js
+          grep -q "credentials:'omit'" stock-lab/api-client.js
+          grep -q "cache:'no-store'" stock-lab/api-client.js
+      - name: Reject obvious client-side secrets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          files=[p for p in Path('stock-lab').glob('*.js')]
+          text='\n'.join(p.read_text(encoding='utf-8',errors='ignore') for p in files)
+          bad=[
+            r'sk-[A-Za-z0-9_-]{20,}',
+            r'OPENAI_API_KEY\s*=\s*["\'][^"\']+["\']',
+            r'VERCEL_TOKEN\s*=\s*["\'][^"\']+["\']',
+            r'Authorization\s*:\s*["\']Bearer\s+[A-Za-z0-9._-]{16,}',
+          ]
+          hits=[pat for pat in bad if re.search(pat,text,re.I)]
+          assert not hits, f'client-side secret pattern detected: {hits}'
+          print('security boundary checks passed')
+          PY
