@@ -46,6 +46,9 @@
     if(!d?.data_date)blockers.push('缺少資料日期');
     if(!d?.audit||d.audit.legal_source_verified!==true||d.audit.price_verified!==true)blockers.push('缺少合法來源／價格驗證稽核');
     if(d?.audit?.imputation_used===true)blockers.push('後端使用了補值，違反 NO_IMPUTATION');
+    if(d?.audit?.oos_validation_passed!==true)blockers.push('模型尚未取得正式樣本外 PASS，禁止輸出可執行數字預測');
+    if(d?.audit?.corporate_action_checked===false)blockers.push('公司行動／參考價事件未完成檢查');
+    if(d?.audit?.active_risk_status_checked===false)blockers.push('注意／處置／特殊交易狀態未完成檢查');
     if(kind==='analysis'&&(!d.ticker||d.entry_low==null||d.entry_high==null))blockers.push('分析必要欄位缺漏');
     return{ok:blockers.length===0,blockers};
   }
