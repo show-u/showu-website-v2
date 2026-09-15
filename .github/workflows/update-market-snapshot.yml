@@ -19,117 +19,106 @@ jobs:
       - name: Fetch and validate official market data
         run: |
           python - <<'PY'
-          import csv, hashlib, io, json, re, urllib.request
+          import csv, hashlib, io, json, os, re, urllib.request
           from urllib.parse import urlparse
           from datetime import datetime, timezone, timedelta
 
           NOW=datetime.now(timezone.utc)
-          UA={'User-Agent':'Mozilla/5.0 StockLab/2.0 (+source-verification)'}
-          OFFICIAL_HOSTS={
-            'vix':{'cdn.cboe.com'},
-            'sox':{'indexes.nasdaq.com'},
-            'nasdaq':{'indexes.nasdaq.com'}
-          }
+          UA={'User-Agent':'Mozilla/5.0 StockLab/3.0 (+source-verification)'}
+          OFFICIAL_HOSTS={'vix':{'cdn.cboe.com'},'sox':{'indexes.nasdaq.com'},'nasdaq':{'indexes.nasdaq.com'}}
+          EXPECTED_TYPES={'vix':('text/csv','text/plain','application/octet-stream'),'sox':('text/html','application/xhtml+xml'),'nasdaq':('text/html','application/xhtml+xml')}
+          path='stock-lab/market-data.json'
+          previous={}
+          if os.path.exists(path):
+              try: previous=json.load(open(path,encoding='utf-8'))
+              except: previous={}
 
           def get(url,key):
               req=urllib.request.Request(url,headers=UA)
               with urllib.request.urlopen(req,timeout=30) as r:
-                  body=r.read()
-                  final_url=r.geturl()
-                  host=(urlparse(final_url).hostname or '').lower()
-                  if host not in OFFICIAL_HOSTS[key]:
-                      raise ValueError(f'unexpected final host: {host}')
-                  ctype=r.headers.get('Content-Type','')
+                  body=r.read(); final_url=r.geturl(); host=(urlparse(final_url).hostname or '').lower()
+                  if host not in OFFICIAL_HOSTS[key]: raise ValueError(f'unexpected final host: {host}')
+                  ctype=(r.headers.get('Content-Type','') or '').lower()
+                  if ctype and not any(t in ctype for t in EXPECTED_TYPES[key]): raise ValueError(f'unexpected content type: {ctype}')
                   return body.decode('utf-8','replace'),final_url,ctype,hashlib.sha256(body).hexdigest()
 
           def parse_date(s):
               for fmt in ('%m/%d/%Y','%Y-%m-%d'):
-                  try:return datetime.strptime(s.strip(),fmt).replace(tzinfo=timezone.utc)
+                  try:return datetime.strptime(str(s).strip(),fmt).replace(tzinfo=timezone.utc)
                   except:pass
               raise ValueError(f'unsupported date: {s}')
 
-          def valid_date(d):
-              if d > NOW + timedelta(days=1):
-                  raise ValueError('source date is in the future')
-              return True
+          def validate_date(d):
+              if d > NOW + timedelta(days=1): raise ValueError('source date is in the future')
 
-          def source(name,url):
-              return {'verified':False,'source':name,'url':url,'fetched_at':NOW.isoformat(),'validation':[]}
+          def source(name,url): return {'verified':False,'source':name,'url':url,'fetched_at':NOW.isoformat(),'validation':[],'anomalies':[]}
 
-          out={
-            'schema_version':2,
-            'generated_at':NOW.isoformat(),
-            'status':'ok',
-            'policy':'official-primary; invalid or stale data is display-blocked and never scored',
-            'sources':{
-              'vix':source('CBOE','https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv'),
-              'sox':source('Nasdaq','https://indexes.nasdaq.com/Index/Overview/SOX'),
-              'nasdaq':source('Nasdaq','https://indexes.nasdaq.com/Index/Overview/COMP')
-            }
-          }
+          def historical_guard(key,s):
+              old=((previous.get('sources') or {}).get(key) or {})
+              if not old.get('verified') or not old.get('date') or old.get('value') is None: return
+              nd,od=parse_date(s['date']),parse_date(old['date'])
+              if nd < od: raise ValueError(f'date rollback: new {s["date"]} < previous {old["date"]}')
+              if nd == od:
+                  ov=float(old['value']); nv=float(s['value']); diff=abs(nv/ov-1)*100 if ov else 999
+                  if diff > 0.50: raise ValueError(f'same-date value changed {diff:.3f}%')
+                  if diff > 0: s['anomalies'].append(f'same_date_revision_{diff:.3f}%')
+              s['previous_verified_date']=old['date']; s['previous_verified_value']=old['value']
+              s['validation'].append('previous_snapshot_chronology_ok')
+
+          out={'schema_version':3,'generated_at':NOW.isoformat(),'status':'ok','policy':'official-primary; source/date/schema/value/history checks; invalid data display-blocked and never scored','sources':{
+            'vix':source('CBOE','https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv'),
+            'sox':source('Nasdaq','https://indexes.nasdaq.com/Index/Overview/SOX'),
+            'nasdaq':source('Nasdaq','https://indexes.nasdaq.com/Index/Overview/COMP')}}
 
           try:
               s=out['sources']['vix']; txt,final_url,ctype,sha=get(s['url'],'vix')
-              rows=list(csv.DictReader(io.StringIO(txt)))
-              clean=[r for r in rows if r.get('DATE') and r.get('CLOSE')]
+              rows=list(csv.DictReader(io.StringIO(txt))); clean=[r for r in rows if r.get('DATE') and r.get('CLOSE')]
               if len(clean)<2: raise ValueError('insufficient CBOE rows')
-              row,prev=clean[-1],clean[-2]
-              d=parse_date(row['DATE']); pd=parse_date(prev['DATE']); valid_date(d)
+              row,prev=clean[-1],clean[-2]; d,pd=parse_date(row['DATE']),parse_date(prev['DATE']); validate_date(d)
               if d<=pd: raise ValueError('CBOE dates not increasing')
-              close=float(row['CLOSE']); pclose=float(prev['CLOSE'])
-              if not (0<close<500 and 0<pclose<500): raise ValueError('VIX value outside sanity bounds')
+              close,pclose=float(row['CLOSE']),float(prev['CLOSE'])
+              if not (0<close<500 and 0<pclose<500): raise ValueError('VIX outside sanity bounds')
               pct=(close/pclose-1)*100
-              s.update({'date':row['DATE'],'value':close,'change':close-pclose,'change_pct':pct,
-                        'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
-              s['validation']=['official_host','date_parsed','date_not_future','chronology_ok','value_bounds_ok','change_recomputed']
-              s['verified']=True
-          except Exception as e:
-              out['sources']['vix']['error']=str(e)[:220]
+              if abs(pct)>60: raise ValueError(f'VIX daily move anomaly {pct:.2f}%')
+              s.update({'date':row['DATE'],'value':close,'change':close-pclose,'change_pct':pct,'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
+              s['validation']=['official_host','content_type_ok','date_parsed','date_not_future','chronology_ok','value_bounds_ok','change_recomputed']
+              historical_guard('vix',s); s['verified']=True
+          except Exception as e: out['sources']['vix']['error']=str(e)[:240]
 
           def parse_nasdaq(key):
               s=out['sources'][key]
               try:
-                  html,final_url,ctype,sha=get(s['url'],key)
-                  text=re.sub(r'<[^>]+>',' ',html)
-                  text=re.sub(r'\s+',' ',text)
+                  html,final_url,ctype,sha=get(s['url'],key); text=re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',html))
                   m=re.search(r'DATA AS OF\s+(\d{1,2}/\d{1,2}/\d{4})\s+([\d,]+(?:\.\d+)?)\s+([+-]?[\d,]+(?:\.\d+)?)\s+([+-]?[\d.]+)%',text,re.I)
                   if not m: raise ValueError('Nasdaq DATA AS OF pattern not found')
-                  date,value,chg,pct=m.groups(); d=parse_date(date); valid_date(d)
+                  date,value,chg,pct=m.groups(); d=parse_date(date); validate_date(d)
                   value=float(value.replace(',','')); chg=float(chg.replace(',','')); pct=float(pct)
                   if value<=0: raise ValueError('index value must be positive')
                   prev=value-chg
                   if prev<=0: raise ValueError('implied previous close invalid')
                   calc=chg/prev*100
-                  if abs(calc-pct)>0.20: raise ValueError(f'change percent mismatch: page={pct}, recomputed={calc:.4f}')
-                  s.update({'date':date,'value':value,'change':chg,'change_pct':pct,'recomputed_change_pct':calc,
-                            'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
-                  s['validation']=['official_host','date_parsed','date_not_future','value_positive','change_percent_crosscheck']
-                  s['verified']=True
-              except Exception as e:
-                  s['error']=str(e)[:220]
+                  if abs(calc-pct)>0.20: raise ValueError(f'change percent mismatch page={pct}, recomputed={calc:.4f}')
+                  if abs(pct)>25: raise ValueError(f'index daily move anomaly {pct:.2f}%')
+                  s.update({'date':date,'value':value,'change':chg,'change_pct':pct,'recomputed_change_pct':calc,'raw_sha256':sha,'content_type':ctype,'final_url':final_url})
+                  s['validation']=['official_host','content_type_ok','date_parsed','date_not_future','value_positive','change_percent_crosscheck','daily_move_bounds_ok']
+                  historical_guard(key,s); s['verified']=True
+              except Exception as e: s['error']=str(e)[:240]
 
-          parse_nasdaq('sox')
-          parse_nasdaq('nasdaq')
-
+          parse_nasdaq('sox'); parse_nasdaq('nasdaq')
           verified=sum(1 for x in out['sources'].values() if x.get('verified'))
-          if verified==0: out['status']='failed'
-          elif verified<len(out['sources']): out['status']='partial'
-
-          with open('stock-lab/market-data.json','w',encoding='utf-8') as f:
-              json.dump(out,f,ensure_ascii=False,indent=2)
+          out['status']='failed' if verified==0 else ('partial' if verified<len(out['sources']) else 'ok')
+          with open(path,'w',encoding='utf-8') as f: json.dump(out,f,ensure_ascii=False,indent=2)
           PY
       - name: Validate snapshot JSON schema basics
         run: |
           python - <<'PY'
           import json
           from urllib.parse import urlparse
-          p='stock-lab/market-data.json'
-          x=json.load(open(p,encoding='utf-8'))
-          assert x.get('schema_version')==2
+          p='stock-lab/market-data.json'; x=json.load(open(p,encoding='utf-8'))
+          assert x.get('schema_version')==3
           assert x.get('status') in {'ok','partial','failed'}
           assert set(x.get('sources',{}))=={'vix','sox','nasdaq'}
-          expected={'vix':'CBOE','sox':'Nasdaq','nasdaq':'Nasdaq'}
-          hosts={'vix':'cdn.cboe.com','sox':'indexes.nasdaq.com','nasdaq':'indexes.nasdaq.com'}
+          expected={'vix':'CBOE','sox':'Nasdaq','nasdaq':'Nasdaq'}; hosts={'vix':'cdn.cboe.com','sox':'indexes.nasdaq.com','nasdaq':'indexes.nasdaq.com'}
           for k,v in x['sources'].items():
               assert v.get('source')==expected[k]
               assert urlparse(v.get('url','')).hostname==hosts[k]
@@ -141,10 +130,7 @@ jobs:
           PY
       - name: Commit snapshot if changed
         run: |
-          if git diff --quiet -- stock-lab/market-data.json; then
-            echo 'No changes'
-            exit 0
-          fi
+          if git diff --quiet -- stock-lab/market-data.json; then echo 'No changes'; exit 0; fi
           git config user.name 'stocklab-bot'
           git config user.email 'stocklab-bot@users.noreply.github.com'
           git add stock-lab/market-data.json
