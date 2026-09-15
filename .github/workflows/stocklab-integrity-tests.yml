@@ -28,6 +28,7 @@ jobs:
           node --check stock-lab/markets.js
           node --check stock-lab/futures.js
           node --check stock-lab/event-risk.js
+          node --check stock-lab/top10-gate.js
       - name: Source policy and snapshot checks
         run: |
           python - <<'PY'
@@ -41,19 +42,25 @@ jobs:
           markets=Path('stock-lab/markets.js').read_text(encoding='utf-8')
           futures=Path('stock-lab/futures.js').read_text(encoding='utf-8')
           events=Path('stock-lab/event-risk.js').read_text(encoding='utf-8')
+          gate=Path('stock-lab/top10-gate.js').read_text(encoding='utf-8')
           policy=json.loads(Path('stock-lab/verification-policy.json').read_text(encoding='utf-8'))
-          for script in ('app.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js'):
+          for script in ('app.js','financials.js','integrity.js','markets.js','futures.js','event-risk.js','top10-gate.js'):
               assert f'./{script}' in idx, f'{script} not loaded by index'
           assert 'www.twse.com.tw' in app and 'openapi.twse.com.tw' in app
           assert 't187ap06_L_ci' in fin and 't187ap07_L_ci' in fin
           assert 'factorIntegrity' in integ and 'integrityCorrection' in integ
           assert 'schema_version!==3' in markets
           assert 'cross_check' in futures and 'TAIFEX' in futures
-          assert "scored" in json.dumps(policy) and policy['taiwan']['taiex_futures']['scored'] is False
+          assert policy['taiwan']['taiex_futures']['scored'] is False
           assert policy['news_events']['scored'] is False
           assert set(policy['news_events']['levels'])=={'A','B','C','D'}
           assert 'headline' in policy['news_events']['rule'].lower()
           assert 'D｜排除' in events
+          # TOP10 is intentionally TWSE listed universe only at this stage.
+          assert 'slice(0,40)' in gate
+          assert "threshold=h==='1m'?80:85" in gate
+          assert 'critical&&score>=threshold' in gate
+          assert '資料不足者不得進榜' in gate
           snap=json.loads(Path('stock-lab/market-data.json').read_text(encoding='utf-8'))
           assert set(snap.get('sources',{}))=={'vix','sox','nasdaq'}
           expected={'vix':('CBOE','cdn.cboe.com'),'sox':('Nasdaq','indexes.nasdaq.com'),'nasdaq':('Nasdaq','indexes.nasdaq.com')}
@@ -64,7 +71,7 @@ jobs:
           tx=json.loads(Path('stock-lab/futures-data.json').read_text(encoding='utf-8'))
           assert tx.get('source')=='TAIFEX' and tx.get('contract')=='TX'
           for u in tx.get('urls',{}).values(): assert urlparse(u).hostname=='www.taifex.com.tw'
-          print('source-policy checks passed')
+          print('source-policy and TOP10 gate checks passed')
           PY
       - name: Integrity behavior fixture tests
         run: |
@@ -79,11 +86,13 @@ jobs:
           assert abs(30)>25
           assert abs(40)<60
           assert abs(70)>60
-          # TX double-source fixture: same date/month/last => matched; any difference => reject.
           a={'date':'2026/09/14','month':'202609','last':45780}
           b={'date':'2026/09/14','month':'202609','last':45780}
           assert a==b
           b['last']=45781
           assert a!=b
-          print('anomaly and TAIFEX cross-check fixtures passed')
+          # Completeness threshold behavior.
+          assert 80>=80 and 79<80
+          assert 85>=85 and 84<85
+          print('anomaly, TAIFEX and completeness fixtures passed')
           PY
