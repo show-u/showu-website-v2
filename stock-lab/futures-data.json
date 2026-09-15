@@ -1,12 +1,15 @@
 {
   "schema_version": 1,
-  "generated_at": null,
-  "status": "pending",
+  "generated_at": "2026-09-15T01:48:33.461673+00:00",
+  "status": "failed",
   "source": "TAIFEX",
   "contract": "TX",
   "verified": false,
   "urls": {
     "report": "https://www.taifex.com.tw/cht/3/futDailyMarketReport?commodityId=TX",
     "excel": "https://www.taifex.com.tw/cht/3/futDailyMarketExcel?commodity_id=TX"
-  }
+  },
+  "validation": [],
+  "raw_sha256": {},
+  "error": "no monthly TX rows parsed"
 }
