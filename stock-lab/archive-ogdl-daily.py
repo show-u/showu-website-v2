@@ -5,6 +5,10 @@ Input is stock-lab/browser-data.json, which must already be a licence-registered
 OGDL cache. This script performs NO network requests and NO field-name guessing.
 It appends normalized valid OHLCV observations to monthly JSONL partitions and
 writes an auditable manifest. Missing/invalid fields are rejected, never filled.
+
+Readiness metrics are descriptive only. Reaching a bar-count threshold never
+promotes an entry/exit model to PASS; formal OOS, execution and calibration gates
+remain separate.
 """
 import argparse
 import datetime as dt
@@ -14,6 +18,8 @@ from pathlib import Path
 
 SOURCE_CLASS='ogdl_daily_archive'
 ARCHIVE_SCHEMA_VERSION=1
+ENTRY_MIN_BARS=60
+HOLDING_MIN_BARS=120
 
 
 def load_json(path):
@@ -114,18 +120,50 @@ def save_partition(path,rows):
     return ordered,hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 
+def readiness_metrics(security_dates,market_dates):
+    def stats(items,dates):
+        counts=[len(v) for v in items.values()]
+        return {
+          'distinct_trading_dates':len(dates),
+          'securities':len(counts),
+          'max_valid_bars_per_security':max(counts) if counts else 0,
+          'securities_at_least_60_bars':sum(x>=ENTRY_MIN_BARS for x in counts),
+          'securities_at_least_120_bars':sum(x>=HOLDING_MIN_BARS for x in counts)
+        }
+    by_market={}
+    for market in sorted(market_dates):
+        sub={ticker:dates for (m,ticker),dates in security_dates.items() if m==market}
+        by_market[market]=stats(sub,market_dates[market])
+    all_dates=set().union(*market_dates.values()) if market_dates else set()
+    overall=stats({f'{m}:{t}':d for (m,t),d in security_dates.items()},all_dates)
+    return {
+      'entry_minimum_valid_bars':ENTRY_MIN_BARS,
+      'holding_exit_minimum_valid_bars':HOLDING_MIN_BARS,
+      'overall':overall,
+      'by_market':by_market,
+      'thresholds_are_history_only':True,
+      'does_not_imply_model_oos_pass':True
+    }
+
+
 def rebuild_manifest(root,summaries,rejections):
-    files=[];dates=[];markets=set();total=0
+    files=[];dates=[];markets=set();total=0;security_dates={};market_dates={}
     for p in sorted(root.glob('????-??.jsonl')):
         rows=load_partition(p);sha=hashlib.sha256(p.read_bytes()).hexdigest();d=sorted({x['date'] for x in rows})
         files.append({'file':p.name,'rows':len(rows),'first_date':d[0] if d else None,'last_date':d[-1] if d else None,'sha256':sha})
-        total+=len(rows);dates.extend(d);markets.update(x['market'] for x in rows)
+        total+=len(rows);dates.extend(d)
+        for x in rows:
+            market=x['market'];ticker=x['ticker'];date=x['date'];markets.add(market)
+            market_dates.setdefault(market,set()).add(date)
+            security_dates.setdefault((market,ticker),set()).add(date)
+    metrics=readiness_metrics(security_dates,market_dates)
     m={
       'schema_version':1,'source_class':SOURCE_CLASS,'licence':'OGDL-1.0','generated_at':dt.datetime.now(dt.timezone.utc).isoformat(),
       'markets':sorted(markets),'first_date':min(dates) if dates else None,'last_date':max(dates) if dates else None,
       'rows':total,'files':files,'latest_ingest':summaries,'latest_rejections':rejections,
+      'coverage_metrics':metrics,
       'no_imputation':True,'network_collection_performed_by_archiver':False,
-      'note':'History begins when StockLab starts legally archiving licensed daily snapshots; missing earlier dates remain missing until an authorised historical source is ingested.'
+      'note':'History begins when StockLab starts legally archiving licensed daily snapshots; missing earlier dates remain missing until an authorised historical source is ingested. Bar-count thresholds describe history availability only and never mean a model has passed OOS, execution validation or confidence calibration.'
     }
     (root/'manifest.json').write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     return m
@@ -145,7 +183,7 @@ def main():
     for month,newrows in by_month.items():
         p=root/f'{month}.jsonl';existing=load_partition(p);save_partition(p,existing+newrows)
     m=rebuild_manifest(root,summaries,rejections)
-    print(json.dumps({'latest_ingest':summaries,'archive_rows':m['rows'],'first_date':m['first_date'],'last_date':m['last_date'],'files':len(m['files'])},ensure_ascii=False,indent=2))
+    cm=m['coverage_metrics'];print(json.dumps({'latest_ingest':summaries,'archive_rows':m['rows'],'first_date':m['first_date'],'last_date':m['last_date'],'files':len(m['files']),'history_readiness':cm},ensure_ascii=False,indent=2))
 
 
 if __name__=='__main__':main()
