@@ -2,7 +2,8 @@
 """Offline validator for StockLab licensed Taiwan market data bundles.
 
 No network requests are permitted here. A bundle is usable only when its manifest,
-licence evidence flags, source registry, payload hashes and semantic schemas all pass.
+licence evidence, acquisition/processing rights, source registry, payload hashes and
+semantic schemas all pass.
 """
 from __future__ import annotations
 import argparse, csv, hashlib, json, re
@@ -64,7 +65,7 @@ def truth(v):return v is True or str(v).strip().lower() in {'1','true','yes','y'
 
 def validate(bundle_dir:Path, contract_path:Path):
     contract=load_json(contract_path)
-    if int(contract.get('schema_version') or 0)<2:raise ValueError('licensed-data contract must be schema v2+')
+    if int(contract.get('schema_version') or 0)<3:raise ValueError('licensed-data contract must be schema v3+')
     manifest_path=bundle_dir/'manifest.json'
     if not manifest_path.is_file():raise ValueError('manifest.json missing; licensed history remains unavailable')
     manifest=load_json(manifest_path);require_fields(manifest,contract['required_manifest_fields'],'manifest')
@@ -73,7 +74,9 @@ def validate(bundle_dir:Path, contract_path:Path):
     lic=manifest['license']; require_fields(lic,contract['license_contract']['required_fields'],'license')
     for k in contract['license_contract']['required_true_for_model_use']:
         if lic.get(k) is not True:raise ValueError(f'license.{k} must be true')
-    if not str(lic.get('evidence_reference','')).strip():raise ValueError('license.evidence_reference empty')
+    for k in ('license_name','legal_basis','evidence_reference','terms_reference','acquisition_mode','processing_location'):
+        if not str(lic.get(k,'')).strip():raise ValueError(f'license.{k} empty')
+    iso(lic.get('terms_reviewed_date'),'license.terms_reviewed_date')
 
     sources=manifest['sources']
     if not isinstance(sources,list) or not sources:raise ValueError('sources registry missing/empty')
@@ -168,7 +171,19 @@ def validate(bundle_dir:Path, contract_path:Path):
         semantic[name]=True
 
     if not markets.issubset(index_markets):raise ValueError(f'market_index missing coverage markets {sorted(markets-index_markets)}')
-    return {'ok':True,'schema_version':2,'bundle_id':manifest['bundle_id'],'provider':manifest['provider'],'coverage':cov,'datasets':results,'license':{'license_name':lic['license_name'],'legal_basis':lic['legal_basis'],'evidence_reference':lic['evidence_reference'],'automated_processing_allowed':True,'derived_outputs_allowed':True,'local_storage_allowed':True,'raw_redistribution_allowed':lic['raw_redistribution_allowed'] is True},'truth_contract':{'network_used':False,'imputation_used':False,'all_hashes_verified':True,'all_sources_resolved':True,'market_index_verified':True,'historical_security_validity_verified':True}}
+    return {
+        'ok':True,'schema_version':3,'bundle_id':manifest['bundle_id'],'provider':manifest['provider'],'coverage':cov,'datasets':results,
+        'license':{
+            'license_name':lic['license_name'],'legal_basis':lic['legal_basis'],'evidence_reference':lic['evidence_reference'],
+            'terms_reference':lic['terms_reference'],'terms_reviewed_date':lic['terms_reviewed_date'],
+            'acquisition_mode':lic['acquisition_mode'],'acquisition_mode_authorized':True,
+            'automated_processing_allowed':True,'derived_outputs_allowed':True,'public_derived_outputs_allowed':True,
+            'local_storage_allowed':True,'processing_location':lic['processing_location'],'processing_location_authorized':True,
+            'raw_redistribution_allowed':lic['raw_redistribution_allowed'] is True},
+        'truth_contract':{
+            'network_used':False,'imputation_used':False,'all_hashes_verified':True,'all_sources_resolved':True,
+            'market_index_verified':True,'historical_security_validity_verified':True,
+            'acquisition_right_verified':True,'processing_location_verified':True,'public_derived_output_right_verified':True}}
 
 
 def main():
