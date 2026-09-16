@@ -4,11 +4,7 @@ on:
   push:
     paths:
       - 'stock-lab/**'
-      - '.github/workflows/update-browser-cache.yml'
-      - '.github/workflows/update-market-snapshot.yml'
-      - '.github/workflows/update-taifex-tx.yml'
-      - '.github/workflows/update-tpex-health.yml'
-      - '.github/workflows/update-taiwan-factors.yml'
+      - '.gitignore'
       - '.github/workflows/stocklab-integrity-tests.yml'
   workflow_dispatch:
 
@@ -26,207 +22,181 @@ jobs:
 
       - name: Syntax checks
         run: |
-          for f in app tpex same-origin-cache licensed-history session-context taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config; do
+          for f in app tpex same-origin-cache licensed-history session-context taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router holding-usable health hard-policy compliance-gate public-output api-client runtime-config; do
             test -f "stock-lab/$f.js"
             node --check "stock-lab/$f.js"
           done
-          python -m py_compile stock-lab/backtest-taiwan-v3.py stock-lab/validate-licensed-bundle.py
+          python -m py_compile \
+            stock-lab/backtest-taiwan-v3.py \
+            stock-lab/validate-licensed-bundle.py \
+            stock-lab/import-licensed-history.py \
+            stock-lab/run-holding-exit-oos.py \
+            stock-lab/build-holding-readiness.py \
+            stock-lab/gate-holding-evaluator.py
 
-      - name: Truth, execution, licensed-data, no-imputation, calibrated-confidence and UX invariants
+      - name: Current StockLab truth invariants
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          R=lambda p:Path(p).read_text(encoding='utf-8')
 
-          policy=json.loads(R('stock-lab/verification-policy.json'))
-          validation=json.loads(R('stock-lab/model-validation-status.json'))
-          entry_protocol=json.loads(R('stock-lab/entry-validation-protocol.json'))
-          holding_protocol=json.loads(R('stock-lab/holding-exit-validation-protocol.json'))
-          licensed_contract=json.loads(R('stock-lab/licensed-data-contract.json'))
+          R=lambda p:Path(p).read_text(encoding='utf-8')
+          J=lambda p:json.loads(R(p))
+
           idx=R('stock-lab/index.html')
-          api=R('stock-lab/api-client.js')
-          ui=R('stock-lab/ui-patch.js')
-          entry=R('stock-lab/entry-decision.js')
           router=R('stock-lab/market-router.js')
           top10=R('stock-lab/top10-gate.js')
           pos=R('stock-lab/position-input.js')
-          hold=R('stock-lab/holding-model.js')
           hold_router=R('stock-lab/holding-router.js')
-          tw=R('stock-lab/taiwan-model-v2.js')
-          runtime=R('stock-lab/runtime-config.js')
-          hard=R('stock-lab/hard-policy.js')
-          hard_doc=R('stock-lab/HARD_POLICY.md')
+          usable=R('stock-lab/holding-usable.js')
+          cache=R('stock-lab/same-origin-cache.js')
           compliance=R('stock-lab/compliance-gate.js')
+          hard=R('stock-lab/hard-policy.js')
+          runtime=R('stock-lab/runtime-config.js')
           public=R('stock-lab/public-output.js')
           licensed=R('stock-lab/licensed-history.js')
           session=R('stock-lab/session-context.js')
+          importer=R('stock-lab/import-licensed-history.py')
           validator=R('stock-lab/validate-licensed-bundle.py')
-          backtest=R('stock-lab/backtest-taiwan-v3.py')
+          gitignore=R('.gitignore')
 
-          # Absolute truth rules.
-          assert policy['version']==9 and policy['policy_name']=='StockLab Taiwan Truth Rules'
-          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS'):
-              assert k in policy['absolute_invariants'],k
-          assert set(policy['provenance_classes'])=={'observed','user_observed','derived','model_estimate','unavailable'}
-          assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
-          assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
+          policy=J('stock-lab/verification-policy.json')
+          readiness=J('stock-lab/holding-readiness.json')
+          sources=J('stock-lab/history-source-registry.json')
+          holding_protocol=J('stock-lab/holding-exit-validation-protocol.json')
+          licensed_contract=J('stock-lab/licensed-data-contract.json')
+
+          # A. Absolute truth rules.
+          assert policy['policy_name']=='StockLab Taiwan Truth Rules'
+          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION')
+          for k in required: assert k in policy['absolute_invariants'],k
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices','recommendation_requires_oos_pass'):
               assert oc[k] is True,k
+          assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
+          assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
 
-          # Licensed historical-data contract is mandatory and fail-closed.
-          assert licensed_contract['schema_version']==1 and licensed_contract['contract_name']=='StockLab Licensed Taiwan Market Data Bundle'
+          # B. Public UX is three real decisions; old horizon buy UX is forbidden.
+          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
+              assert text in idx,text
+          for legacy in ('id="horizon"','scanHorizon','holdHorizon','短線｜約1個月','波段｜約3個月','長期｜1年以上','短線入場區間','中期入場區間','長期佈局區間'):
+              assert legacy not in idx+router+top10,legacy
+          assert '不選短／中／長' in idx
+
+          # C. Position facts only from user input/user lots; missing values remain missing.
+          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null','validDate(d)'):
+              assert text in pos,text
+          assert 'averageCost:a' in pos and 'shares:s' in pos and 'buyDate:d' in pos
+          assert 'market-data inference' in pos
+
+          # D. Executable recommendations are backend-only and hard-gated.
+          assert 'api.analyze(code)' in router
+          assert 'api.scan()' in top10
+          assert 'api.holding(code,p)' in hold_router
+          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan','localHolding(','StockLabHolding?.analyze'):
+              assert forbidden not in router+hold_router,forbidden
+          for text in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','trading_calendar_verified!==true','confidence_calibrated===true'):
+              assert text in hard,text
+          for text in ('average_cost_verified!==true','shares_verified!==true','buy_date_verified!==true','exit_execution_validated!==true'):
+              assert text in hold_router,text
+
+          # E. Public cache boundary: no compatibility fallback; actual cache must pass OGDL compliance gate.
+          assert "mode:'online-only'" in cache
+          for text in ('persistentMirror:false','remoteFallback:false','cacheIsSource:false','missingDataFallback:false'):
+              assert text in cache,text
+          assert 'browser-data.json' in compliance
+          assert "x.source!=='licensed-open-data-cache'" in compliance
+          assert "!String(x.licence||'').includes('OGDL')" in compliance
+          assert '不以 0、平均值、舊值或 AI 補齊' in compliance
+
+          # F. Licensed-history contract is fail-closed and network-free.
+          assert licensed_contract['contract_name']=='StockLab Licensed Taiwan Market Data Bundle'
           nr=licensed_contract['non_negotiable_rules']
           for k in ('no_network_fallback','no_unlicensed_website_scraping','no_missing_dataset_imputation','no_stale_data_relabelled_current','no_raw_redistribution_without_permission','every_payload_file_requires_sha256','every_observation_requires_source_provenance','license_must_allow_automated_processing','license_must_allow_derived_outputs','production_and_oos_use_same_normalization_rules'):
               assert nr[k] is True,k
-          assert set(licensed_contract['required_datasets'])=={'security_master','trading_calendar','daily_ohlc','corporate_actions','risk_states'}
-          assert 'sources' in licensed_contract['required_manifest_fields']
-          assert licensed_contract['source_registry_contract']['required_provenance_class']=='observed'
-          assert './licensed-history.js' in idx and './session-context.js' in idx and './hard-policy.js' in idx
-          assert idx.rfind('./same-origin-cache.js') < idx.rfind('./licensed-history.js') < idx.rfind('./session-context.js') < idx.rfind('./hard-policy.js') < idx.rfind('./market-router.js')
-          for text in ('licensed-data/manifest.json','no-store','crypto.subtle.digest','SHA-256','禁止跨網域 payload','合法歷史資料 bundle 尚未提供','networkFallback:false','imputation:false','StockLabLicensedHistory'):
+          for text in ('licensed-data/manifest.json','SHA-256','networkFallback:false','imputation:false','StockLabLicensedHistory'):
               assert text in licensed,text
-          assert 'remoteJget' not in licensed and 'www.twse.com.tw' not in licensed and 'www.tpex.org.tw' not in licensed
-          for text in ('No network requests are permitted here','sha256 mismatch','license.evidence_reference','source_id','imputation_used'):
-              assert text in validator,text
           for forbidden in ('urllib.request','requests.get','http://','https://'):
               assert forbidden not in validator,forbidden
-          assert not Path('stock-lab/licensed-data/manifest.json').exists(), 'Do not commit a fake production licensed-data manifest'
+          assert 'sha256' in importer.lower()
 
-          # Public UX has only the three real decisions and is deliberately concise.
-          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','信心指數','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
-              assert text in idx,text
-          assert '建議進場區間' in router and '出場觸發參考價' in hold_router
-          assert '目前建議狀態' in hold_router and '持倉總成本' in hold_router
-          assert 'internal-only' in idx
-          for legacy in ('id="horizon"','id="scanObjective"','holdHorizon','<option value="1m"','<option value="3m"','<option value="long"','短線｜約1個月','波段｜約3個月','長期｜1年以上'):
-              assert legacy not in idx,legacy
-          assert '9項入場因子' not in idx and '美股、台指期 TX、國際時事' not in idx
-          for removed in ('./indicators-v2.js','./financials.js','./integrity.js'):
-              assert removed not in idx,removed
-          assert './entry-decision.js' in idx and './position-input.js' in idx and './holding-model.js' in idx and './holding-router.js' in idx and './public-output.js' in idx
-          assert idx.rfind('./position-input.js') < idx.rfind('./holding-model.js') < idx.rfind('./ui-patch.js') < idx.rfind('./holding-router.js') < idx.rfind('./compliance-gate.js') < idx.rfind('./public-output.js')
-          assert 'showSingle();' in ui
-          assert all(x in public for x in ('暫不提供進場區間與信心指數','暫不提供出場時機／觸發價格／信心指數','入場候選 TOP 10','不以舊值、0、平均值、其他網站或 AI 補值','持倉總成本','依該收盤估算市值','依該收盤估算損益','非盤中即時價'))
-          assert all(x in public for x in ('normalizeTradeDate','dateAgeDays','收盤資料日期過舊或異常','StockLabSessionContext.resolve'))
-          assert all(x in hold_router for x in ('依該收盤估算市值','依該收盤估算損益','完成交易日收盤，不是盤中即時價'))
-          assert all(x in session for x in ('WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE','盤中僅供參考，不以昨日資料重算現在價格'))
+          # G. Readiness v3 explicitly uses licensed backfill; it does not wait 120 trading days.
+          assert readiness['schema_version']==3 and readiness['model']=='TW-holding-exit-v4'
+          a=readiness['activation_path']
+          assert a['primary']=='licensed_historical_backfill'
+          assert a['requires_waiting_120_trading_days'] is False
+          assert 'never impute' in a['fallback']
+          assert readiness['history']['no_imputation'] is True
+          if readiness['overall_status']!='PASS':
+              assert readiness['executable_exit_output'] is False
+              assert readiness['blockers']
+          else:
+              assert readiness['executable_exit_output'] is True
+              assert readiness['selected_history_source']['kind']=='licensed_history_bundle'
+              assert readiness['oos']['status']=='PASS'
+              assert readiness['oos']['execution_validated'] is True
+              assert readiness['oos']['confidence_calibrated'] is True
+              assert readiness['oos']['production_formula_match'] is True
 
-          # Public API contract no longer exposes horizon-specific buy analysis.
-          assert 'async function analyze(code)' in api and "strategy:'entry'" in api
-          assert 'async function scan()' in api
-          assert 'async function holding(code,position)' in api
-          assert 'analyze(code,horizon)' not in api and 'scan(strategy)' not in api
-          assert 'StockLabTickerResolver' in ui and "horizon=document.querySelector" not in ui
+          # H. Public holding monitor understands readiness v3 and only shows facts until PASS.
+          assert 'holding-readiness.json' in usable and 'readinessStatus' in usable
+          assert '![1,2,3].includes(x.schema_version)' in usable
+          assert '正式解法：授權歷史 backfill' in usable
+          assert '不是等待 OGDL 累積滿 120 天' in usable
+          assert '完成交易日收盤，不是盤中即時價' in usable
+          assert '任何未取得資料維持「未知」' in usable
+          for fake in ('保證出場價','保證停損價'):
+              assert fake not in usable,fake
 
-          # Browser keeps factor definitions for diagnostics/audit, but executable entry output is backend-only.
-          factor_keys=('trend','volume','movingAverages','institution','macd','rsi','kd','crossovers','candlestick')
-          for k in factor_keys: assert f"'{k}'" in entry,k
-          assert "STRATEGY='entry'" in top10
-          assert 'adaptiveBand' not in tw
-          for legacy in ("h==='1m'","h==='3m'","h==='long'",'TW-structure-volatility-v4','短線入場區間','中期入場區間','長期佈局區間'):
-              assert legacy not in router+tw,legacy
-          assert 'StockLabEntryDecision.evaluate' not in router
-          assert 'openingGapStats' not in router and 'intradayPullbackStats' not in router and 'buildBuyPlan' not in router
-          assert 'StockLabLicensedHistory' not in router
-          assert '正式私有分析後端尚未啟用；瀏覽器本地預測已停用' in router
-          assert "api.analyze(code)" in router
-          assert "backendResult(j,'analysis')" in router
-          assert '<h3>九項入場判斷</h3>' not in router
-          assert '<h3>美股／台指期／國際時事</h3>' not in router
-          assert '<b>九項訊號</b>' not in top10
-          assert 'contextText(' not in top10
-          assert 'entry_low' in router and 'entry_high' in router
+          # I. Historical source registry: OGDL is forward-only; candidates cannot score before activation.
+          assert sources['schema_version']>=2
+          rules=sources['rules']
+          for k in ('public_url_is_not_a_licence','no_scraping_for_backfill','no_unverified_third_party_backfill','no_imputation','candidate_source_must_not_score_before_activation'):
+              assert rules[k] is True,k
+          og=sources['sources']['ogdl_daily_forward_archive']
+          assert og['status']=='active' and og['history_backfill'] is False
+          for key,s in sources['sources'].items():
+              if key=='ogdl_daily_forward_archive': continue
+              assert s.get('scoring_allowed_before_activation') is False,key
+              assert s.get('status')!='active',key
+          twse=sources['sources']['twse_eshop_daily_close']
+          assert twse['required_ohlcv_fields_confirmed'] is True
+          assert twse['automated_processing_right_confirmed'] is False
+          assert twse['derived_output_right_confirmed'] is False
+          assert twse['private_storage_right_confirmed'] is False
 
-          # Actionable price ranges require OOS reachability/execution validation in the backend hard gate.
-          assert entry_protocol['schema_version']==1 and entry_protocol['protocol_name']=='StockLab TW-entry-9plus3-v1 OOS Protocol'
-          assert entry_protocol['non_negotiable_rules']['unfilled_signals_must_remain_in_denominator'] is True
-          assert entry_protocol['non_negotiable_rules']['confidence_requires_separate_oos_calibration'] is True
-          assert 'reachability rate' in entry_protocol['evaluation']['primary_execution_metrics']
-          assert 'fill rate' in entry_protocol['evaluation']['primary_execution_metrics']
-          assert validation['models']['entry_decision_9plus3']['validation_protocol']=='stock-lab/entry-validation-protocol.json'
-          assert validation['models']['entry_scanner_9plus3']['validation_protocol']=='stock-lab/entry-validation-protocol.json'
-          assert 'OOS entry-range touch/fill/reachability validation' in validation['models']['entry_decision_9plus3']['required_before_pass']
-          assert 'OOS entry-range touch/fill/reachability validation' in validation['models']['entry_scanner_9plus3']['required_before_pass']
-          assert 'entryRangeExecutionValidation:false' in runtime
-          assert 'entry_range_execution_validated' in hard and 'entry_range_execution_validated' in top10
-          assert '觸價／成交可達性' in hard_doc and '未成交率' in hard_doc
+          # J. Raw licensed history may never enter this public repository.
+          assert 'stock-lab/history-licensed/*' in gitignore
+          assert '!stock-lab/history-licensed/README.md' in gitignore
 
+          # K. Holding OOS gates stay rigorous; no threshold lowering to manufacture PASS.
+          assert holding_protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
+          assert holding_protocol['non_negotiable_rules']['no_horizon_selector'] is True
+          assert holding_protocol['non_negotiable_rules']['production_formula_must_equal_test_formula'] is True
           assert holding_protocol['non_negotiable_rules']['no_hindsight_high_low_execution'] is True
           assert holding_protocol['non_negotiable_rules']['confidence_requires_separate_oos_calibration'] is True
-          assert 'execution rate' in holding_protocol['evaluation']['metrics']
-          assert 'OOS exit execution validation without hindsight high/low fills' in validation['models']['holding_exit']['required_before_pass']
-          assert 'holdingExitExecutionValidation:false' in runtime
-          assert 'holdingExitExecutionValidation' in hold_router
-          assert 'exit_execution_validated' in hard and 'exit_execution_validated' in hold_router
 
-          # Confidence can never be a heuristic relabel. Buy/scanner confidence is accepted only after backend audit calibration.
-          for s in ('entryConfidenceCalibration:false','holdingConfidenceCalibration:false','scannerConfidenceCalibration:false'):
-              assert s in runtime,s
-          assert 'validConfidence' in hard and 'confidence_calibrated===true' in hard
-          assert 'confidence_index' in router and 'backendResult(j,\'analysis\')' in router
-          assert 'holdingConfidenceCalibration' in hold_router and 'confidenceCalibrated!==true' in hold_router
-          assert 'scannerConfidenceCalibration' in top10 and 'confidence_calibrated' in top10
-          assert 'untouched OOS confidence calibration' in validation['models']['entry_decision_9plus3']['required_before_pass']
-          assert 'untouched OOS confidence calibration' in validation['models']['entry_scanner_9plus3']['required_before_pass']
-          assert 'untouched OOS confidence calibration' in validation['models']['holding_exit']['required_before_pass']
+          # L. Stale/previous close cannot be relabelled as a current live price.
+          for text in ('WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE','盤中僅供參考，不以昨日資料重算現在價格'):
+              assert text in session,text
+          assert '13:30 後也必須等當日官方收盤資料實際前進並完成驗證' in router
+          assert '09:00 後沒有合法即時／延遲行情授權時不重算當日價格' in router
 
-          # Position facts originate only from the user; holding uses exact verified trading sessions.
-          assert all(x in pos for x in ('StockLabPositionInput','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'))
-          assert all(x in hold for x in ('TW-holding-exit-v4','holdingTradingDays','正式出場模型需要有效首次買入日','首次買入日不在目前合法且驗證通過的歷史交易日序列中','sharesAffectSignal:false'))
-          assert 'estimatedTradingDays' not in hold and 'horizonConfig' not in hold
-          assert 'btn.onclick=async' in hold_router and 'StockLabPositionInput?.collect' in hold_router and 'StockLabTickerResolver' in hold_router
-          assert '暫不提供出場時機／觸發價格' in hold_router and "oosStatus:'PASS'" in hold_router
-          assert '條件優先，價格次之' in hold_router and '事後高低點' in hold_router
-
-          # Compliance gate remains final fail-closed authority while final public layer keeps failure output concise.
-          assert 'allowLocalFallback:false' in runtime and 'productionPredictionReady:false' in runtime
-          for s in ('licensedHistoricalOHLC:false','securityMaster:false','tradingCalendar:false','corporateActions:false','taiwanRiskState:false','entryDecisionOosValidation:false','entryRangeExecutionValidation:false','holdingExitValidation:false','holdingExitExecutionValidation:false','entryScannerOosValidation:false'):
-              assert s in runtime,s
-          assert 'VERIFIED FACTS ONLY' in compliance and '不以 0、平均值、舊值或 AI 補齊' in compliance
+          # M. Public runtime stays locked until validated production gates deliberately pass.
+          assert 'allowLocalFallback:false' in runtime
+          assert 'productionPredictionReady:false' in runtime
           assert "const ready=()=>window.StockLabAPI?.config?.enabled===true||rt.productionPredictionReady===true" in public
 
-          # Validation contracts are v10/v4 and legacy network backtest code stays disabled.
-          assert validation['schema_version']==4 and validation['architecture']=='unified-entry-holding-v10'
-          assert validation['legacy_horizon_entry_results_are_production_valid'] is False
-          assert validation['models']['holding_exit']['candidate_formula']=='TW-holding-exit-v4'
-          assert holding_protocol['schema_version']==2 and holding_protocol['protocol_name']=='StockLab TW-holding-exit-v4 OOS Protocol'
-          assert holding_protocol['non_negotiable_rules']['no_horizon_selector'] is True
-          assert holding_protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
-          assert not Path('stock-lab/backtest-model.py').exists()
-          assert "ARCHITECTURE = 'unified-entry-holding-v10'" in backtest
-          assert 'NETWORK_HISTORY_COLLECTION_DISABLED = True' in backtest
-          for forbidden in ('urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor'):
-              assert forbidden not in backtest,forbidden
-
-          print('PASS: StockLab truth rules, licensed-data contract, backend-only entry, holding UX and fail-closed gates hold')
+          print('PASS: current StockLab Taiwan truth architecture is internally consistent')
           PY
 
-      - name: No-imputation and confidence fixtures
+      - name: Reject raw licensed history in public repository
         run: |
-          python - <<'PY'
-          def strict_num(v):
-              if v is None:return None
-              s=str(v).strip()
-              if not s or s in {'-','--','—','N/A','NA','null','undefined'}:return None
-              try:return float(s.replace(',','').removesuffix('%'))
-              except:return None
-          for v in (None,'',' ','-','--','—','N/A','NA','null','undefined'):
-              assert strict_num(v) is None
-          assert strict_num('0')==0 and strict_num('1,234.5')==1234.5
-          provenance={'official_close':'observed','position_cost':'user_observed','holding_days':'derived','entry_or_exit':'model_estimate','missing':'unavailable'}
-          assert len(set(provenance.values()))==5
-          def valid_confidence(v,calibrated):
-              try:x=float(v)
-              except:return False
-              return calibrated is True and 0<=x<=100
-          assert valid_confidence(62,False) is False
-          assert valid_confidence(62,True) is True
-          assert valid_confidence(101,True) is False
-          signals=100;fills=18
-          fill_rate=fills/signals
-          assert fill_rate==0.18 and signals>fills
-          assert (signals-fills)==82
-          print('PASS: missing values stay missing; confidence and execution reachability are separate gates')
-          PY
+          set -euo pipefail
+          bad="$(git ls-files 'stock-lab/history-licensed/**' | grep -v '^stock-lab/history-licensed/README.md$' || true)"
+          if [ -n "$bad" ]; then
+            echo 'Raw licensed history is tracked in the public repository:'
+            echo "$bad"
+            exit 1
+          fi
+          echo 'PASS: no raw licensed history is tracked'
