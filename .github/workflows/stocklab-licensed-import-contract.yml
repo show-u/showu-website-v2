@@ -1,0 +1,93 @@
+name: StockLab licensed-history import contract
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'stock-lab/import-licensed-history.py'
+      - '.github/workflows/stocklab-licensed-import-contract.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and no-network guard
+        run: |
+          python -m py_compile stock-lab/import-licensed-history.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('stock-lab/import-licensed-history.py').read_text(encoding='utf-8')
+          for forbidden in ('urllib.request','requests.get','http://','https://'):
+              assert forbidden not in s, forbidden
+          for required in ('LICENCE_GATE_FAIL','no impute','raw_redistribution_allowed','source_id mismatch','impossible OHLC','network_collection_performed_by_importer'):
+              assert required.lower() in s.lower(), required
+          print('no-network licensed importer invariant passed')
+          PY
+      - name: Build synthetic authorised bundle
+        run: |
+          mkdir -p /tmp/stocklab-licensed-test
+          cat > /tmp/stocklab-licensed-test/security_master.csv <<'EOF'
+          ticker,market,security_type
+          2454,TWSE,ordinary_stock
+          EOF
+          cat > /tmp/stocklab-licensed-test/trading_calendar.csv <<'EOF'
+          date,market,is_trading_day
+          2026-09-14,TWSE,true
+          2026-09-15,TWSE,true
+          EOF
+          cat > /tmp/stocklab-licensed-test/daily_ohlc.csv <<'EOF'
+          date,ticker,market,open,high,low,close,volume,source_id
+          2026-09-14,2454,TWSE,4580,4620,4540,4560,1000,test-source
+          2026-09-15,2454,TWSE,4505,4575,4465,4500,1200,test-source
+          EOF
+          cat > /tmp/stocklab-licensed-test/corporate_actions.csv <<'EOF'
+          ticker,market,effective_date,action_type,source_id
+          2454,TWSE,2026-09-14,none,test-source
+          EOF
+          cat > /tmp/stocklab-licensed-test/risk_states.csv <<'EOF'
+          ticker,market,date,attention,disposition,suspended,source_id
+          2454,TWSE,2026-09-14,false,false,false,test-source
+          2454,TWSE,2026-09-15,false,false,false,test-source
+          EOF
+          python stock-lab/import-licensed-history.py \
+            --bundle-dir /tmp/stocklab-licensed-test \
+            --provider 'Synthetic CI Provider' \
+            --source-id test-source \
+            --dataset-name 'Synthetic licensed history' \
+            --license-name 'CI TEST ONLY' \
+            --legal-basis 'synthetic fixture' \
+            --evidence-reference 'ci://synthetic' \
+            --automated-processing-allowed \
+            --derived-outputs-allowed \
+            --local-storage-allowed
+          python - <<'PY'
+          import json
+          x=json.load(open('/tmp/stocklab-licensed-test/manifest.json',encoding='utf-8'))
+          assert x['no_imputation'] is True
+          assert x['network_collection_performed_by_importer'] is False
+          assert x['raw_publication_permitted'] is False
+          assert x['coverage']['rows']==2
+          assert x['coverage']['max_bars_per_security']==2
+          assert x['datasets']['daily_ohlc']['row_count']==2
+          assert len(x['datasets']['daily_ohlc']['sha256'])==64
+          print('licensed bundle contract passed')
+          PY
+      - name: Reject missing licence rights
+        run: |
+          set +e
+          python stock-lab/import-licensed-history.py \
+            --bundle-dir /tmp/stocklab-licensed-test \
+            --provider 'Synthetic CI Provider' \
+            --source-id test-source \
+            --dataset-name 'Synthetic licensed history' \
+            --license-name 'CI TEST ONLY' \
+            --legal-basis 'synthetic fixture' \
+            --evidence-reference 'ci://synthetic' >/tmp/reject.log 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          grep -q 'LICENCE_GATE_FAIL' /tmp/reject.log
