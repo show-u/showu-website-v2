@@ -173,7 +173,7 @@ function sampleNonOverlapping(prod,data,k,all,risk,actions,cfg,start,end,sample)
 }
 
 function calibrationRecords(episodes){return episodes.filter(x=>HARD_EXIT_STATES.has(x.signal)&&Number.isFinite(x.rawEvidence)&&[0,1].includes(x.calibrationLabel))}
-function initialEqualFrequencyBins(records,count=5){const v=[...records].sort((a,b)=>a.rawEvidence-b.rawEvidence);if(!v.length)return[];const bins=[];for(let i=0;i<count;i++){const lo=Math.floor(i*v.length/count),hi=Math.floor((i+1)*v.length/count),rows=v.slice(lo,hi);if(!rows.length)continue;bins.push({lo:rows[0].rawEvidence,hi:rows.at(-1].rawEvidence,n:rows.length,successes:rows.reduce((s,x)=>s+x.calibrationLabel,0)})}return bins}
+function initialEqualFrequencyBins(records,count=5){const v=[...records].sort((a,b)=>a.rawEvidence-b.rawEvidence);if(!v.length)return[];const bins=[];for(let i=0;i<count;i++){const lo=Math.floor(i*v.length/count),hi=Math.floor((i+1)*v.length/count),rows=v.slice(lo,hi);if(!rows.length)continue;bins.push({lo:rows[0].rawEvidence,hi:rows.at(-1).rawEvidence,n:rows.length,successes:rows.reduce((s,x)=>s+x.calibrationLabel,0)})}return bins}
 function isotonicBins(records){const blocks=initialEqualFrequencyBins(records,5).map(b=>({...b,rate:b.successes/b.n}));let i=0;while(i<blocks.length-1){if(blocks[i].rate<=blocks[i+1].rate+1e-12){i++;continue}const a=blocks[i],b=blocks[i+1],n=a.n+b.n,s=a.successes+b.successes;blocks.splice(i,2,{lo:a.lo,hi:b.hi,n,successes:s,rate:s/n});if(i>0)i--}return blocks.map(b=>({lo:b.lo,hi:b.hi,n:b.n,rate:b.rate}))}
 function calibrationPredict(blocks,raw){if(!blocks.length||!Number.isFinite(raw))return null;let best=blocks[0];for(const b of blocks){if(raw>=b.lo&&raw<=b.hi)return clamp(b.rate);if(Math.abs(raw-(b.lo+b.hi)/2)<Math.abs(raw-(best.lo+best.hi)/2))best=b}return clamp(best.rate)}
 function calibrationMetrics(blocks,records,devBaseRate){
@@ -210,7 +210,7 @@ function episodeMetrics(rows){
 function walkForward(oos,cfg){
   if(!oos.length)return{verified:false,blocks:[]};
   const v=[...oos].sort((a,b)=>a.buyDate.localeCompare(b.buyDate)||a.ticker.localeCompare(b.ticker)),n=cfg.minWalkBlocks,blocks=[];
-  for(let i=0;i<n;i++){const lo=Math.floor(i*v.length/n),hi=Math.floor((i+1)*v.length/n),rows=v.slice(lo,hi);blocks.push({index:i+1,from:rows[0]?.buyDate||null,to:rows.at(-1)?.buyDate||null,n:rows.length,metrics:episodeMetrics(rows)})}
+  for(let i=0;i<n;i++){const lo=Math.floor(i*v.length/n),hi=Math.floor((i+1)*v.length/n),rows=v.slice(lo,hi);blocks.push({index:i+1,from:rows[0]?.buyDate||null,to:rows.at(-1]?.buyDate||null,n:rows.length,metrics:episodeMetrics(rows)})}
   return{verified:blocks.length>=n&&blocks.every(x=>x.n>=cfg.minEpisodesPerWalkBlock),minimum_blocks:n,minimum_episodes_per_block:cfg.minEpisodesPerWalkBlock,blocks};
 }
 
