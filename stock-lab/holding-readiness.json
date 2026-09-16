@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-16T04:42:46.635675+00:00",
+  "model": "TW-holding-exit-v4",
+  "overall_status": "INSUFFICIENT",
+  "executable_exit_output": false,
+  "principle": "No verified gate, no formal holding/exit recommendation. Missing data is never imputed.",
+  "history": {
+    "status": "INSUFFICIENT",
+    "first_date": "2026-09-14",
+    "last_date": "2026-09-15",
+    "max_valid_bars_per_security": 2,
+    "minimum_valid_bars": 120,
+    "securities_at_least_minimum": 0,
+    "minimum_securities_for_oos": 80,
+    "source_class": "ogdl_daily_archive",
+    "licence": "OGDL-1.0",
+    "no_imputation": true
+  },
+  "oos": {
+    "status": "INSUFFICIENT",
+    "artifact_present": false,
+    "episodes": 0,
+    "minimum_episodes": 300,
+    "securities": 0,
+    "minimum_securities": 80,
+    "required_regimes": [
+      "bear",
+      "bull",
+      "sideways"
+    ],
+    "regimes_present": [],
+    "execution_validated": false,
+    "confidence_calibrated": false,
+    "production_formula_match": false
+  },
+  "history_sources": {
+    "active": [
+      "ogdl_daily_forward_archive"
+    ],
+    "inactive_candidates": [
+      {
+        "id": "twse_eshop_daily_close",
+        "status": "candidate_not_subscribed"
+      },
+      {
+        "id": "tpex_eshop_afterhours_history",
+        "status": "candidate_not_subscribed"
+      }
+    ],
+    "rule": "candidate_not_subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
+  },
+  "blockers": [
+    "合法歷史日線不足：單檔最多 2/120 根，達 120 根的標的 0 檔；正式 OOS 至少需覆蓋 80 檔。",
+    "尚無正式持股出場 OOS 結果檔；不得把歷史資料量或研究公式視為模型 PASS。"
+  ]
+}
