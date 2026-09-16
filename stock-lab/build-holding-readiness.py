@@ -171,7 +171,7 @@ def main():
 
     licensed_valid = bool(licensed and licensed.get("valid") is True)
     payload = {
-        "schema_version": 4,
+        "schema_version": 3,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "model": "TW-holding-exit-v4",
         "overall_status": "PASS" if history_pass and oos_pass else "INSUFFICIENT",
