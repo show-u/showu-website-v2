@@ -8,6 +8,7 @@
   function atr(r,p=14){if(!r||r.length<=p)return null;const z=[];for(let i=r.length-p;i<r.length;i++){const x=r[i],pc=r[i-1].c;z.push(Math.max(x.h-x.l,Math.abs(x.h-pc),Math.abs(x.l-pc)))}return avg(z)}
   function tickSize(p){if(p<10)return .01;if(p<50)return .05;if(p<100)return .1;if(p<500)return .5;if(p<1000)return 1;return 5}
   function roundTick(p,mode='nearest'){const t=tickSize(Math.max(.01,p)),q=p/t,z=mode==='up'?Math.ceil(q):mode==='down'?Math.floor(q):Math.round(q);return +(z*t).toFixed(t<.1?2:t<1?1:0)}
+  function clamp(x,lo=0,hi=100){return Math.max(lo,Math.min(hi,x))}
   function dateMs(v){if(!v)return null;const d=new Date(`${v}T00:00:00+08:00`);return Number.isNaN(d.getTime())?null:d.getTime()}
   function barDate(x){return x?.iso||x?.date||null}
   function daysBetween(a,b){const x=dateMs(a),y=dateMs(b);return x!=null&&y!=null&&y>=x?Math.floor((y-x)/86400000):null}
@@ -68,13 +69,24 @@
     else if(trendUp){state='續抱條件仍成立';reason='最新已驗證收盤與依實際持有交易日形成的快慢結構仍為正向；續抱時持續觀察防守線與壓力區';}
     else{state='防守觀察';reason='尚未出現完整出場條件，但持有期結構也未達明確續抱強勢狀態';}
 
+    // Raw evidence strength is a frozen deterministic feature for later calibration only.
+    // It is NOT a probability and must never be shown as a confidence index unless a separate untouched-OOS calibrator passes.
+    const weakDepth=Math.max(0,(defense-L.c)/a),weakSpread=Math.max(0,(maSlow-maFast)/a),strongSpread=Math.max(0,(maFast-maSlow)/a),aboveDefense=Math.max(0,(L.c-defense)/a),peakDD=Math.max(0,-(drawdownFromPeak||0))/10;
+    let evidenceScore=50;
+    if(ctx.riskBlocked)evidenceScore=100;
+    else if(state==='出場條件檢視')evidenceScore=clamp(65+12*weakDepth+10*weakSpread+4*peakDD);
+    else if(state==='獲利保護／減碼檢視')evidenceScore=clamp(55+9*weakSpread+5*peakDD);
+    else if(state==='分批停利檢視')evidenceScore=clamp(50+Math.min(20,Math.max(0,(L.c-structuralResistance+a*.20)/a)*8)+3*peakDD);
+    else if(state==='續抱條件仍成立')evidenceScore=clamp(55+9*strongSpread+4*Math.min(5,aboveDefense));
+    else evidenceScore=clamp(45+3*Math.min(5,aboveDefense)-5*weakSpread);
+
     return{
       model:'TW-holding-exit-v4',validation:'PASS',dataDate,latestClose:L.c,
       position:p,holdingProfile:profile,
       derived:{cost,marketValue,pnl,pnlPct,maFast,maSlow,atr:a,structuralSupport:roundTick(structuralSupport),structuralResistance:roundTick(structuralResistance),defense,resistance,profitDefense,peakSinceEntry:roundTick(peakSinceEntry),drawdownFromPeak},
-      decision:{state,reason,exitTrigger:`以完成交易日收盤為準；若收盤跌破 ${defense} 且快慢結構同步轉弱，下一個合法可交易時段重新執行出場判定`,profitReview:`已有獲利時，若收盤跌破 ${profitDefense}，或進入 ${resistance} 附近且趨勢轉弱，下一交易時段檢視分批停利`},
+      decision:{state,reason,evidenceScore:Math.round(evidenceScore*100)/100,evidenceMeaning:'raw evidence strength for separate OOS calibration; not probability/confidence before calibration',exitTrigger:`以完成交易日收盤為準；若收盤跌破 ${defense} 且快慢結構同步轉弱，下一個合法可交易時段重新執行出場判定`,profitReview:`已有獲利時，若收盤跌破 ${profitDefense}，或進入 ${resistance} 附近且趨勢轉弱，下一交易時段檢視分批停利`},
       limits:{sharesAffectSignal:false,portfolioSizingKnown:false,statement:'持有股數只用於計算市值與金額損益；沒有整體資產／風險預算時，不判斷部位過大或過小。'},
-      provenance:{position:p.provenance,latestClose:'observed',holdingTradingDays:'derived_from_verified_trading_sessions',structure:'derived',decision:'model_estimate'}
+      provenance:{position:p.provenance,latestClose:'observed',holdingTradingDays:'derived_from_verified_trading_sessions',structure:'derived',decision:'model_estimate',evidenceScore:'derived_unscaled_not_confidence'}
     };
   }
   window.StockLabHolding={analyze,positionInput,holdingProfile,requiredBars:()=>MIN_BARS};
