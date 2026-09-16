@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'stock-lab/import-licensed-history.py'
+      - 'stock-lab/validate-licensed-bundle.py'
       - 'stock-lab/licensed-data-contract.json'
       - '.github/workflows/stocklab-licensed-import-contract.yml'
 
@@ -19,12 +20,14 @@ jobs:
 
       - name: Syntax and no-network guard
         run: |
-          python -m py_compile stock-lab/import-licensed-history.py
+          python -m py_compile stock-lab/import-licensed-history.py stock-lab/validate-licensed-bundle.py
           python - <<'PY'
           from pathlib import Path
+          for path in ('stock-lab/import-licensed-history.py','stock-lab/validate-licensed-bundle.py'):
+              s=Path(path).read_text(encoding='utf-8')
+              for forbidden in ('urllib.request','requests.get','http://','https://'):
+                  assert forbidden not in s, (path,forbidden)
           s=Path('stock-lab/import-licensed-history.py').read_text(encoding='utf-8')
-          for forbidden in ('urllib.request','requests.get','http://','https://'):
-              assert forbidden not in s, forbidden
           for required in (
               'LICENCE_GATE_FAIL','no_imputation','raw_redistribution_allowed',
               'acquisition_mode_authorized','public_derived_outputs_allowed',
@@ -33,7 +36,7 @@ jobs:
               'market_index','valid_from','valid_to','source-registry'
           ):
               assert required.lower() in s.lower(), required
-          print('no-network licensed importer v3 invariant passed')
+          print('no-network licensed importer/validator v3 invariant passed')
           PY
 
       - name: Build synthetic authorised v3 bundle
@@ -105,32 +108,34 @@ jobs:
             --processing-location 'synthetic-local-private' \
             --processing-location-authorized
 
+          python stock-lab/validate-licensed-bundle.py /tmp/stocklab-licensed-test \
+            --contract stock-lab/licensed-data-contract.json \
+            --out /tmp/stocklab-licensed-test/validation.json
+
           python - <<'PY'
           import json
-          p='/tmp/stocklab-licensed-test/manifest.json'
-          x=json.load(open(p,encoding='utf-8'))
-          lic=x['license']
-          assert x['schema_version']==1
-          assert x['no_imputation'] is True
-          assert x['network_collection_performed_by_importer'] is False
+          x=json.load(open('/tmp/stocklab-licensed-test/manifest.json',encoding='utf-8'))
+          v=json.load(open('/tmp/stocklab-licensed-test/validation.json',encoding='utf-8'))
+          lic=x['license']; truth=v['truth_contract']
+          assert x['schema_version']==1 and v['schema_version']==3 and v['ok'] is True
+          assert x['no_imputation'] is True and x['network_collection_performed_by_importer'] is False
           assert x['raw_publication_permitted'] is False
           assert lic['acquisition_mode']=='manual_provider_portal'
           assert lic['acquisition_mode_authorized'] is True
           assert lic['public_derived_outputs_allowed'] is True
           assert lic['processing_location_authorized'] is True
-          assert x['coverage']['rows']==2
-          assert x['coverage']['max_bars_per_security']==2
-          assert x['coverage']['markets']==['TWSE']
-          assert x['datasets']['daily_ohlc']['row_count']==2
-          assert x['datasets']['market_index']['row_count']==2
-          assert x['datasets']['daily_ohlc']['source_ids']==['test-source']
-          assert len(x['datasets']['daily_ohlc']['sha256'])==64
-          assert len(x['sources'])==1 and x['sources'][0]['provenance_class']=='observed'
-          print('licensed bundle v3 contract passed')
+          assert truth['acquisition_right_verified'] is True
+          assert truth['processing_location_verified'] is True
+          assert truth['public_derived_output_right_verified'] is True
+          assert truth['all_hashes_verified'] is True
+          assert x['coverage']['rows']==2 and x['coverage']['max_bars_per_security']==2
+          assert x['datasets']['daily_ohlc']['row_count']==2 and x['datasets']['market_index']['row_count']==2
+          print('licensed bundle v3 importer + offline validator contract passed')
           PY
 
       - name: Reject missing legal rights
         run: |
+          rm -f /tmp/stocklab-licensed-test/manifest.json
           set +e
           python stock-lab/import-licensed-history.py \
             --bundle-dir /tmp/stocklab-licensed-test \
@@ -151,7 +156,7 @@ jobs:
       - name: Reject unresolved provenance
         run: |
           cp -r /tmp/stocklab-licensed-test /tmp/stocklab-bad-source
-          rm -f /tmp/stocklab-bad-source/manifest.json
+          rm -f /tmp/stocklab-bad-source/manifest.json /tmp/stocklab-bad-source/validation.json
           sed -i 's/test-source/unknown-source/' /tmp/stocklab-bad-source/daily_ohlc.csv
           set +e
           python stock-lab/import-licensed-history.py \
@@ -179,7 +184,7 @@ jobs:
       - name: Reject missing market context
         run: |
           cp -r /tmp/stocklab-licensed-test /tmp/stocklab-no-index
-          rm -f /tmp/stocklab-no-index/manifest.json /tmp/stocklab-no-index/market_index.csv
+          rm -f /tmp/stocklab-no-index/manifest.json /tmp/stocklab-no-index/validation.json /tmp/stocklab-no-index/market_index.csv
           set +e
           python stock-lab/import-licensed-history.py \
             --bundle-dir /tmp/stocklab-no-index \
