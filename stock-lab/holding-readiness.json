@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-16T07:48:00+00:00",
+  "generated_at": "2026-09-16T07:55:24.633790+00:00",
   "model": "TW-holding-exit-v4",
   "overall_status": "INSUFFICIENT",
   "executable_exit_output": false,
@@ -51,17 +51,29 @@
     "minimum_episodes": 300,
     "securities": 0,
     "minimum_securities": 80,
-    "required_regimes": ["bear", "bull", "sideways"],
+    "required_regimes": [
+      "bear",
+      "bull",
+      "sideways"
+    ],
     "regimes_present": [],
     "execution_validated": false,
     "confidence_calibrated": false,
     "production_formula_match": false
   },
   "history_sources": {
-    "active": ["ogdl_daily_forward_archive"],
+    "active": [
+      "ogdl_daily_forward_archive"
+    ],
     "inactive_candidates": [
-      {"id": "twse_eshop_daily_close", "status": "candidate_not_subscribed"},
-      {"id": "tpex_eshop_afterhours_history", "status": "candidate_not_subscribed"}
+      {
+        "id": "twse_eshop_daily_close",
+        "status": "candidate_not_subscribed"
+      },
+      {
+        "id": "tpex_eshop_afterhours_history",
+        "status": "candidate_not_subscribed"
+      }
     ],
     "rule": "candidate_not_subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
   },
