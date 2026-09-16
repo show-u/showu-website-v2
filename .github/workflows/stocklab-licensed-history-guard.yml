@@ -7,16 +7,16 @@ on:
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
       - '.github/workflows/stocklab-holding-exit-oos.yml'
-      - 'stock-lab/build-holding-readiness.py'
-      - 'stock-lab/run-holding-exit-oos.py'
+      - 'stock-lab/history-source-registry.json'
+      - 'stock-lab/licensed-data-contract.json'
   pull_request:
     paths:
       - 'stock-lab/history-licensed/**'
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
       - '.github/workflows/stocklab-holding-exit-oos.yml'
-      - 'stock-lab/build-holding-readiness.py'
-      - 'stock-lab/run-holding-exit-oos.py'
+      - 'stock-lab/history-source-registry.json'
+      - 'stock-lab/licensed-data-contract.json'
   workflow_dispatch:
 
 jobs:
@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Reject licensed raw history in public repository
         run: |
           set -euo pipefail
@@ -34,19 +35,49 @@ jobs:
             exit 1
           fi
           grep -Fq 'stock-lab/history-licensed/*' .gitignore
-          echo 'licensed-history public boundary passed'
+          echo 'licensed-history repository boundary passed'
 
-      - name: Require ephemeral runtime path for formal OOS
+      - name: Reject licensed raw acquisition in public CI
         run: |
           set -euo pipefail
           f='.github/workflows/stocklab-holding-exit-oos.yml'
-          grep -Fq 'LICENSED_BUNDLE_DIR: /tmp/stocklab-history-licensed' "$f"
-          if grep -Eq -- '--licensed-bundle-dir[[:space:]]+stock-lab/history-licensed|bundle-dir[[:space:]]+stock-lab/history-licensed' "$f"; then
-            echo 'ERROR: formal OOS must not consume licensed raw history from the public repository workspace.'
+          grep -Fq 'LICENSED_BUNDLE_DIR: /tmp/stocklab-no-licensed' "$f"
+          forbidden='STOCKLAB_LICENSED_BUNDLE_URL|STOCKLAB_LICENSED_BUNDLE_SHA256|curl .*licensed|wget .*licensed|aws s3 .*licensed|gsutil .*licensed'
+          if grep -Eq "$forbidden" "$f"; then
+            echo 'ERROR: public CI must not fetch or stage licensed raw market history.'
             exit 1
           fi
-          grep -Fq 'STOCKLAB_LICENSED_BUNDLE_URL' "$f"
-          grep -Fq 'STOCKLAB_LICENSED_BUNDLE_SHA256' "$f"
-          grep -Fq 'validate-licensed-bundle.py' "$f"
-          grep -Fq 'Prove licensed raw history never entered repository workspace' "$f"
-          echo 'runtime-only licensed history boundary passed'
+          grep -Fq 'Public CI contains no licensed raw market data and performs no licensed-data acquisition.' "$f"
+          echo 'licensed-history public-CI boundary passed'
+
+      - name: Require legal acquisition gates in source registry
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('stock-lab/history-source-registry.json',encoding='utf-8'))
+          r=x['rules']
+          for k in (
+              'public_url_is_not_a_licence',
+              'no_purchase_before_terms_review',
+              'no_automated_download_without_provider_permission',
+              'no_third_party_cloud_processing_without_provider_permission',
+              'raw_licensed_data_never_enters_public_repo',
+              'raw_licensed_data_never_enters_public_ci_by_default',
+              'derived_model_output_requires_confirmed_derived_use_right',
+              'every_delivered_file_requires_sha256',
+              'every_observation_requires_source_provenance'):
+              assert r.get(k) is True, k
+          gates=set(x['activation_gates'])
+          required={
+              'applicable_terms_retained_with_date_or_version',
+              'written_permission_or_contract_reference_retained_when_terms_are_ambiguous',
+              'automated_processing_right_confirmed',
+              'derived_output_right_confirmed',
+              'private_storage_right_confirmed',
+              'processing_location_right_confirmed',
+              'delivered_files_hash_verified',
+              'semantic_ohlcv_validation_passed',
+              'cross_check_against_official_recent observations passed'}
+          assert required.issubset(gates), sorted(required-gates)
+          print('legal acquisition gate contract passed')
+          PY
