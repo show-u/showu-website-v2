@@ -1,20 +1,26 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-09-16T05:56:19.737284+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-09-16T07:36:14.793541+00:00",
   "model": "TW-holding-exit-v4",
   "overall_status": "INSUFFICIENT",
   "executable_exit_output": false,
   "principle": "No verified gate, no formal holding/exit recommendation. Missing data is never imputed.",
-  "history": {
-    "status": "INSUFFICIENT",
+  "selected_history_source": {
+    "kind": "ogdl_daily_archive",
+    "licence": "OGDL-1.0",
+    "provider": "TWSE/TPEx open data forward archive",
+    "bundle_id": null,
     "first_date": "2026-09-14",
     "last_date": "2026-09-15",
+    "licensed_bundle_detected": false,
+    "licensed_bundle_valid": false
+  },
+  "history": {
+    "status": "INSUFFICIENT",
     "max_valid_bars_per_security": 2,
     "minimum_valid_bars": 120,
     "securities_at_least_minimum": 0,
     "minimum_securities_for_oos": 80,
-    "source_class": "ogdl_daily_archive",
-    "licence": "OGDL-1.0",
     "no_imputation": true
   },
   "oos": {
@@ -51,7 +57,8 @@
     "rule": "candidate_not_subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
   },
   "blockers": [
-    "合法歷史日線不足：單檔最多 2/120 根，達 120 根的標的 0 檔；正式 OOS 至少需覆蓋 80 檔。",
+    "正式歷史資料不足：目前選用 ogdl_daily_archive，單檔最多 2/120 根，達門檻標的 0/80 檔。",
+    "尚未偵測到已通過授權 Gate 的歷史 bundle；OGDL 僅作合法每日向前累積，不能假造過去資料。",
     "OOS 樣本不足：episodes 0/300、securities 0/80。",
     "出場條件／價格尚未通過下一合法交易時段的可執行性驗證。",
     "信心指數尚未通過獨立樣本外校準。",
