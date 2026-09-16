@@ -73,7 +73,7 @@ jobs:
             x=m['latest_ingest'][market]
             assert x['accepted']>0 and x['data_gov_dataset']==dataset
             assert len(x['raw_sha256'])==64 and x['source_schema']
-          print('OGDL history validated',m['last_date'],m['rows'],q.get('overall'))
+          print('OGDL forward archive validated',m['last_date'],m['rows'],q.get('overall'))
           PY
       - name: Build formal holding-exit readiness
         run: |
@@ -87,11 +87,26 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/holding-readiness.json',encoding='utf-8'))
-          assert x['schema_version']==1 and x['model']=='TW-holding-exit-v4'
+          assert x['schema_version']==3 and x['model']=='TW-holding-exit-v4'
           assert x['principle'].startswith('No verified gate')
           assert x['history']['no_imputation'] is True
-          assert x['history']['licence']=='OGDL-1.0'
           assert x['overall_status'] in ('PASS','INSUFFICIENT')
+          a=x['activation_path']
+          assert a['primary']=='licensed_historical_backfill'
+          assert a['requires_waiting_120_trading_days'] is False
+          assert a['status'] in ('pending_licensed_subscription_or_import','ready_for_oos')
+          assert 'import-licensed-history.py' in a['importer']
+          assert 'OGDL' in a['fallback'] and 'never impute' in a['fallback']
+          ids={z['id']:z['status'] for z in a['licensed_source_candidates']}
+          assert ids.get('twse_eshop_daily_close') in ('candidate_not_subscribed','active')
+          assert ids.get('tpex_eshop_afterhours_history') in ('candidate_not_subscribed','active')
+          s=x['selected_history_source']
+          if s['kind']=='licensed_history_bundle':
+            assert s['licensed_bundle_valid'] is True
+          else:
+            assert s['kind']=='ogdl_daily_archive'
+            assert s['licence']=='OGDL-1.0'
+            assert a['status']=='pending_licensed_subscription_or_import'
           if x['overall_status']!='PASS':
             assert x['executable_exit_output'] is False
             assert x['blockers'],x
@@ -104,7 +119,7 @@ jobs:
             assert x['oos']['production_formula_match'] is True
           for s in x['history_sources']['inactive_candidates']:
             assert s['status']!='active'
-          print('holding readiness validated',x['overall_status'])
+          print('holding readiness validated',x['overall_status'],a['status'])
           PY
       - name: Commit history/readiness only when changed
         run: |
@@ -112,7 +127,7 @@ jobs:
           git config user.name 'stocklab-bot'
           git config user.email 'stocklab-bot@users.noreply.github.com'
           git add stock-lab/history-ogdl stock-lab/holding-readiness.json
-          git commit -m 'archive licensed OGDL daily OHLC and update holding readiness'
+          git commit -m 'archive OGDL forward OHLC and update holding readiness'
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
