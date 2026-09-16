@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - 'stock-lab/import-licensed-history.py'
+      - 'stock-lab/licensed-data-contract.json'
+      - 'stock-lab/history-source-contract.json'
       - '.github/workflows/stocklab-licensed-import-contract.yml'
 
 jobs:
@@ -15,6 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Syntax and no-network guard
         run: |
           python -m py_compile stock-lab/import-licensed-history.py
@@ -23,71 +26,147 @@ jobs:
           s=Path('stock-lab/import-licensed-history.py').read_text(encoding='utf-8')
           for forbidden in ('urllib.request','requests.get','http://','https://'):
               assert forbidden not in s, forbidden
-          for required in ('LICENCE_GATE_FAIL','no_imputation','raw_redistribution_allowed','source_id mismatch','impossible OHLC','network_collection_performed_by_importer'):
+          for required in (
+              'LICENCE_GATE_FAIL','no_imputation','raw_redistribution_allowed',
+              'unresolved source_id','impossible OHLC','network_collection_performed_by_importer',
+              'market_index','valid_from','valid_to','source-registry'
+          ):
               assert required.lower() in s.lower(), required
-          print('no-network licensed importer invariant passed')
+          print('no-network licensed importer v2 invariant passed')
           PY
-      - name: Build synthetic authorised bundle
+
+      - name: Build synthetic authorised v2 bundle
         run: |
+          rm -rf /tmp/stocklab-licensed-test
           mkdir -p /tmp/stocklab-licensed-test
+
+          cat > /tmp/stocklab-licensed-test/source-registry.json <<'EOF'
+          [
+            {
+              "source_id":"test-source",
+              "provider":"Synthetic CI Provider",
+              "dataset_name":"Synthetic licensed Taiwan history",
+              "evidence_reference":"ci://synthetic-v2",
+              "provenance_class":"observed"
+            }
+          ]
+          EOF
+
           cat > /tmp/stocklab-licensed-test/security_master.csv <<'EOF'
-          ticker,market,security_type
-          2454,TWSE,ordinary_stock
+          ticker,market,security_type,valid_from,valid_to,source_id
+          2454,TWSE,ordinary_stock,2020-01-01,,test-source
           EOF
+
           cat > /tmp/stocklab-licensed-test/trading_calendar.csv <<'EOF'
-          date,market,is_trading_day
-          2026-09-14,TWSE,true
-          2026-09-15,TWSE,true
+          date,market,is_trading_day,source_id
+          2026-09-14,TWSE,true,test-source
+          2026-09-15,TWSE,true,test-source
           EOF
+
           cat > /tmp/stocklab-licensed-test/daily_ohlc.csv <<'EOF'
           date,ticker,market,open,high,low,close,volume,source_id
           2026-09-14,2454,TWSE,4580,4620,4540,4560,1000,test-source
           2026-09-15,2454,TWSE,4505,4575,4465,4500,1200,test-source
           EOF
+
           cat > /tmp/stocklab-licensed-test/corporate_actions.csv <<'EOF'
           ticker,market,effective_date,action_type,source_id
           2454,TWSE,2026-09-14,none,test-source
           EOF
+
           cat > /tmp/stocklab-licensed-test/risk_states.csv <<'EOF'
           ticker,market,date,attention,disposition,suspended,source_id
           2454,TWSE,2026-09-14,false,false,false,test-source
           2454,TWSE,2026-09-15,false,false,false,test-source
           EOF
+
+          cat > /tmp/stocklab-licensed-test/market_index.csv <<'EOF'
+          date,market,index_code,close,source_id
+          2026-09-14,TWSE,TAIEX,25000,test-source
+          2026-09-15,TWSE,TAIEX,24950,test-source
+          EOF
+
           python stock-lab/import-licensed-history.py \
             --bundle-dir /tmp/stocklab-licensed-test \
             --provider 'Synthetic CI Provider' \
-            --source-id test-source \
-            --dataset-name 'Synthetic licensed history' \
+            --source-registry /tmp/stocklab-licensed-test/source-registry.json \
             --license-name 'CI TEST ONLY' \
             --legal-basis 'synthetic fixture' \
-            --evidence-reference 'ci://synthetic' \
+            --evidence-reference 'ci://synthetic-v2' \
             --automated-processing-allowed \
             --derived-outputs-allowed \
             --local-storage-allowed
+
           python - <<'PY'
           import json
-          x=json.load(open('/tmp/stocklab-licensed-test/manifest.json',encoding='utf-8'))
+          p='/tmp/stocklab-licensed-test/manifest.json'
+          x=json.load(open(p,encoding='utf-8'))
+          assert x['schema_version']==1
           assert x['no_imputation'] is True
           assert x['network_collection_performed_by_importer'] is False
           assert x['raw_publication_permitted'] is False
           assert x['coverage']['rows']==2
           assert x['coverage']['max_bars_per_security']==2
+          assert x['coverage']['markets']==['TWSE']
           assert x['datasets']['daily_ohlc']['row_count']==2
+          assert x['datasets']['market_index']['row_count']==2
+          assert x['datasets']['daily_ohlc']['source_ids']==['test-source']
           assert len(x['datasets']['daily_ohlc']['sha256'])==64
-          print('licensed bundle contract passed')
+          assert len(x['sources'])==1 and x['sources'][0]['provenance_class']=='observed'
+          print('licensed bundle v2 contract passed')
           PY
+
       - name: Reject missing licence rights
         run: |
           set +e
           python stock-lab/import-licensed-history.py \
             --bundle-dir /tmp/stocklab-licensed-test \
             --provider 'Synthetic CI Provider' \
-            --source-id test-source \
-            --dataset-name 'Synthetic licensed history' \
+            --source-registry /tmp/stocklab-licensed-test/source-registry.json \
             --license-name 'CI TEST ONLY' \
             --legal-basis 'synthetic fixture' \
-            --evidence-reference 'ci://synthetic' >/tmp/reject.log 2>&1
+            --evidence-reference 'ci://synthetic-v2' >/tmp/reject-rights.log 2>&1
           code=$?
           set -e
           test "$code" -ne 0
-          grep -q 'LICENCE_GATE_FAIL' /tmp/reject.log
+          grep -q 'LICENCE_GATE_FAIL' /tmp/reject-rights.log
+
+      - name: Reject unresolved provenance
+        run: |
+          cp -r /tmp/stocklab-licensed-test /tmp/stocklab-bad-source
+          sed -i 's/test-source/unknown-source/' /tmp/stocklab-bad-source/daily_ohlc.csv
+          set +e
+          python stock-lab/import-licensed-history.py \
+            --bundle-dir /tmp/stocklab-bad-source \
+            --provider 'Synthetic CI Provider' \
+            --source-registry /tmp/stocklab-licensed-test/source-registry.json \
+            --license-name 'CI TEST ONLY' \
+            --legal-basis 'synthetic fixture' \
+            --evidence-reference 'ci://synthetic-v2' \
+            --automated-processing-allowed \
+            --derived-outputs-allowed \
+            --local-storage-allowed >/tmp/reject-source.log 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          grep -q 'unresolved source_id' /tmp/reject-source.log
+
+      - name: Reject missing market context
+        run: |
+          cp -r /tmp/stocklab-licensed-test /tmp/stocklab-no-index
+          rm /tmp/stocklab-no-index/market_index.csv
+          set +e
+          python stock-lab/import-licensed-history.py \
+            --bundle-dir /tmp/stocklab-no-index \
+            --provider 'Synthetic CI Provider' \
+            --source-registry /tmp/stocklab-licensed-test/source-registry.json \
+            --license-name 'CI TEST ONLY' \
+            --legal-basis 'synthetic fixture' \
+            --evidence-reference 'ci://synthetic-v2' \
+            --automated-processing-allowed \
+            --derived-outputs-allowed \
+            --local-storage-allowed >/tmp/reject-index.log 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          grep -q 'market_index: expected exactly one' /tmp/reject-index.log
