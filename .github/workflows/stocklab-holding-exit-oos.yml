@@ -1,0 +1,97 @@
+name: StockLab holding-exit OOS
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'stock-lab/history-ogdl/**'
+      - 'stock-lab/run-holding-exit-oos.py'
+      - 'stock-lab/build-holding-readiness.py'
+      - 'stock-lab/holding-model.js'
+      - 'stock-lab/holding-exit-validation-protocol.json'
+      - 'stock-lab/history-source-registry.json'
+      - 'stock-lab/holding-exit-history-context.json'
+      - '.github/workflows/stocklab-holding-exit-oos.yml'
+
+concurrency:
+  group: stocklab-holding-exit-oos
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  oos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: |
+          python -m py_compile stock-lab/run-holding-exit-oos.py stock-lab/build-holding-readiness.py
+      - name: Run formal holding-exit OOS gate
+        run: |
+          python stock-lab/run-holding-exit-oos.py \
+            --manifest stock-lab/history-ogdl/manifest.json \
+            --history-dir stock-lab/history-ogdl \
+            --protocol stock-lab/holding-exit-validation-protocol.json \
+            --production stock-lab/holding-model.js \
+            --out stock-lab/holding-exit-oos-result.json
+      - name: Validate OOS truth contract
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('stock-lab/holding-exit-oos-result.json',encoding='utf-8'))
+          assert x['schema_version']==1 and x['model']=='TW-holding-exit-v4'
+          assert x['pipeline_executed'] is True
+          assert x['status'] in ('PASS','INSUFFICIENT')
+          assert x['source']['licence']=='OGDL-1.0'
+          assert x['source']['provenance_rejections']>=0
+          assert len(x['production_formula_sha256'])==64
+          if x['status']!='PASS':
+            assert x['metrics'] is None
+            assert x['blockers']
+            assert not (x['exit_execution_validated'] and x['confidence_calibrated'] and x['production_formula_match'])
+          else:
+            assert x['oos_episodes']>=x['minimum_oos_episodes']
+            assert x['oos_securities']>=x['minimum_oos_securities']
+            assert set(x['required_regimes']).issubset(set(x['regimes']))
+            assert x['exit_execution_validated'] is True
+            assert x['confidence_calibrated'] is True
+            assert x['production_formula_match'] is True
+          print('holding-exit OOS truth contract:',x['status'])
+          PY
+      - name: Rebuild public readiness from OOS artifact
+        run: |
+          python stock-lab/build-holding-readiness.py \
+            --manifest stock-lab/history-ogdl/manifest.json \
+            --protocol stock-lab/holding-exit-validation-protocol.json \
+            --sources stock-lab/history-source-registry.json \
+            --oos stock-lab/holding-exit-oos-result.json \
+            --out stock-lab/holding-readiness.json
+      - name: Validate readiness remains fail-closed
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('stock-lab/holding-readiness.json',encoding='utf-8'))
+          assert x['model']=='TW-holding-exit-v4'
+          if x['overall_status']!='PASS':
+            assert x['executable_exit_output'] is False
+            assert x['blockers']
+          else:
+            assert x['executable_exit_output'] is True
+          print('holding readiness:',x['overall_status'])
+          PY
+      - name: Persist OOS/readiness only when changed
+        run: |
+          if [ -z "$(git status --porcelain -- stock-lab/holding-exit-oos-result.json stock-lab/holding-readiness.json)" ]; then echo 'No OOS/readiness change'; exit 0; fi
+          git config user.name 'stocklab-bot'
+          git config user.email 'stocklab-bot@users.noreply.github.com'
+          git add stock-lab/holding-exit-oos-result.json stock-lab/holding-readiness.json
+          git commit -m 'update holding exit OOS readiness'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
