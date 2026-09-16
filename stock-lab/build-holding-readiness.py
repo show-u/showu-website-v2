@@ -119,17 +119,20 @@ def main():
     licensed_candidates = []
     for key, src in (sources.get("sources") or {}).items():
         status = src.get("status")
+        role = src.get("role")
         if status == "active":
             active_sources.append(key)
         elif status == "active_forward_archive_only":
-            active_forward_only.append({"id": key, "role": src.get("role") or "forward_archive_only", "history_backfill": src.get("history_backfill") is True})
+            active_forward_only.append({"id": key, "role": role or "forward_archive_only", "history_backfill": src.get("history_backfill") is True})
         else:
             inactive_candidates.append({"id": key, "status": status or "unknown"})
-        if key in {"twse_eshop_daily_close", "tpex_eshop_basic_group"}:
+        if role == "licensed_backfill_candidate" or key in {"twse_eshop_daily_close", "tpex_eshop_basic_group"}:
             licensed_candidates.append({
                 "id": key,
                 "status": status or "unknown",
                 "provider": src.get("provider") or src.get("source") or key,
+                "private_staging_importer": src.get("private_staging_importer"),
+                "formal_bundle_ready_from_price_alone": src.get("formal_bundle_ready_from_twmd_price_alone"),
             })
 
     oos = load(args.oos) if Path(args.oos).exists() else None
@@ -156,7 +159,7 @@ def main():
     if not history_pass:
         blockers.append(f"正式歷史資料不足：目前選用 {selected['kind']}，單檔最多 {max_bars}/{history_min} 根，達門檻標的 {securities_min}/{min_oos_securities} 檔。")
     if selected["kind"] == "ogdl_daily_archive":
-        blockers.append("主要解法不是等待 OGDL 累積。應取得 TWSE／TPEx 有明確外部使用與衍生分析權利的歷史資料，經 importer 驗證後建立私有 licensed bundle；OGDL 只作每日向前封存備援。")
+        blockers.append("主要解法不是等待 OGDL 累積。應取得有明確商業使用、自動處理、衍生分析與公開衍生輸出權利的歷史資料，於私有環境回填後，補齊 PIT-safe 證券生命週期、交易日曆、公司行動、風險狀態與 TWSE/TPEx 市場指數，再經 importer/validator 建立正式 licensed bundle；OGDL 只作每日向前封存備援。")
     if not oos:
         blockers.append("尚無正式持股出場 OOS 結果檔；不得把歷史資料量或研究公式視為模型 PASS。")
     elif not oos_count_pass:
@@ -168,7 +171,7 @@ def main():
 
     licensed_valid = bool(licensed and licensed.get("valid") is True)
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "model": "TW-holding-exit-v4",
         "overall_status": "PASS" if history_pass and oos_pass else "INSUFFICIENT",
@@ -180,6 +183,7 @@ def main():
             "requires_waiting_120_trading_days": False,
             "licensed_source_candidates": licensed_candidates,
             "importer": "stock-lab/import-licensed-history.py",
+            "private_price_staging_importer": "stock-lab/prepare-twmd-private-backfill.py",
             "post_import_action": "validate licensed bundle, rebuild readiness, then rerun formal holding-exit OOS automatically",
             "raw_licensed_data_publication": "prohibited_unless_explicit_redistribution_right_exists",
             "fallback": "OGDL daily forward archive only; never impute missing past history",
