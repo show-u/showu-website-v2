@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-16T11:58:37.786318+00:00",
+  "generated_at": "2026-09-16T12:28:39.731164+00:00",
   "model": "TW-holding-exit-v4",
   "overall_status": "INSUFFICIENT",
   "executable_exit_output": false,
@@ -14,6 +14,11 @@
         "id": "twse_eshop_daily_close",
         "status": "candidate_legal_review_required",
         "provider": "Taiwan Stock Exchange Data E-Shop"
+      },
+      {
+        "id": "tpex_eshop_basic_group",
+        "status": "candidate_legal_and_format_review_required",
+        "provider": "Taipei Exchange Data E-Shop"
       }
     ],
     "importer": "stock-lab/import-licensed-history.py",
@@ -58,11 +63,14 @@
   },
   "history_sources": {
     "active": [],
-    "inactive_candidates": [
+    "active_forward_only": [
       {
         "id": "ogdl_daily_forward_archive",
-        "status": "active_forward_archive_only"
-      },
+        "role": "forward_archive_only",
+        "history_backfill": false
+      }
+    ],
+    "inactive_candidates": [
       {
         "id": "twse_eshop_daily_close",
         "status": "candidate_legal_review_required"
@@ -80,7 +88,7 @@
         "status": "not_primary_candidate"
       }
     ],
-    "rule": "candidate_not_subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
+    "rule": "Forward-only OGDL remains active for lawful daily archiving but is never promoted to historical backfill. Candidate-not-subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
   },
   "blockers": [
     "正式歷史資料不足：目前選用 ogdl_daily_archive，單檔最多 2/120 根，達門檻標的 0/80 檔。",
