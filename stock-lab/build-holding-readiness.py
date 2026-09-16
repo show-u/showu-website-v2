@@ -38,7 +38,7 @@ def validate_licensed_bundle(bundle_dir: Path):
     if not all(required_rights):
         return {"valid": False, "reason": "licensed bundle rights/integrity gate failed", "manifest": x}
     datasets = x.get("datasets") or {}
-    required = {"security_master", "trading_calendar", "daily_ohlc", "corporate_actions", "risk_states"}
+    required = {"security_master", "trading_calendar", "daily_ohlc", "corporate_actions", "risk_states", "market_index"}
     if not required.issubset(datasets):
         return {"valid": False, "reason": "licensed bundle missing required datasets", "manifest": x}
     for name in required:
@@ -114,15 +114,18 @@ def main():
     history_pass = max_bars >= history_min and securities_min >= min_oos_securities
 
     active_sources = []
+    active_forward_only = []
     inactive_candidates = []
     licensed_candidates = []
     for key, src in (sources.get("sources") or {}).items():
         status = src.get("status")
         if status == "active":
             active_sources.append(key)
+        elif status == "active_forward_archive_only":
+            active_forward_only.append({"id": key, "role": src.get("role") or "forward_archive_only", "history_backfill": src.get("history_backfill") is True})
         else:
             inactive_candidates.append({"id": key, "status": status or "unknown"})
-        if key in {"twse_eshop_daily_close", "tpex_eshop_afterhours_history"}:
+        if key in {"twse_eshop_daily_close", "tpex_eshop_basic_group"}:
             licensed_candidates.append({
                 "id": key,
                 "status": status or "unknown",
@@ -199,12 +202,16 @@ def main():
             "execution_validated": execution_validated, "confidence_calibrated": confidence_calibrated,
             "production_formula_match": formula_match,
         },
-        "history_sources": {"active": active_sources, "inactive_candidates": inactive_candidates,
-            "rule": "candidate_not_subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."},
+        "history_sources": {
+            "active": active_sources,
+            "active_forward_only": active_forward_only,
+            "inactive_candidates": inactive_candidates,
+            "rule": "Forward-only OGDL remains active for lawful daily archiving but is never promoted to historical backfill. Candidate-not-subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
+        },
         "blockers": blockers,
     }
     Path(args.out).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"overall_status":payload["overall_status"],"activation_path":payload["activation_path"],"selected_history_source":payload["selected_history_source"],"history":payload["history"],"oos":payload["oos"],"blockers":blockers},ensure_ascii=False,indent=2))
+    print(json.dumps({"overall_status":payload["overall_status"],"activation_path":payload["activation_path"],"selected_history_source":payload["selected_history_source"],"history":payload["history"],"oos":payload["oos"],"history_sources":payload["history_sources"],"blockers":blockers},ensure_ascii=False,indent=2))
 
 
 if __name__ == "__main__":
