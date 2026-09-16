@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-16T12:28:39.731164+00:00",
+  "generated_at": "2026-09-16T12:48:25.272325+00:00",
   "model": "TW-holding-exit-v4",
   "overall_status": "INSUFFICIENT",
   "executable_exit_output": false,
@@ -71,6 +71,10 @@
       }
     ],
     "inactive_candidates": [
+      {
+        "id": "twmd_api_private_backfill",
+        "status": "candidate_entitlement_and_pit_review_required"
+      },
       {
         "id": "twse_eshop_daily_close",
         "status": "candidate_legal_review_required"
