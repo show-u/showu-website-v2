@@ -6,8 +6,12 @@ on:
     paths:
       - 'stock-lab/browser-data.json'
       - 'stock-lab/archive-ogdl-daily.py'
+      - 'stock-lab/build-holding-readiness.py'
       - 'stock-lab/official-schema-registry.json'
       - 'stock-lab/history-source-contract.json'
+      - 'stock-lab/history-source-registry.json'
+      - 'stock-lab/holding-exit-validation-protocol.json'
+      - 'stock-lab/holding-exit-oos-result.json'
       - '.github/workflows/update-ogdl-history.yml'
 
 concurrency:
@@ -44,7 +48,7 @@ jobs:
           PY
       - name: Exact-schema archive from committed cache only
         run: |
-          python -m py_compile stock-lab/archive-ogdl-daily.py
+          python -m py_compile stock-lab/archive-ogdl-daily.py stock-lab/build-holding-readiness.py
           python stock-lab/archive-ogdl-daily.py \
             --cache stock-lab/browser-data.json \
             --registry stock-lab/official-schema-registry.json \
@@ -71,13 +75,44 @@ jobs:
             assert len(x['raw_sha256'])==64 and x['source_schema']
           print('OGDL history validated',m['last_date'],m['rows'],q.get('overall'))
           PY
-      - name: Commit history only when observations or manifest changed
+      - name: Build formal holding-exit readiness
         run: |
-          if [ -z "$(git status --porcelain -- stock-lab/history-ogdl)" ]; then echo 'No new official observations'; exit 0; fi
+          python stock-lab/build-holding-readiness.py \
+            --manifest stock-lab/history-ogdl/manifest.json \
+            --protocol stock-lab/holding-exit-validation-protocol.json \
+            --sources stock-lab/history-source-registry.json \
+            --out stock-lab/holding-readiness.json
+      - name: Validate fail-closed holding readiness
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('stock-lab/holding-readiness.json',encoding='utf-8'))
+          assert x['schema_version']==1 and x['model']=='TW-holding-exit-v4'
+          assert x['principle'].startswith('No verified gate')
+          assert x['history']['no_imputation'] is True
+          assert x['history']['licence']=='OGDL-1.0'
+          assert x['overall_status'] in ('PASS','INSUFFICIENT')
+          if x['overall_status']!='PASS':
+            assert x['executable_exit_output'] is False
+            assert x['blockers'],x
+          else:
+            assert x['executable_exit_output'] is True
+            assert x['history']['status']=='PASS'
+            assert x['oos']['status']=='PASS'
+            assert x['oos']['execution_validated'] is True
+            assert x['oos']['confidence_calibrated'] is True
+            assert x['oos']['production_formula_match'] is True
+          for s in x['history_sources']['inactive_candidates']:
+            assert s['status']!='active'
+          print('holding readiness validated',x['overall_status'])
+          PY
+      - name: Commit history/readiness only when changed
+        run: |
+          if [ -z "$(git status --porcelain -- stock-lab/history-ogdl stock-lab/holding-readiness.json)" ]; then echo 'No new official observations/readiness changes'; exit 0; fi
           git config user.name 'stocklab-bot'
           git config user.email 'stocklab-bot@users.noreply.github.com'
-          git add stock-lab/history-ogdl
-          git commit -m 'archive licensed OGDL daily OHLC'
+          git add stock-lab/history-ogdl stock-lab/holding-readiness.json
+          git commit -m 'archive licensed OGDL daily OHLC and update holding readiness'
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
