@@ -6,11 +6,17 @@ on:
       - 'stock-lab/history-licensed/**'
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
+      - '.github/workflows/stocklab-holding-exit-oos.yml'
+      - 'stock-lab/build-holding-readiness.py'
+      - 'stock-lab/run-holding-exit-oos.py'
   pull_request:
     paths:
       - 'stock-lab/history-licensed/**'
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
+      - '.github/workflows/stocklab-holding-exit-oos.yml'
+      - 'stock-lab/build-holding-readiness.py'
+      - 'stock-lab/run-holding-exit-oos.py'
   workflow_dispatch:
 
 jobs:
@@ -29,3 +35,18 @@ jobs:
           fi
           grep -Fq 'stock-lab/history-licensed/*' .gitignore
           echo 'licensed-history public boundary passed'
+
+      - name: Require ephemeral runtime path for formal OOS
+        run: |
+          set -euo pipefail
+          f='.github/workflows/stocklab-holding-exit-oos.yml'
+          grep -Fq 'LICENSED_BUNDLE_DIR: /tmp/stocklab-history-licensed' "$f"
+          if grep -Eq -- '--licensed-bundle-dir[[:space:]]+stock-lab/history-licensed|bundle-dir[[:space:]]+stock-lab/history-licensed' "$f"; then
+            echo 'ERROR: formal OOS must not consume licensed raw history from the public repository workspace.'
+            exit 1
+          fi
+          grep -Fq 'STOCKLAB_LICENSED_BUNDLE_URL' "$f"
+          grep -Fq 'STOCKLAB_LICENSED_BUNDLE_SHA256' "$f"
+          grep -Fq 'validate-licensed-bundle.py' "$f"
+          grep -Fq 'Prove licensed raw history never entered repository workspace' "$f"
+          echo 'runtime-only licensed history boundary passed'
