@@ -6,6 +6,7 @@ on:
     paths:
       - 'stock-lab/history-ogdl/**'
       - 'stock-lab/import-licensed-history.py'
+      - 'stock-lab/prepare-twmd-private-backfill.py'
       - 'stock-lab/validate-licensed-bundle.py'
       - 'stock-lab/licensed-data-contract.json'
       - 'stock-lab/holding-oos-evaluator.mjs'
@@ -42,7 +43,7 @@ jobs:
 
       - name: Syntax check
         run: |
-          python -m py_compile stock-lab/run-holding-exit-oos.py stock-lab/build-holding-readiness.py stock-lab/import-licensed-history.py stock-lab/validate-licensed-bundle.py stock-lab/gate-holding-evaluator.py
+          python -m py_compile stock-lab/run-holding-exit-oos.py stock-lab/build-holding-readiness.py stock-lab/import-licensed-history.py stock-lab/prepare-twmd-private-backfill.py stock-lab/validate-licensed-bundle.py stock-lab/gate-holding-evaluator.py
           node --check stock-lab/holding-oos-evaluator.mjs
 
       - name: Enforce public-CI legal boundary
@@ -62,19 +63,22 @@ jobs:
           path=Path('.github/workflows/stocklab-holding-exit-oos.yml')
           forbidden_env='STOCKLAB_'+'LICENSED_BUNDLE_URL'
           transfer_tools=('cu'+'rl','wg'+'et')
+          network_importer='python stock-lab/'+'prepare-twmd-private-backfill.py'
           hits=[]
           for n,line in enumerate(path.read_text(encoding='utf-8').splitlines(),1):
               s=line.strip()
               if forbidden_env in line:
                   hits.append((n,line))
+              if s.startswith(network_importer):
+                  hits.append((n,line))
               for tool in transfer_tools:
                   if re.search(rf'\b{tool}\b.*licensed',line,re.I):
                       hits.append((n,line))
           if hits:
-              print('ERROR: public CI must not acquire licensed raw history.')
+              print('ERROR: public CI must not acquire licensed/private raw history.')
               for n,line in hits: print(f'{n}: {line}')
               raise SystemExit(1)
-          print('Public CI contains no licensed raw market data and performs no licensed-data acquisition.')
+          print('Public CI may syntax-check private importers but contains no private/licensed market-data acquisition.')
           PY
 
       - name: Prove evaluator is production-equivalent and fail-closed without licensed history
@@ -148,14 +152,20 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/holding-readiness.json',encoding='utf-8'))
+          assert x['schema_version']==3
           assert x['overall_status']=='INSUFFICIENT'
           assert x['executable_exit_output'] is False
           assert x['selected_history_source']['kind']=='ogdl_daily_archive'
           assert x['activation_path']['requires_waiting_120_trading_days'] is False
           assert x['activation_path']['primary']=='licensed_historical_backfill'
+          assert x['activation_path']['private_price_staging_importer']=='stock-lab/prepare-twmd-private-backfill.py'
+          candidates={z['id']:z for z in x['activation_path']['licensed_source_candidates']}
+          assert 'twmd_api_private_backfill' in candidates
+          assert candidates['twmd_api_private_backfill']['status']=='candidate_entitlement_and_pit_review_required'
+          assert candidates['twmd_api_private_backfill']['formal_bundle_ready_from_price_alone'] is False
           f=x['history_sources'].get('active_forward_only',[])
           assert any(z.get('id')=='ogdl_daily_forward_archive' and z.get('history_backfill') is False for z in f)
-          print('licensed backfill must be acquired/processed outside public CI under provider-approved rights; OGDL remains forward-only')
+          print('private historical backfill path is explicit; TWMD price staging alone cannot unlock the model')
           PY
 
       - name: Persist only public fail-closed readiness when changed
