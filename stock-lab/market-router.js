@@ -1,5 +1,6 @@
 // Single-stock entry router.
 // Executable numeric entry output is backend-only. The browser never maintains a second production formula.
+// Compatibility invariant: 「建議進場區間」 is now date-scoped as 今日原始／盤前進場區間 or 下一交易日進場區間.
 (function(){
   const btn=document.querySelector('#analyzeBtn'),input=document.querySelector('#ticker'),load=document.querySelector('#singleLoad'),box=document.querySelector('#result');
   if(!btn||!input||!load||!box)return;
