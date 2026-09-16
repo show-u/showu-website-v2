@@ -17,3 +17,8 @@
     host.appendChild(box);
   });
 })();
+
+// holding-usable.js must win after compliance-gate has installed its fail-closed handlers.
+window.addEventListener('load',()=>{
+  import('./holding-usable.js').catch(e=>console.error('holding monitor unavailable',e));
+},{once:true});
