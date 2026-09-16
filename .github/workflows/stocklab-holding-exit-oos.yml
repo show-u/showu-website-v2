@@ -7,6 +7,7 @@ on:
       - 'stock-lab/history-ogdl/**'
       - 'stock-lab/history-licensed/**'
       - 'stock-lab/import-licensed-history.py'
+      - 'stock-lab/holding-oos-evaluator.mjs'
       - 'stock-lab/run-holding-exit-oos.py'
       - 'stock-lab/build-holding-readiness.py'
       - 'stock-lab/holding-model.js'
@@ -31,9 +32,41 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Syntax check
         run: |
           python -m py_compile stock-lab/run-holding-exit-oos.py stock-lab/build-holding-readiness.py stock-lab/import-licensed-history.py
+          node --check stock-lab/holding-oos-evaluator.mjs
+      - name: Prove evaluator is production-equivalent and fail-closed without licensed history
+        run: |
+          rm -rf /tmp/stocklab-no-licensed
+          mkdir -p /tmp/stocklab-no-licensed
+          node stock-lab/holding-oos-evaluator.mjs \
+            --bundle-dir /tmp/stocklab-no-licensed \
+            --production stock-lab/holding-model.js \
+            --out /tmp/holding-evaluator-empty.json
+          python - <<'PY'
+          import hashlib,json
+          x=json.load(open('/tmp/holding-evaluator-empty.json',encoding='utf-8'))
+          h=hashlib.sha256(open('stock-lab/holding-model.js','rb').read()).hexdigest()
+          assert x['status']=='INSUFFICIENT'
+          assert x['no_imputation'] is True and x['network_used'] is False
+          assert x['production_formula_sha256']==h
+          print('production-equivalent evaluator fail-closed contract passed')
+          PY
+      - name: Run production-equivalent evaluator when licensed history exists
+        run: |
+          if [ -f stock-lab/history-licensed/manifest.json ]; then
+            node stock-lab/holding-oos-evaluator.mjs \
+              --bundle-dir stock-lab/history-licensed \
+              --production stock-lab/holding-model.js \
+              --min-bars 120 --min-episodes 300 --min-securities 80 \
+              --out /tmp/holding-evaluator.json
+          else
+            echo '{"schema_version":1,"status":"INSUFFICIENT","reason":"licensed bundle not present","no_imputation":true,"network_used":false}' > /tmp/holding-evaluator.json
+          fi
       - name: Run formal holding-exit OOS gate
         run: |
           python stock-lab/run-holding-exit-oos.py \
@@ -43,6 +76,36 @@ jobs:
             --protocol stock-lab/holding-exit-validation-protocol.json \
             --production stock-lab/holding-model.js \
             --out stock-lab/holding-exit-oos-result.json
+      - name: Merge real evaluator facts into formal OOS artifact
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('/tmp/holding-evaluator.json')
+          e=json.load(open(p,encoding='utf-8'))
+          o=json.load(open('stock-lab/holding-exit-oos-result.json',encoding='utf-8'))
+          prod=hashlib.sha256(open('stock-lab/holding-model.js','rb').read()).hexdigest()
+          # Never promote an evaluator result unless it proves it executed the exact production file.
+          if e.get('production_formula_sha256')==prod and e.get('network_used') is False and e.get('no_imputation') is True:
+              o['production_formula_match']=e.get('production_formula_match') is True
+              o['oos_episodes']=int(e.get('oos_episodes') or 0)
+              o['oos_securities']=int(e.get('oos_securities') or 0)
+              o['regimes']=list(e.get('regimes') or [])
+              o['exit_execution_validated']=e.get('exit_execution_validated') is True
+              o['confidence_calibrated']=e.get('confidence_calibrated') is True
+              o['metrics']=e.get('metrics') if e.get('metrics') is not None else None
+              o['evaluator_status']=e.get('status')
+              o['evaluator_network_used']=False
+              o['evaluator_no_imputation']=True
+              # Remove only the obsolete "evaluator missing" blocker; never remove data/legal blockers.
+              o['blockers']=[b for b in o.get('blockers',[]) if 'production-equivalent evaluator' not in b]
+          req=set(o.get('required_regimes') or [])
+          enough=(o['oos_episodes']>=o['minimum_oos_episodes'] and o['oos_securities']>=o['minimum_oos_securities'] and req.issubset(set(o.get('regimes') or [])))
+          passed=(enough and o.get('exit_execution_validated') is True and o.get('confidence_calibrated') is True and o.get('production_formula_match') is True and not o.get('blockers'))
+          o['status']='PASS' if passed else 'INSUFFICIENT'
+          Path('stock-lab/holding-exit-oos-result.json').write_text(json.dumps(o,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print('merged evaluator:',e.get('status'),'formal:',o['status'])
+          PY
       - name: Validate OOS truth contract
         run: |
           python - <<'PY'
@@ -56,9 +119,8 @@ jobs:
           assert x['source']['provenance_rejections']>=0
           assert len(x['production_formula_sha256'])==64
           if x['status']!='PASS':
-            assert x['metrics'] is None
-            assert x['blockers']
-            assert not (x['exit_execution_validated'] and x['confidence_calibrated'] and x['production_formula_match'])
+            assert x['blockers'] or x.get('evaluator_status')=='INSUFFICIENT'
+            assert not (x['exit_execution_validated'] and x['confidence_calibrated'] and x['production_formula_match'] and x['oos_episodes']>=x['minimum_oos_episodes'])
           else:
             assert x['oos_episodes']>=x['minimum_oos_episodes']
             assert x['oos_securities']>=x['minimum_oos_securities']
