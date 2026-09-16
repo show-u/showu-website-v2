@@ -6,7 +6,6 @@ on:
     paths:
       - 'stock-lab/import-licensed-history.py'
       - 'stock-lab/licensed-data-contract.json'
-      - 'stock-lab/history-source-contract.json'
       - '.github/workflows/stocklab-licensed-import-contract.yml'
 
 jobs:
@@ -28,14 +27,16 @@ jobs:
               assert forbidden not in s, forbidden
           for required in (
               'LICENCE_GATE_FAIL','no_imputation','raw_redistribution_allowed',
+              'acquisition_mode_authorized','public_derived_outputs_allowed',
+              'processing_location_authorized','terms_reviewed_date',
               'unresolved source_id','impossible OHLC','network_collection_performed_by_importer',
               'market_index','valid_from','valid_to','source-registry'
           ):
               assert required.lower() in s.lower(), required
-          print('no-network licensed importer v2 invariant passed')
+          print('no-network licensed importer v3 invariant passed')
           PY
 
-      - name: Build synthetic authorised v2 bundle
+      - name: Build synthetic authorised v3 bundle
         run: |
           rm -rf /tmp/stocklab-licensed-test
           mkdir -p /tmp/stocklab-licensed-test
@@ -46,7 +47,7 @@ jobs:
               "source_id":"test-source",
               "provider":"Synthetic CI Provider",
               "dataset_name":"Synthetic licensed Taiwan history",
-              "evidence_reference":"ci://synthetic-v2",
+              "evidence_reference":"ci://synthetic-v3",
               "provenance_class":"observed"
             }
           ]
@@ -92,19 +93,31 @@ jobs:
             --source-registry /tmp/stocklab-licensed-test/source-registry.json \
             --license-name 'CI TEST ONLY' \
             --legal-basis 'synthetic fixture' \
-            --evidence-reference 'ci://synthetic-v2' \
+            --evidence-reference 'ci://synthetic-v3' \
+            --terms-reference 'CI terms v3' \
+            --terms-reviewed-date '2026-09-16' \
+            --acquisition-mode 'manual_provider_portal' \
+            --acquisition-mode-authorized \
             --automated-processing-allowed \
             --derived-outputs-allowed \
-            --local-storage-allowed
+            --public-derived-outputs-allowed \
+            --local-storage-allowed \
+            --processing-location 'synthetic-local-private' \
+            --processing-location-authorized
 
           python - <<'PY'
           import json
           p='/tmp/stocklab-licensed-test/manifest.json'
           x=json.load(open(p,encoding='utf-8'))
+          lic=x['license']
           assert x['schema_version']==1
           assert x['no_imputation'] is True
           assert x['network_collection_performed_by_importer'] is False
           assert x['raw_publication_permitted'] is False
+          assert lic['acquisition_mode']=='manual_provider_portal'
+          assert lic['acquisition_mode_authorized'] is True
+          assert lic['public_derived_outputs_allowed'] is True
+          assert lic['processing_location_authorized'] is True
           assert x['coverage']['rows']==2
           assert x['coverage']['max_bars_per_security']==2
           assert x['coverage']['markets']==['TWSE']
@@ -113,10 +126,10 @@ jobs:
           assert x['datasets']['daily_ohlc']['source_ids']==['test-source']
           assert len(x['datasets']['daily_ohlc']['sha256'])==64
           assert len(x['sources'])==1 and x['sources'][0]['provenance_class']=='observed'
-          print('licensed bundle v2 contract passed')
+          print('licensed bundle v3 contract passed')
           PY
 
-      - name: Reject missing licence rights
+      - name: Reject missing legal rights
         run: |
           set +e
           python stock-lab/import-licensed-history.py \
@@ -125,7 +138,11 @@ jobs:
             --source-registry /tmp/stocklab-licensed-test/source-registry.json \
             --license-name 'CI TEST ONLY' \
             --legal-basis 'synthetic fixture' \
-            --evidence-reference 'ci://synthetic-v2' >/tmp/reject-rights.log 2>&1
+            --evidence-reference 'ci://synthetic-v3' \
+            --terms-reference 'CI terms v3' \
+            --terms-reviewed-date '2026-09-16' \
+            --acquisition-mode 'manual_provider_portal' \
+            --processing-location 'synthetic-local-private' >/tmp/reject-rights.log 2>&1
           code=$?
           set -e
           test "$code" -ne 0
@@ -134,6 +151,7 @@ jobs:
       - name: Reject unresolved provenance
         run: |
           cp -r /tmp/stocklab-licensed-test /tmp/stocklab-bad-source
+          rm -f /tmp/stocklab-bad-source/manifest.json
           sed -i 's/test-source/unknown-source/' /tmp/stocklab-bad-source/daily_ohlc.csv
           set +e
           python stock-lab/import-licensed-history.py \
@@ -142,10 +160,17 @@ jobs:
             --source-registry /tmp/stocklab-licensed-test/source-registry.json \
             --license-name 'CI TEST ONLY' \
             --legal-basis 'synthetic fixture' \
-            --evidence-reference 'ci://synthetic-v2' \
+            --evidence-reference 'ci://synthetic-v3' \
+            --terms-reference 'CI terms v3' \
+            --terms-reviewed-date '2026-09-16' \
+            --acquisition-mode 'manual_provider_portal' \
+            --acquisition-mode-authorized \
             --automated-processing-allowed \
             --derived-outputs-allowed \
-            --local-storage-allowed >/tmp/reject-source.log 2>&1
+            --public-derived-outputs-allowed \
+            --local-storage-allowed \
+            --processing-location 'synthetic-local-private' \
+            --processing-location-authorized >/tmp/reject-source.log 2>&1
           code=$?
           set -e
           test "$code" -ne 0
@@ -154,7 +179,7 @@ jobs:
       - name: Reject missing market context
         run: |
           cp -r /tmp/stocklab-licensed-test /tmp/stocklab-no-index
-          rm /tmp/stocklab-no-index/market_index.csv
+          rm -f /tmp/stocklab-no-index/manifest.json /tmp/stocklab-no-index/market_index.csv
           set +e
           python stock-lab/import-licensed-history.py \
             --bundle-dir /tmp/stocklab-no-index \
@@ -162,10 +187,17 @@ jobs:
             --source-registry /tmp/stocklab-licensed-test/source-registry.json \
             --license-name 'CI TEST ONLY' \
             --legal-basis 'synthetic fixture' \
-            --evidence-reference 'ci://synthetic-v2' \
+            --evidence-reference 'ci://synthetic-v3' \
+            --terms-reference 'CI terms v3' \
+            --terms-reviewed-date '2026-09-16' \
+            --acquisition-mode 'manual_provider_portal' \
+            --acquisition-mode-authorized \
             --automated-processing-allowed \
             --derived-outputs-allowed \
-            --local-storage-allowed >/tmp/reject-index.log 2>&1
+            --public-derived-outputs-allowed \
+            --local-storage-allowed \
+            --processing-location 'synthetic-local-private' \
+            --processing-location-authorized >/tmp/reject-index.log 2>&1
           code=$?
           set -e
           test "$code" -ne 0
