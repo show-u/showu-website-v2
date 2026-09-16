@@ -118,7 +118,9 @@ jobs:
           assert readiness['principle'].startswith('No verified gate')
           assert protocol['frozen_before_historical_oos'] is True
           assert protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
-          assert protocol['non_negotiable_rules']['buy_and_exit_models_are_separate'] is True
+          assert protocol['non_negotiable_rules']['no_horizon_selector'] is True
+          assert protocol['non_negotiable_rules']['production_formula_must_equal_test_formula'] is True
+          assert 'only from user input' in protocol['required_position_input']['rule']
           if readiness['overall_status']!='PASS':
               assert readiness['executable_exit_output'] is False
               assert readiness['blockers']
