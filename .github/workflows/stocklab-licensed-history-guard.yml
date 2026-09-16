@@ -1,0 +1,31 @@
+name: StockLab licensed-history publication guard
+
+on:
+  push:
+    paths:
+      - 'stock-lab/history-licensed/**'
+      - '.gitignore'
+      - '.github/workflows/stocklab-licensed-history-guard.yml'
+  pull_request:
+    paths:
+      - 'stock-lab/history-licensed/**'
+      - '.gitignore'
+      - '.github/workflows/stocklab-licensed-history-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject licensed raw history in public repository
+        run: |
+          set -euo pipefail
+          bad="$(git ls-files 'stock-lab/history-licensed/**' | grep -v '^stock-lab/history-licensed/README.md$' || true)"
+          if [ -n "$bad" ]; then
+            echo 'ERROR: licensed/raw history must not be committed to the public repository:'
+            echo "$bad"
+            exit 1
+          fi
+          grep -Fq 'stock-lab/history-licensed/*' .gitignore
+          echo 'licensed-history public boundary passed'
