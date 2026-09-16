@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "provider": "",
+  "plan": "",
+  "terms_reference": "",
+  "terms_reviewed_date": "",
+  "evidence_reference": "",
+  "processing_location": "",
+  "commercial_use_allowed": false,
+  "api_acquisition_allowed": false,
+  "automated_processing_allowed": false,
+  "derived_analysis_allowed": false,
+  "public_derived_output_allowed": false,
+  "private_storage_allowed": false,
+  "processing_location_allowed": false,
+  "notes": "Template only. Every permission remains false until the applicable paid-plan terms, contract, order evidence, or written provider permission explicitly confirms it. Do not put API keys or other secrets in this file or commit completed private entitlement evidence to the public repository."
+}
