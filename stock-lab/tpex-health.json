@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-15T02:08:08.382267+00:00",
+  "generated_at": "2026-09-16T12:33:37.157975+00:00",
   "status": "ok",
   "verified": true,
   "source": "TPEx",
@@ -8,63 +8,63 @@
     "snapshot": {
       "verified": true,
       "endpoint": "tpex_mainboard_daily_close_quotes",
-      "count": 11289,
-      "raw_sha256": "17b5ca054bd68cf96caf7306fe423822624d2293b0ed17b7a91e0494a59dda55",
+      "count": 11415,
+      "raw_sha256": "1293e5b4137a2ab49bf80d52ca3185e970e26df49c5c25b9ac2c781f08249235",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
-      "bytes": 4405747,
-      "download_attempt": 2,
-      "latest_date": "2026-09-14"
+      "bytes": 4458814,
+      "download_attempt": 1,
+      "latest_date": "2026-09-16"
     },
     "valuation": {
       "verified": true,
       "endpoint": "tpex_mainboard_peratio_analysis",
-      "count": 886,
-      "raw_sha256": "a259c7012e681b917cd8baf0dd6aa49adc23f091f9b2f8871c4ed91187ffb28e",
+      "count": 887,
+      "raw_sha256": "07159d190614526eaf625923d64a33de1cb2e6dd87e7efc079be3a20030b942b",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis",
-      "bytes": 156105,
+      "bytes": 156292,
       "download_attempt": 1
     },
     "institution": {
       "verified": true,
       "endpoint": "tpex_3insti_daily_trading",
-      "count": 903,
-      "raw_sha256": "d0247ebde645198d7b53bd975c129681a704f2f241a73621a783cd0ef6a4d33a",
+      "count": 886,
+      "raw_sha256": "d257023781e975ebcf14cb3a564d057c14d8bae8d48e8ddd0f548d2656c0d596",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading",
-      "bytes": 854252,
+      "bytes": 838400,
       "download_attempt": 1
     },
     "revenue": {
       "verified": true,
       "endpoint": "mopsfin_t187ap05_O",
-      "count": 891,
-      "raw_sha256": "0c25bc7cf64cb8d100cf48efbdb2b7883c29790f176814da3162891c019ff777",
+      "count": 892,
+      "raw_sha256": "9708067350b894c4e605fc21be856b065b0b03893797b4ddaaa0bf60e56c21c2",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O",
-      "bytes": 496010,
+      "bytes": 496547,
       "download_attempt": 1
     },
     "income": {
       "verified": true,
       "endpoint": "mopsfin_t187ap06_O_ci",
-      "count": 883,
-      "raw_sha256": "c9f4113da5de4a7faa66f88ded0c37e49ca1751a3354a3fb57db65d96902a0fa",
+      "count": 884,
+      "raw_sha256": "c4eadc4cba3fa3eebdb6c25ad888b012b489d922054c275ae398c294ebcad3a8",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci",
-      "bytes": 1180687,
+      "bytes": 1182017,
       "download_attempt": 1
     },
     "balance": {
       "verified": true,
       "endpoint": "mopsfin_t187ap07_O_ci",
-      "count": 883,
-      "raw_sha256": "545d68aaed80ea22c082e34c43fda19b38b737844f38cb06b173648ae61a061d",
+      "count": 884,
+      "raw_sha256": "6734b1e18f3e560315770caaeb0686dd130219b3162923fd170095c7d8378298",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap07_O_ci",
-      "bytes": 758855,
-      "download_attempt": 1
+      "bytes": 759708,
+      "download_attempt": 2
     }
   },
   "policy": "TPEx official OpenAPI schema/date/count gate; unhealthy source is blocked from analysis and ranking"
