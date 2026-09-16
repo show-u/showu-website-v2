@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-09-16T07:36:14.691849+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-09-16T07:37:30.324939+00:00",
   "model": "TW-holding-exit-v4",
   "status": "INSUFFICIENT",
   "pipeline_executed": true,
@@ -8,6 +8,8 @@
   "source": {
     "class": "ogdl_daily_archive",
     "licence": "OGDL-1.0",
+    "provider": "TWSE/TPEx open data forward archive",
+    "bundle_id": null,
     "first_date": "2026-09-14",
     "last_date": "2026-09-15",
     "rows": 12091,
@@ -31,11 +33,8 @@
   "production_formula_match": false,
   "production_formula_sha256": "0a465ceca6f96eb325eb107e5cd1c0065e26ab38a9a991e3223048fec9b56b67",
   "history_context": {
-    "artifact_present": false,
     "validated": false,
-    "corporate_actions_complete": false,
-    "risk_states_complete": false,
-    "trading_calendar_verified": false
+    "source": "holding-exit-history-context.json"
   },
   "metrics": null,
   "blockers": [
