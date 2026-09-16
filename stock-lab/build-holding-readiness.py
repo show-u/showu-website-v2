@@ -2,7 +2,7 @@
 """Build a fail-closed readiness snapshot for StockLab's formal holding/exit model.
 
 Licensed historical bundles, when present and independently validated, take precedence
-for formal OOS. The OGDL daily archive remains the lawful forward archive/fallback.
+for formal OOS. The OGDL daily archive is a lawful forward archive/fallback only.
 Missing history is never imputed and an inactive/candidate source is never promoted.
 """
 from __future__ import annotations
@@ -99,8 +99,6 @@ def main():
 
     ogdl = validate_ogdl(Path(args.manifest))
     licensed = validate_licensed_bundle(Path(args.licensed_bundle_dir))
-    # A valid licensed bundle is the formal historical source. Otherwise use only the
-    # lawful forward OGDL archive and remain fail-closed until enough history accrues.
     selected = licensed if licensed and licensed.get("valid") is True else ogdl
 
     history_min = int(((ogdl["manifest"].get("coverage_metrics") or {}).get("holding_exit_minimum_valid_bars") or 120))
@@ -110,8 +108,6 @@ def main():
 
     max_bars = int(selected.get("max_bars") or 0)
     if selected["kind"] == "licensed_history_bundle":
-        # Coverage manifest stores all securities; the OOS artifact is authoritative for
-        # how many actually satisfy the model minimum after per-security validation.
         securities_min = int((load(args.oos).get("source") or {}).get("securities_with_minimum_history") or 0) if Path(args.oos).exists() else 0
     else:
         securities_min = int(selected.get("securities_at_120") or 0)
@@ -119,12 +115,19 @@ def main():
 
     active_sources = []
     inactive_candidates = []
+    licensed_candidates = []
     for key, src in (sources.get("sources") or {}).items():
         status = src.get("status")
         if status == "active":
             active_sources.append(key)
         else:
             inactive_candidates.append({"id": key, "status": status or "unknown"})
+        if key in {"twse_eshop_daily_close", "tpex_eshop_afterhours_history"}:
+            licensed_candidates.append({
+                "id": key,
+                "status": status or "unknown",
+                "provider": src.get("provider") or src.get("source") or key,
+            })
 
     oos = load(args.oos) if Path(args.oos).exists() else None
     if not oos:
@@ -150,7 +153,7 @@ def main():
     if not history_pass:
         blockers.append(f"正式歷史資料不足：目前選用 {selected['kind']}，單檔最多 {max_bars}/{history_min} 根，達門檻標的 {securities_min}/{min_oos_securities} 檔。")
     if selected["kind"] == "ogdl_daily_archive":
-        blockers.append("尚未偵測到已通過授權 Gate 的歷史 bundle；OGDL 僅作合法每日向前累積，不能假造過去資料。")
+        blockers.append("主要解法不是等待 OGDL 累積。應取得 TWSE／TPEx 有明確外部使用與衍生分析權利的歷史資料，經 importer 驗證後建立私有 licensed bundle；OGDL 只作每日向前封存備援。")
     if not oos:
         blockers.append("尚無正式持股出場 OOS 結果檔；不得把歷史資料量或研究公式視為模型 PASS。")
     elif not oos_count_pass:
@@ -160,17 +163,28 @@ def main():
     if oos and not formula_match: blockers.append("production formula 與 OOS 測試公式尚未證明一致。")
     if oos and not regimes_pass: blockers.append("牛／熊／盤整市場 regime 覆蓋尚未完整。")
 
+    licensed_valid = bool(licensed and licensed.get("valid") is True)
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "model": "TW-holding-exit-v4",
         "overall_status": "PASS" if history_pass and oos_pass else "INSUFFICIENT",
         "executable_exit_output": bool(history_pass and oos_pass),
         "principle": "No verified gate, no formal holding/exit recommendation. Missing data is never imputed.",
+        "activation_path": {
+            "primary": "licensed_historical_backfill",
+            "status": "ready_for_oos" if licensed_valid else "pending_licensed_subscription_or_import",
+            "requires_waiting_120_trading_days": False,
+            "licensed_source_candidates": licensed_candidates,
+            "importer": "stock-lab/import-licensed-history.py",
+            "post_import_action": "validate licensed bundle, rebuild readiness, then rerun formal holding-exit OOS automatically",
+            "raw_licensed_data_publication": "prohibited_unless_explicit_redistribution_right_exists",
+            "fallback": "OGDL daily forward archive only; never impute missing past history",
+        },
         "selected_history_source": {
             "kind": selected["kind"], "licence": selected.get("licence"), "provider": selected.get("provider"),
             "bundle_id": selected.get("bundle_id"), "first_date": selected.get("first_date"), "last_date": selected.get("last_date"),
-            "licensed_bundle_detected": bool(licensed), "licensed_bundle_valid": bool(licensed and licensed.get("valid") is True),
+            "licensed_bundle_detected": bool(licensed), "licensed_bundle_valid": licensed_valid,
         },
         "history": {
             "status": "PASS" if history_pass else "INSUFFICIENT",
@@ -190,7 +204,7 @@ def main():
         "blockers": blockers,
     }
     Path(args.out).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"overall_status":payload["overall_status"],"selected_history_source":payload["selected_history_source"],"history":payload["history"],"oos":payload["oos"],"blockers":blockers},ensure_ascii=False,indent=2))
+    print(json.dumps({"overall_status":payload["overall_status"],"activation_path":payload["activation_path"],"selected_history_source":payload["selected_history_source"],"history":payload["history"],"oos":payload["oos"],"blockers":blockers},ensure_ascii=False,indent=2))
 
 
 if __name__ == "__main__":
