@@ -15,7 +15,7 @@
   <section class="card"><div class="tabs"><button id="findBtn" class="ghost">不知道買什麼</button><button id="singleBtn">想買這檔</button><button id="holdBtn" class="ghost">已持有</button></div></section>
   <section id="singlePanel" class="card">
     <label>股票代號／股票名稱<input id="ticker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <p class="simple-rule">不選短／中／長。系統以「最新完成且已驗證的交易日」自動決定今日原始計畫或下一交易日計畫。09:00 後若沒有合法即時／延遲行情，不重算當日價格，只保留原始計畫；13:30 後必須等今日官方收盤資料與必要輸入實際更新完成，才切換成下一交易日計畫。</p>
+    <p class="simple-rule">不再選短／中／長。先顯示合法且已驗證的最新市場事實；正式進場價格只有在歷史資料、交易日曆、公司行動、風險狀態、OOS 可達性與信心校準全部通過後才顯示。若模型尚未解鎖，頁面仍會顯示可驗證事實與缺口，不會只卡在錯誤訊息。</p>
     <button id="analyzeBtn">分析進場價格</button><div id="singleLoad" class="loader hidden">正在驗證資料並建立入場判斷…</div>
   </section>
   <section id="result" class="card hidden"></section>
@@ -25,7 +25,7 @@
     <label style="display:block;margin-top:10px">部位輸入方式<select id="positionInputMode"><option value="manual" selected>直接輸入目前均價／股數</option><option value="lots">進階：逐筆輸入仍持有明細</option></select></label>
     <div id="positionLots" class="hidden" style="margin-top:10px"><div id="positionLotRows"></div><button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button><div id="positionLotSummary" class="source-note compact-note"></div></div>
     <p class="simple-rule">已持有股票不再套「短／中／長買入價」。目前先顯示你的實際成本、股數、買入日、最新合法收盤、損益與已驗證風險事實；只有合法歷史資料、正式樣本外 OOS、出場可執行性與信心校準全部通過後，才解鎖續抱／減碼／出場條件與價格。</p>
-    <button id="holdAnalyzeBtn">查看持股狀態／出場模型狀態</button><div id="holdLoad" class="loader hidden">正在驗證持股資料與出場模型準備度…</div><div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">成本、股數與日期只採你的輸入，不自行推測。</div></div>
+    <button id="holdAnalyzeBtn">分析出場時機</button><div id="holdLoad" class="loader hidden">正在驗證持股資料與出場模型準備度…</div><div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">成本、股數與日期只採你的輸入，不自行推測。</div></div>
   </section>
   <section id="findPanel" class="card hidden"><h2 style="margin-top:0">目前值得研究的入場候選</h2><p class="muted">使用與「想買這檔」相同的完整模型。合格不足 10 檔就不補滿。</p><button id="scanBtn">找出 TOP 10</button><div id="scanLoad" class="loader hidden">正在驗證候選股票…</div></section>
   <section id="top10" class="card hidden"></section>
