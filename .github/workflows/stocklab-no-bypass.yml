@@ -25,12 +25,16 @@ jobs:
           idx=R('stock-lab/index.html')
           router=R('stock-lab/market-router.js')
           holding=R('stock-lab/holding-router.js')
+          usable=R('stock-lab/holding-usable.js')
           top10=R('stock-lab/top10-gate.js')
           pos=R('stock-lab/position-input.js')
           cache=R('stock-lab/same-origin-cache.js')
           hard=R('stock-lab/hard-policy.js')
           runtime=R('stock-lab/runtime-config.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
+          sources=json.loads(R('stock-lab/history-source-registry.json'))
+          readiness=json.loads(R('stock-lab/holding-readiness.json'))
+          protocol=json.loads(R('stock-lab/holding-exit-validation-protocol.json'))
 
           # 1. Old horizon-specific buy-price UX must never return.
           banned=('短線入場區間','中期入場區間','長期佈局區間','fivePricePlan','data-five-price-matrix','id="horizon"','scanHorizon','<option value="1m"','<option value="3m"','<option value="long"')
@@ -89,12 +93,51 @@ jobs:
           # 8. Hard policy rejects missing legality, imputation, unverified OOS, uncalibrated confidence.
           for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
               assert x in hard,x
-          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS'):
+          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION'):
               assert k in policy['absolute_invariants'],k
 
           # 9. Public runtime remains closed until independently validated production gates are changed deliberately.
           assert 'allowLocalFallback:false' in runtime
           assert 'productionPredictionReady:false' in runtime
+
+          # 10. Historical source candidates are not data until subscription/licence and ingestion are complete.
+          assert sources['rules']['public_url_is_not_a_licence'] is True
+          assert sources['rules']['no_scraping_for_backfill'] is True
+          assert sources['rules']['no_unverified_third_party_backfill'] is True
+          assert sources['rules']['no_imputation'] is True
+          assert sources['sources']['ogdl_daily_forward_archive']['status']=='active'
+          assert sources['sources']['ogdl_daily_forward_archive']['history_backfill'] is False
+          for k in ('twse_eshop_daily_close','tpex_eshop_afterhours_history'):
+              s=sources['sources'][k]
+              assert s['status']=='candidate_not_subscribed', (k,s)
+              assert s['scoring_allowed_before_activation'] is False, (k,s)
+
+          # 11. Formal holding/exit output is machine-locked until history + OOS + execution + calibration all pass.
+          assert readiness['schema_version']==1 and readiness['model']=='TW-holding-exit-v4'
+          assert readiness['history']['no_imputation'] is True
+          assert readiness['principle'].startswith('No verified gate')
+          assert protocol['frozen_before_historical_oos'] is True
+          assert protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
+          assert protocol['non_negotiable_rules']['buy_and_exit_models_are_separate'] is True
+          if readiness['overall_status']!='PASS':
+              assert readiness['executable_exit_output'] is False
+              assert readiness['blockers']
+          else:
+              assert readiness['executable_exit_output'] is True
+              assert readiness['history']['status']=='PASS'
+              assert readiness['oos']['status']=='PASS'
+              assert readiness['oos']['execution_validated'] is True
+              assert readiness['oos']['confidence_calibrated'] is True
+              assert readiness['oos']['production_formula_match'] is True
+
+          # 12. Public holding UI is factual first; it may show model readiness but may not promise a sell price before PASS.
+          assert '查看持股狀態／出場模型狀態' in idx
+          assert '分析出場時機</button>' not in idx
+          assert 'readinessStatus' in usable and 'holding-readiness.json' in usable
+          assert '正式出場模型準備度' in usable
+          assert "x.overall_status==='PASS'&&x.executable_exit_output===true" in usable
+          for fake in ('建議賣出價','保證出場價','保證停損價'):
+              assert fake not in usable, fake
 
           print('StockLab no-bypass truth gate passed')
           PY
