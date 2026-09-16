@@ -1,14 +1,38 @@
 {
-  "schema_version": 1,
-  "purpose": "Authoritative registry for historical Taiwan price sources. Registration is not activation; a source may enter StockLab only after the actual subscription/licence and delivery rights are verified.",
+  "schema_version": 2,
+  "purpose": "Authoritative registry for historical Taiwan price sources. Registration is not activation; a source may enter StockLab only after the actual subscription/licence, product fields, delivery rights and private ingestion are verified.",
+  "last_reviewed": "2026-09-16",
   "rules": {
     "public_url_is_not_a_licence": true,
     "no_scraping_for_backfill": true,
     "no_unverified_third_party_backfill": true,
     "no_imputation": true,
     "raw_redistribution_only_when_contract_permits": true,
-    "model_output_may_use_private_licensed_history_without_exposing_raw_rows": true
+    "model_output_may_use_private_licensed_history_without_exposing_raw_rows": true,
+    "product_page_is_not_final_terms": true,
+    "missing_required_fields_means_not_eligible": true,
+    "candidate_source_must_not_score_before_activation": true
   },
+  "required_history_fields": [
+    "trading_date",
+    "security_code",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  "activation_gates": [
+    "subscription_or_order_completed",
+    "applicable_terms_retained_and_reviewed",
+    "automated_processing_right_confirmed",
+    "derived_output_right_confirmed",
+    "private_storage_right_confirmed",
+    "required_history_fields_confirmed",
+    "delivered_files_hash_verified",
+    "no_imputation_verified",
+    "private_ingestion_passed"
+  ],
   "sources": {
     "ogdl_daily_forward_archive": {
       "status": "active",
@@ -22,29 +46,68 @@
       "status": "candidate_not_subscribed",
       "market": "TWSE",
       "provider": "Taiwan Stock Exchange Data E-Shop",
+      "official_product_url": "https://eshop.twse.com.tw/zh/product/detail/cfec9a1470e448ec91bfde006db361e8",
       "product": "每日收盤行情",
       "history_start": "2003-12-01",
-      "contains": ["security_code", "open", "high", "low", "close", "volume", "trade_count", "trade_value"],
-      "external_use_price_twd_per_month_as_observed_2026_09_16": 1500,
-      "activation_requirements": [
-        "user or operator explicitly subscribes to the external-use product",
-        "applicable online ordering terms are accepted and retained",
-        "delivery files are ingested privately with provenance and checksums",
-        "raw rows are not publicly redistributed beyond the contract scope"
+      "contains_confirmed_on_product_page": [
+        "security_code",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "trade_count",
+        "trade_value"
       ],
+      "required_ohlcv_fields_confirmed": true,
+      "external_use_price_twd_per_month_as_observed_2026_09_16": 1500,
+      "single_order_max_history_years": 5,
+      "product_page_external_use_wording": "Subscriber may use internally and transmit subscribed product content to its information users; remaining conditions are subject to Internet Online Subscription Terms.",
+      "terms_review_status": "pending_actual_order_terms_review",
+      "automated_processing_right_confirmed": false,
+      "derived_output_right_confirmed": false,
+      "private_storage_right_confirmed": false,
+      "activation_requirements": [
+        "operator explicitly orders the appropriate product/use type",
+        "applicable Internet Online Subscription Terms are accepted and retained",
+        "automated processing, derived analysis and private storage rights are explicitly confirmed",
+        "delivery files are ingested privately with provenance and SHA-256 checksums",
+        "raw rows are never committed to the public repository",
+        "raw rows are not redistributed beyond the contract scope"
+      ],
+      "scoring_allowed_before_activation": false
+    },
+    "tpex_eshop_afterhours_api": {
+      "status": "candidate_fields_not_confirmed",
+      "market": "TPEx",
+      "provider": "Taipei Exchange Data E-Shop",
+      "official_product_url": "https://eshop.tpex.org.tw/zh/product/detail/2c92e01394fcf4c7019518bbf65f000a",
+      "product": "盤後資料 - API 說明",
+      "external_use_price_twd_per_month_as_observed_2026_09_16": 0,
+      "historical_ordering_available": true,
+      "required_ohlcv_fields_confirmed": false,
+      "reason_not_activated": "The public product page confirms external-use ordering and historical ordering, but does not itself prove that the delivered API product contains the complete OHLCV history required by the holding OOS model.",
+      "terms_review_status": "pending_product_format_and_member_terms_review",
       "scoring_allowed_before_activation": false
     },
     "tpex_eshop_afterhours_history": {
       "status": "candidate_not_subscribed",
       "market": "TPEx",
       "provider": "Taipei Exchange Data E-Shop",
-      "product": "盤後資料 API / historical data",
-      "external_use_price_twd_per_month_as_observed_2026_09_16": 0,
+      "official_product_url": "https://eshop.tpex.org.tw/zh/product/detail/2c92e0139984eab70199892c78bf0004",
+      "product": "盤後資料 - 歷史資料 - 成交檔",
+      "file": "MTH.zip",
+      "history_start": "2022-11-01",
+      "external_use_price_twd_per_month_as_observed_2026_09_16": 10000,
+      "required_ohlcv_fields_confirmed": false,
+      "terms_review_status": "pending_format_and_member_terms_review",
       "activation_requirements": [
         "subscription/order and member terms are explicitly completed",
-        "exact purchased product fields and historical range are verified",
-        "delivery is ingested privately with provenance and checksums",
-        "use is limited to the rights granted by the order terms"
+        "exact delivered fields and usable historical range are verified",
+        "automated processing, derived analysis and private storage rights are explicitly confirmed",
+        "delivery is ingested privately with provenance and SHA-256 checksums",
+        "raw rows are never committed to the public repository",
+        "use is limited to rights granted by the order terms"
       ],
       "scoring_allowed_before_activation": false
     }
