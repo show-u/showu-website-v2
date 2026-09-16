@@ -11,86 +11,29 @@
 </head>
 <body>
 <main class="wrap">
-  <section class="hero">
-    <h1>StockLab 台股投資分析器</h1>
-    <p>資料不完整就不預測；不以假資料補值。</p>
-  </section>
-
-  <section class="card">
-    <div class="tabs">
-      <button id="findBtn" class="ghost">不知道買什麼</button>
-      <button id="singleBtn">想買這檔</button>
-      <button id="holdBtn" class="ghost">已持有</button>
-    </div>
-  </section>
-
+  <section class="hero"><h1>StockLab 台股投資分析器</h1><p>資料不完整就不預測；不以假資料補值。</p></section>
+  <section class="card"><div class="tabs"><button id="findBtn" class="ghost">不知道買什麼</button><button id="singleBtn">想買這檔</button><button id="holdBtn" class="ghost">已持有</button></div></section>
   <section id="singlePanel" class="card">
     <label>股票代號／股票名稱<input id="ticker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <p class="simple-rule">系統內部完成必要因子與市場背景檢查；頁面只顯示通過正式驗證後的進場區間、資料基準與必要風險。未通過就只顯示已驗證事實。</p>
-    <button id="analyzeBtn">分析進場價格</button>
-    <div id="singleLoad" class="loader hidden">正在驗證資料並建立入場判斷…</div>
+    <p class="simple-rule">不選短／中／長。系統以「最新完成且已驗證的交易日」自動決定今日原始計畫或下一交易日計畫。09:00 後若沒有合法即時／延遲行情，不重算當日價格，只保留原始計畫；13:30 後必須等今日官方收盤資料與必要輸入實際更新完成，才切換成下一交易日計畫。</p>
+    <button id="analyzeBtn">分析進場價格</button><div id="singleLoad" class="loader hidden">正在驗證資料並建立入場判斷…</div>
   </section>
-
   <section id="result" class="card hidden"></section>
-
   <section id="holdPanel" class="card hidden">
-    <label>股票代號／股票名稱<input id="holdTicker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <div style="height:10px"></div>
-    <div id="manualPositionFields" class="grid">
-      <label>總量成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label>
-      <label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label>
-      <label>首次買入日<input id="holdBuyDate" type="date"></label>
-    </div>
+    <label>股票代號／股票名稱<input id="holdTicker" inputmode="text" placeholder="例如：2454 或 聯發科"></label><div style="height:10px"></div>
+    <div id="manualPositionFields" class="grid"><label>總量成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>首次買入日（正式出場分析必要）<input id="holdBuyDate" type="date" required></label></div>
     <label style="display:block;margin-top:10px">部位輸入方式<select id="positionInputMode"><option value="manual" selected>直接輸入目前均價／股數</option><option value="lots">進階：逐筆輸入仍持有明細</option></select></label>
-    <div id="positionLots" class="hidden" style="margin-top:10px">
-      <div id="positionLotRows"></div>
-      <button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button>
-      <div id="positionLotSummary" class="source-note compact-note"></div>
-    </div>
-    <p class="simple-rule">系統依實際成本、股數、買入交易日與最新已驗證市場資料，判斷續抱、減碼或出場；不再要求你選短／中／長。</p>
-    <button id="holdAnalyzeBtn">分析出場時機</button>
-    <div id="holdLoad" class="loader hidden">正在驗證持股與出場條件…</div>
-    <div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">成本、股數與日期只採你的輸入，不自行推測。</div></div>
+    <div id="positionLots" class="hidden" style="margin-top:10px"><div id="positionLotRows"></div><button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button><div id="positionLotSummary" class="source-note compact-note"></div></div>
+    <p class="simple-rule">已持有股票不再套「短／中／長買入價」。系統只依你的實際成本、股數、首次買入交易日與最新已驗證資料，判斷續抱、減碼或出場；首次買入日缺失時只能顯示持股事實與估算損益，不能產生完整出場判斷。</p>
+    <button id="holdAnalyzeBtn">分析出場時機</button><div id="holdLoad" class="loader hidden">正在驗證持股與出場條件…</div><div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">成本、股數與日期只採你的輸入，不自行推測。</div></div>
   </section>
-
-  <section id="findPanel" class="card hidden">
-    <h2 style="margin-top:0">目前值得研究的入場候選</h2>
-    <p class="muted">使用與「想買這檔」相同的完整模型。合格不足 10 檔就不補滿。</p>
-    <button id="scanBtn">找出 TOP 10</button>
-    <div id="scanLoad" class="loader hidden">正在驗證候選股票…</div>
-  </section>
-
+  <section id="findPanel" class="card hidden"><h2 style="margin-top:0">目前值得研究的入場候選</h2><p class="muted">使用與「想買這檔」相同的完整模型。合格不足 10 檔就不補滿。</p><button id="scanBtn">找出 TOP 10</button><div id="scanLoad" class="loader hidden">正在驗證候選股票…</div></section>
   <section id="top10" class="card hidden"></section>
-
-  <!-- Internal computation surfaces kept for current modules; not part of the simple public UI. -->
   <section id="marketCard" class="internal-only"><div id="marketScore">—</div><div id="marketBody"></div></section>
   <details id="marketDetails" class="internal-only"><summary><span>內部資料狀態</span><span id="dataHealthSummary">—</span></summary><div id="marketDetailsBody"></div></details>
-
   <details id="readinessDetails" class="source-note"><summary><b>模型驗證狀態</b><span id="readinessSummary" class="status-pill">正在核對…</span></summary><div id="readinessBody" class="mini" style="margin-top:8px">正在讀取合法歷史資料覆蓋與正式 OOS 狀態…</div></details>
   <details class="source-note"><summary><b>資料規則</b></summary><div class="mini" style="margin-top:8px">只使用明確合法、可追溯且驗證通過的資料。未取得、過期、授權不明、欄位不符或交叉驗證失敗，一律維持未知；不得以 0、舊值、平均值、其他網站或 AI 推估補成已取得資料。信心指數只有在正式樣本外校準通過後才可顯示。</div></details>
   <div class="disclaimer"><b>投資風險聲明</b>本工具僅供研究參考，不構成投資建議或收益保證。必要 Gate 未通過時，不輸出可執行進出場價格。</div>
 </main>
-<script src="./runtime-config.js"></script>
-<script src="./api-client.js"></script>
-<script src="./app.js"></script>
-<script src="./tpex.js"></script>
-<script src="./same-origin-cache.js"></script>
-<script src="./licensed-history.js"></script>
-<script src="./session-context.js"></script>
-<script src="./taiwan-model-v2.js"></script>
-<script src="./markets.js"></script>
-<script src="./futures.js"></script>
-<script src="./event-risk.js"></script>
-<script src="./entry-decision.js"></script>
-<script src="./hard-policy.js"></script>
-<script src="./top10-gate.js"></script>
-<script src="./market-router.js"></script>
-<script src="./position-input.js"></script>
-<script src="./holding-model.js"></script>
-<script src="./ui-patch.js"></script>
-<script src="./holding-router.js"></script>
-<script src="./health.js"></script>
-<script src="./compliance-gate.js"></script>
-<script src="./public-output.js"></script>
-</body>
-</html>
+<script src="./runtime-config.js"></script><script src="./api-client.js"></script><script src="./app.js"></script><script src="./tpex.js"></script><script src="./same-origin-cache.js"></script><script src="./licensed-history.js"></script><script src="./session-context.js"></script><script src="./taiwan-model-v2.js"></script><script src="./markets.js"></script><script src="./futures.js"></script><script src="./event-risk.js"></script><script src="./entry-decision.js"></script><script src="./hard-policy.js"></script><script src="./top10-gate.js"></script><script src="./market-router.js"></script><script src="./position-input.js"></script><script src="./holding-model.js"></script><script src="./ui-patch.js"></script><script src="./holding-router.js"></script><script src="./health.js"></script><script src="./compliance-gate.js"></script><script src="./public-output.js"></script>
+</body></html>
