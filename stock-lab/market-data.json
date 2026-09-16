@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-15T02:18:38.348038+00:00",
+  "generated_at": "2026-09-16T01:28:31.933982+00:00",
   "status": "partial",
   "policy": "official-primary; Nasdaq current close cross-checked to FRED/Nasdaq prior close; invalid data display-blocked and never scored",
   "sources": {
@@ -8,7 +8,7 @@
       "verified": true,
       "source": "CBOE",
       "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
-      "fetched_at": "2026-09-15T02:18:38.348038+00:00",
+      "fetched_at": "2026-09-16T01:28:31.933982+00:00",
       "validation": [
         "official_host",
         "date_parsed",
@@ -19,12 +19,12 @@
         "previous_snapshot_chronology_ok"
       ],
       "anomalies": [],
-      "date": "09/14/2026",
-      "value": 17.1,
-      "previous_close": 15.84,
-      "change": 1.2600000000000016,
-      "change_pct": 7.954545454545459,
-      "raw_sha256": "9148183f463cb27743267d605a743241fa3e4c134eb1275e5871a41ce0837b8a",
+      "date": "09/15/2026",
+      "value": 17.2,
+      "previous_close": 17.1,
+      "change": 0.09999999999999787,
+      "change_pct": 0.5847953216374213,
+      "raw_sha256": "6eee7c0c87e92347716331985f3921d6fb5ac07a6d330840c383378e7d02ff8a",
       "content_type": "text/csv",
       "final_url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
       "download_attempt": 1,
@@ -35,7 +35,7 @@
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/SOX",
-      "fetched_at": "2026-09-15T02:18:38.348038+00:00",
+      "fetched_at": "2026-09-16T01:28:31.933982+00:00",
       "validation": [],
       "anomalies": [],
       "error": "The read operation timed out"
@@ -44,7 +44,7 @@
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/COMP",
-      "fetched_at": "2026-09-15T02:18:38.348038+00:00",
+      "fetched_at": "2026-09-16T01:28:31.933982+00:00",
       "validation": [],
       "anomalies": [],
       "error": "The read operation timed out"
