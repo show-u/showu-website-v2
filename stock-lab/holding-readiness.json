@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-16T11:55:31.385039+00:00",
+  "generated_at": "2026-09-16T11:58:37.786318+00:00",
   "model": "TW-holding-exit-v4",
   "overall_status": "INSUFFICIENT",
   "executable_exit_output": false,
@@ -12,13 +12,8 @@
     "licensed_source_candidates": [
       {
         "id": "twse_eshop_daily_close",
-        "status": "candidate_not_subscribed",
+        "status": "candidate_legal_review_required",
         "provider": "Taiwan Stock Exchange Data E-Shop"
-      },
-      {
-        "id": "tpex_eshop_afterhours_history",
-        "status": "candidate_not_subscribed",
-        "provider": "Taipei Exchange Data E-Shop"
       }
     ],
     "importer": "stock-lab/import-licensed-history.py",
@@ -62,21 +57,27 @@
     "production_formula_match": false
   },
   "history_sources": {
-    "active": [
-      "ogdl_daily_forward_archive"
-    ],
+    "active": [],
     "inactive_candidates": [
       {
+        "id": "ogdl_daily_forward_archive",
+        "status": "active_forward_archive_only"
+      },
+      {
         "id": "twse_eshop_daily_close",
-        "status": "candidate_not_subscribed"
+        "status": "candidate_legal_review_required"
+      },
+      {
+        "id": "tpex_eshop_basic_group",
+        "status": "candidate_legal_and_format_review_required"
       },
       {
         "id": "tpex_eshop_afterhours_api",
-        "status": "candidate_fields_not_confirmed"
+        "status": "not_selected_for_backfill"
       },
       {
-        "id": "tpex_eshop_afterhours_history",
-        "status": "candidate_not_subscribed"
+        "id": "tpex_eshop_trade_file",
+        "status": "not_primary_candidate"
       }
     ],
     "rule": "candidate_not_subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
