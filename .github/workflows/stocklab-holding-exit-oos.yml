@@ -161,14 +161,21 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/holding-readiness.json',encoding='utf-8'))
-          assert x['schema_version']==2 and x['model']=='TW-holding-exit-v4'
+          assert x['schema_version']==3 and x['model']=='TW-holding-exit-v4'
           assert x['selected_history_source']['kind'] in ('ogdl_daily_archive','licensed_history_bundle')
+          a=x['activation_path']
+          assert a['primary']=='licensed_historical_backfill'
+          assert a['requires_waiting_120_trading_days'] is False
+          assert 'never impute' in a['fallback']
+          if x['selected_history_source']['kind']=='ogdl_daily_archive':
+            assert a['status']=='pending_licensed_subscription_or_import'
           if x['overall_status']!='PASS':
             assert x['executable_exit_output'] is False
             assert x['blockers']
           else:
             assert x['executable_exit_output'] is True
-          print('holding readiness:',x['overall_status'],x['selected_history_source']['kind'])
+            assert x['selected_history_source']['kind']=='licensed_history_bundle'
+          print('holding readiness:',x['overall_status'],x['selected_history_source']['kind'],a['status'])
           PY
       - name: Persist OOS/readiness only when changed
         run: |
