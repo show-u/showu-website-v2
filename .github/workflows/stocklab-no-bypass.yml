@@ -29,6 +29,7 @@ jobs:
           top10=R('stock-lab/top10-gate.js')
           pos=R('stock-lab/position-input.js')
           cache=R('stock-lab/same-origin-cache.js')
+          compliance=R('stock-lab/compliance-gate.js')
           hard=R('stock-lab/hard-policy.js')
           runtime=R('stock-lab/runtime-config.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
@@ -74,14 +75,17 @@ jobs:
           for x in ('average_cost_verified!==true','shares_verified!==true','buy_date_verified!==true'):
               assert x in holding,x
 
-          # 6. Same-origin data must be explicitly licensed and has no network fallback.
-          assert "source!=='licensed-open-data-cache'" in cache
-          assert "licence!=='政府資料開放授權條款-第1版 / OGDL-1.0'" in cache
-          assert 'licence_verified!==true' in cache
-          assert 'data_gov_dataset' in cache and 'attribution' in cache
-          assert 'No remote fallback' in cache
+          # 6. Current public data boundary: compatibility shim has no persistent mirror/fallback;
+          # the actual browser-data cache is accepted only through the compliance gate with OGDL provenance.
+          assert "mode:'online-only'" in cache
+          assert 'persistentMirror:false' in cache
           assert 'remoteFallback:false' in cache
-          assert 'remoteJget' not in cache
+          assert 'cacheIsSource:false' in cache
+          assert 'missingDataFallback:false' in cache
+          assert 'browser-data.json' in compliance
+          assert "x.source!=='licensed-open-data-cache'" in compliance
+          assert "!String(x.licence||'').includes('OGDL')" in compliance
+          assert '合法公開資料快取授權／版本驗證未通過' in compliance
 
           # 7. TOP10 may not silently compute a browser-local replacement ranking.
           for forbidden in ('jget(','hist(','tech(','combine(','adaptiveBand','entryLow','entryHigh'):
