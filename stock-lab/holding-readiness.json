@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-16T04:42:46.635675+00:00",
+  "generated_at": "2026-09-16T05:56:19.737284+00:00",
   "model": "TW-holding-exit-v4",
   "overall_status": "INSUFFICIENT",
   "executable_exit_output": false,
@@ -19,7 +19,7 @@
   },
   "oos": {
     "status": "INSUFFICIENT",
-    "artifact_present": false,
+    "artifact_present": true,
     "episodes": 0,
     "minimum_episodes": 300,
     "securities": 0,
@@ -52,6 +52,10 @@
   },
   "blockers": [
     "合法歷史日線不足：單檔最多 2/120 根，達 120 根的標的 0 檔；正式 OOS 至少需覆蓋 80 檔。",
-    "尚無正式持股出場 OOS 結果檔；不得把歷史資料量或研究公式視為模型 PASS。"
+    "OOS 樣本不足：episodes 0/300、securities 0/80。",
+    "出場條件／價格尚未通過下一合法交易時段的可執行性驗證。",
+    "信心指數尚未通過獨立樣本外校準。",
+    "production formula 與 OOS 測試公式尚未證明一致。",
+    "牛／熊／盤整市場 regime 覆蓋尚未完整。"
   ]
 }

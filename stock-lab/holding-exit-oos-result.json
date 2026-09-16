@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-16T05:56:19.545645+00:00",
+  "model": "TW-holding-exit-v4",
+  "status": "INSUFFICIENT",
+  "pipeline_executed": true,
+  "principle": "Missing or unlicensed inputs remain unknown. No imputation, no proxy backfill, no fabricated OOS metrics.",
+  "source": {
+    "class": "ogdl_daily_archive",
+    "licence": "OGDL-1.0",
+    "first_date": "2026-09-14",
+    "last_date": "2026-09-15",
+    "rows": 12091,
+    "max_valid_bars_per_security": 2,
+    "securities_with_minimum_history": 0,
+    "minimum_valid_bars": 120,
+    "provenance_rejections": 0
+  },
+  "oos_episodes": 0,
+  "oos_securities": 0,
+  "minimum_oos_episodes": 300,
+  "minimum_oos_securities": 80,
+  "regimes": [],
+  "required_regimes": [
+    "bull",
+    "bear",
+    "sideways"
+  ],
+  "exit_execution_validated": false,
+  "confidence_calibrated": false,
+  "production_formula_match": false,
+  "production_formula_sha256": "0a465ceca6f96eb325eb107e5cd1c0065e26ab38a9a991e3223048fec9b56b67",
+  "history_context": {
+    "artifact_present": false,
+    "validated": false,
+    "corporate_actions_complete": false,
+    "risk_states_complete": false,
+    "trading_calendar_verified": false
+  },
+  "metrics": null,
+  "blockers": [
+    "合法歷史日線不足：單檔最多 2/120 根。",
+    "可進正式 OOS 的股票不足：0/80 檔。",
+    "歷史公司行動／注意處置／停復牌／交易日曆脈絡尚未完整合法驗證；禁止生成正式 OOS episode。"
+  ]
+}
