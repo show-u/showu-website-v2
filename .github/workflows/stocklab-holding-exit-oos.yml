@@ -56,11 +56,26 @@ jobs:
             echo "$bad"
             exit 1
           fi
-          if grep -Eq 'STOCKLAB_LICENSED_BUNDLE_URL|curl .*licensed|wget .*licensed' .github/workflows/stocklab-holding-exit-oos.yml; then
-            echo 'ERROR: public CI must not acquire licensed raw history.'
-            exit 1
-          fi
-          echo 'Public CI contains no licensed raw market data and performs no licensed-data acquisition.'
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          path=Path('.github/workflows/stocklab-holding-exit-oos.yml')
+          forbidden_env='STOCKLAB_'+'LICENSED_BUNDLE_URL'
+          transfer_tools=('cu'+'rl','wg'+'et')
+          hits=[]
+          for n,line in enumerate(path.read_text(encoding='utf-8').splitlines(),1):
+              s=line.strip()
+              if forbidden_env in line:
+                  hits.append((n,line))
+              for tool in transfer_tools:
+                  if re.search(rf'\b{tool}\b.*licensed',line,re.I):
+                      hits.append((n,line))
+          if hits:
+              print('ERROR: public CI must not acquire licensed raw history.')
+              for n,line in hits: print(f'{n}: {line}')
+              raise SystemExit(1)
+          print('Public CI contains no licensed raw market data and performs no licensed-data acquisition.')
+          PY
 
       - name: Prove evaluator is production-equivalent and fail-closed without licensed history
         run: |
@@ -138,7 +153,9 @@ jobs:
           assert x['selected_history_source']['kind']=='ogdl_daily_archive'
           assert x['activation_path']['requires_waiting_120_trading_days'] is False
           assert x['activation_path']['primary']=='licensed_historical_backfill'
-          print('licensed backfill must be acquired/processed outside public CI under provider-approved rights')
+          f=x['history_sources'].get('active_forward_only',[])
+          assert any(z.get('id')=='ogdl_daily_forward_archive' and z.get('history_backfill') is False for z in f)
+          print('licensed backfill must be acquired/processed outside public CI under provider-approved rights; OGDL remains forward-only')
           PY
 
       - name: Persist only public fail-closed readiness when changed
