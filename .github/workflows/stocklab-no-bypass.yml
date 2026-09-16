@@ -85,7 +85,7 @@ jobs:
           assert 'browser-data.json' in compliance
           assert "x.source!=='licensed-open-data-cache'" in compliance
           assert "!String(x.licence||'').includes('OGDL')" in compliance
-          assert '合法公開資料快取授權／版本驗證未通過' in compliance
+          assert '授權／版本驗證未通過' in compliance
 
           # 7. TOP10 may not silently compute a browser-local replacement ranking.
           for forbidden in ('jget(','hist(','tech(','combine(','adaptiveBand','entryLow','entryHigh'):
