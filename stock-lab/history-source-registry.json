@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "purpose": "Authoritative registry for historical Taiwan price sources. Registration is not activation; a source may enter StockLab only after the actual subscription/licence and delivery rights are verified.",
+  "rules": {
+    "public_url_is_not_a_licence": true,
+    "no_scraping_for_backfill": true,
+    "no_unverified_third_party_backfill": true,
+    "no_imputation": true,
+    "raw_redistribution_only_when_contract_permits": true,
+    "model_output_may_use_private_licensed_history_without_exposing_raw_rows": true
+  },
+  "sources": {
+    "ogdl_daily_forward_archive": {
+      "status": "active",
+      "markets": ["TWSE", "TPEx"],
+      "licence": "OGDL-1.0",
+      "use": "forward daily archive only",
+      "history_backfill": false,
+      "note": "The open-data daily snapshot is archived from the date StockLab started collecting it. It does not create earlier historical OHLC that was never obtained."
+    },
+    "twse_eshop_daily_close": {
+      "status": "candidate_not_subscribed",
+      "market": "TWSE",
+      "provider": "Taiwan Stock Exchange Data E-Shop",
+      "product": "每日收盤行情",
+      "history_start": "2003-12-01",
+      "contains": ["security_code", "open", "high", "low", "close", "volume", "trade_count", "trade_value"],
+      "external_use_price_twd_per_month_as_observed_2026_09_16": 1500,
+      "activation_requirements": [
+        "user or operator explicitly subscribes to the external-use product",
+        "applicable online ordering terms are accepted and retained",
+        "delivery files are ingested privately with provenance and checksums",
+        "raw rows are not publicly redistributed beyond the contract scope"
+      ],
+      "scoring_allowed_before_activation": false
+    },
+    "tpex_eshop_afterhours_history": {
+      "status": "candidate_not_subscribed",
+      "market": "TPEx",
+      "provider": "Taipei Exchange Data E-Shop",
+      "product": "盤後資料 API / historical data",
+      "external_use_price_twd_per_month_as_observed_2026_09_16": 0,
+      "activation_requirements": [
+        "subscription/order and member terms are explicitly completed",
+        "exact purchased product fields and historical range are verified",
+        "delivery is ingested privately with provenance and checksums",
+        "use is limited to the rights granted by the order terms"
+      ],
+      "scoring_allowed_before_activation": false
+    }
+  }
+}
