@@ -68,7 +68,8 @@
       "use": "forward daily archive only",
       "history_backfill": false,
       "scoring_allowed_for_historical_backfill": false,
-      "note": "Open-data observations already lawfully collected may be archived forward. They are not a substitute for missing historical backfill. The formal activation path does not require waiting for this archive to accumulate 120 trading days."
+      "note": "Open-data observations already lawfully collected may be archived forward. They are not a substitute for missing historical backfill.",
+      "activation_note": "The formal activation path does not require waiting for this archive to accumulate 120 trading days; licensed historical backfill remains the primary path."
     },
     "twse_eshop_daily_close": {
       "status": "candidate_legal_review_required",
