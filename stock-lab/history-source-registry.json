@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "purpose": "Authoritative registry for historical Taiwan market-data acquisition. This registry contains policy/source metadata only; licensed raw market data must remain outside the public repository and outside third-party CI unless the provider explicitly permits that processing location.",
+  "purpose": "Authoritative registry for historical Taiwan market-data acquisition. Raw licensed history stays outside the public repository and public CI unless the provider explicitly permits that processing location and redistribution.",
   "last_reviewed": "2026-09-16",
   "rules": {
     "public_url_is_not_a_licence": true,
@@ -61,49 +61,47 @@
   ],
   "sources": {
     "ogdl_daily_forward_archive": {
-      "status": "active_forward_archive_only",
+      "status": "active",
+      "role": "forward_archive_only",
       "markets": ["TWSE", "TPEx"],
       "licence": "OGDL-1.0",
       "use": "forward daily archive only",
       "history_backfill": false,
-      "note": "Open-data observations already lawfully collected may be archived forward. They are not a substitute for missing historical backfill."
+      "scoring_allowed_for_historical_backfill": false,
+      "note": "Lawfully collected OGDL daily observations may be archived forward. They are not a substitute for missing historical backfill and do not require waiting 120 trading days before the licensed-backfill path is used."
     },
     "twse_eshop_daily_close": {
       "status": "candidate_legal_review_required",
       "market": "TWSE",
       "provider": "Taiwan Stock Exchange Data E-Shop",
       "official_product_url": "https://eshop.twse.com.tw/zh/product/detail/cfec9a1470e448ec91bfde006db361e8",
+      "contact_email": "dataeshop@twse.com.tw",
       "product": "每日收盤行情",
       "history_start": "2003-12-01",
-      "contains_confirmed_on_product_page": [
-        "security_code",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "trade_count",
-        "trade_value"
-      ],
+      "contains_confirmed_on_product_page": ["security_code", "open", "high", "low", "close", "volume", "trade_count", "trade_value"],
       "required_ohlcv_fields_confirmed": true,
       "internal_use_price_twd_per_month_as_observed_2026_09_16": 1000,
       "external_use_price_twd_per_month_as_observed_2026_09_16": 1500,
       "single_order_max_history_years": 5,
+      "automated_processing_right_confirmed": false,
+      "derived_output_right_confirmed": false,
+      "private_storage_right_confirmed": false,
+      "processing_location_right_confirmed": false,
+      "public_derived_output_right_confirmed": false,
       "official_terms_facts": [
-        "TWSE Data E-Shop terms prohibit automated/scripted downloading unless done in a TWSE-approved manner or with TWSE consent.",
-        "The product page distinguishes internal use from external use.",
-        "External use permits transmission of subscribed product content to information users subject to the online subscription terms.",
-        "TWSE online-order terms state that creating an index or other derivative product from purchased content requires prior written TWSE consent."
+        "The official product page distinguishes internal use from external use.",
+        "External use permits transmission of subscribed product content to information users subject to the applicable online subscription terms.",
+        "The product page offers historical ordering from the stated start date, with a maximum of five years per single order."
       ],
       "unresolved_for_stocklab": [
-        "Whether StockLab model/backtest computation is covered by ordinary internal/external use or requires additional written consent.",
-        "Whether public derived rankings/scores/holding-exit outputs are permitted without distributing raw rows.",
-        "Whether automated delivery/downloading is permitted for the selected subscription method.",
-        "Whether third-party cloud processing is permitted."
+        "Whether StockLab automated backtesting/model validation is permitted under the selected subscription terms.",
+        "Whether public derived rankings/scores/holding-exit outputs are permitted without redistributing raw rows.",
+        "Whether the intended private processing/storage location is permitted.",
+        "Whether automated delivery/downloading is permitted for the selected subscription method."
       ],
       "activation_requirements": [
         "retain the exact order terms and product specification",
-        "obtain written clarification from TWSE for any unresolved automated-processing/derived-output/cloud-processing question",
+        "obtain written clarification for unresolved automated-processing/derived-output/processing-location questions",
         "download only through an explicitly permitted delivery mechanism",
         "ingest only on approved private storage/compute",
         "verify file SHA-256, schema, dates, OHLC ordering and row counts",
@@ -117,29 +115,29 @@
       "market": "TPEx",
       "provider": "Taipei Exchange Data E-Shop",
       "official_product_url": "https://eshop.tpex.org.tw/zh/product/detail/BCDDCDFD315841EC011ED99B91DD528E",
+      "contact_email": "tpexinfo@tpex.org.tw",
       "product": "盤後資料 - 上櫃股票基本資料",
-      "relevant_files": [
-        "STKT1QUOTESN.TXT",
-        "STKT2QUOTESN.TXT",
-        "T30",
-        "T48",
-        "STKMININFO.TXT"
-      ],
+      "relevant_files": ["STKT1QUOTESN.TXT", "STKT2QUOTESN.TXT", "T30", "T48", "STKMININFO.TXT"],
       "individual_daily_quote_history_start": "2015-11-16",
       "corporate_action_history_start": "2011-11-30",
       "internal_use_price_twd_per_month_as_observed_2026_09_16": 1000,
       "external_use_price_twd_per_month_as_observed_2026_09_16": 1000,
       "historical_ordering_available": true,
       "required_ohlcv_fields_confirmed": false,
+      "automated_processing_right_confirmed": false,
+      "derived_output_right_confirmed": false,
+      "private_storage_right_confirmed": false,
+      "processing_location_right_confirmed": false,
+      "public_derived_output_right_confirmed": false,
       "official_terms_facts": [
-        "TPEx product page offers historical ordering and distinguishes internal versus external use.",
-        "Internal-use data may not be publicly disclosed or repurposed beyond the subscribed use.",
-        "External-use data may be transmitted to information users subject to TPEx member subscription terms and attribution/retransmission restrictions."
+        "The official product page offers historical ordering and distinguishes internal from external use.",
+        "External-use data may be transmitted to information users subject to the TPEx member subscription terms, source attribution and retransmission restrictions.",
+        "Individual daily quote history is stated from 2015-11-16 and corporate-action related history from 2011-11-30."
       ],
       "unresolved_for_stocklab": [
-        "Exact OHLCV field coverage in STKT1QUOTESN/STKT2QUOTESN must be verified from the official format package/sample before purchase/activation.",
-        "Automated processing and derived model-output rights must be confirmed from the applicable member terms or written TPEx clarification.",
-        "Third-party cloud processing permission must be confirmed before using hosted CI/cloud runners."
+        "Exact OHLCV field coverage in the relevant quote files must be verified from the official format package/sample before activation.",
+        "Automated processing and public derived model-output rights require confirmation from the applicable terms or written TPEx clarification.",
+        "The intended private/cloud processing location must be explicitly permitted before use."
       ],
       "activation_requirements": [
         "obtain and retain official format specification/sample",
@@ -160,7 +158,7 @@
       "provider": "Taipei Exchange Data E-Shop",
       "official_product_url": "https://eshop.tpex.org.tw/zh/product/detail/2c92e01394fcf4c7019518bbf65f000a",
       "product": "盤後資料 - API 說明",
-      "reason": "The public product page does not establish the exact complete OHLCV historical dataset required by the holding OOS model. It must not be assumed suitable merely because API access is available.",
+      "reason": "API availability alone does not establish the complete historical OHLCV, context and licence rights required by the holding OOS model.",
       "scoring_allowed_before_activation": false
     },
     "tpex_eshop_trade_file": {
@@ -171,7 +169,7 @@
       "product": "盤後資料 - 歷史資料 - 成交檔",
       "file": "MTH.zip",
       "history_start": "2022-11-01",
-      "reason": "Trade-level/history product is not the preferred first choice for StockLab OHLCV backfill because the basic-data group provides dedicated daily quote files with a longer stated history; exact format/rights still require validation.",
+      "reason": "Trade-level history is not the preferred first source for StockLab OHLCV backfill when a dedicated daily-quote product exists; exact format/rights still require validation.",
       "scoring_allowed_before_activation": false
     }
   }
