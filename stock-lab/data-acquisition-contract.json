@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "StockLab Data Acquisition Contract",
+  "principle": "A verified snapshot is not a data source and is never a substitute for missing data.",
+  "states": {
+    "verified_snapshot_reuse": "Reuse is allowed only when the snapshot represents the same registered dataset/field/period or trading session, remains within its explicit validity window, and already passed licence, source, schema, date and integrity checks.",
+    "licensed_source_fetch": "If no valid verified snapshot exists, the acquisition pipeline may fetch only from a registered legally permitted source. The newly fetched data must pass all validation gates before any model may consume it.",
+    "unavailable": "If acquisition fails, the source is legally unusable, the schema is unknown, the date/period is wrong, fields are missing, or validation fails, the value remains unavailable and dependent conclusions are blocked."
+  },
+  "absolute_prohibitions": [
+    "Do not use a previous trading session or previous reporting period as a replacement for a missing current required input.",
+    "Do not convert unknown or missing values to zero.",
+    "Do not fabricate, interpolate, estimate or infer an observed official field.",
+    "Do not use a model estimate as though it were observed market data.",
+    "Do not switch to an unregistered provider merely because the registered source failed.",
+    "Do not treat a stale snapshot as current.",
+    "Do not calculate a prediction when any required critical input is unavailable.",
+    "Do not label a retained snapshot as a live/current quote unless the underlying licensed feed actually supports that claim."
+  ],
+  "decision_rule": "verified required inputs -> calculate; otherwise -> no result",
+  "ui_rule": "When blocked, show which required input is unavailable and why. Never show a numeric placeholder that could be mistaken for real data."
+}
