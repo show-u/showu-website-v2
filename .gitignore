@@ -6,3 +6,6 @@ stock-lab/history-licensed/*
 # Local/private StockLab validation artifacts that may contain licensed rows.
 stock-lab/private-history-work/
 stock-lab/private-oos-work/
+stock-lab/private-backfill-work/
+stock-lab/private-backfill-rights.json
+stock-lab/.twmd-api-key
