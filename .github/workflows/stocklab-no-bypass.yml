@@ -132,9 +132,8 @@ jobs:
               assert readiness['oos']['confidence_calibrated'] is True
               assert readiness['oos']['production_formula_match'] is True
 
-          # 12. Public holding UI is factual first; it may show model readiness but may not promise a sell price before PASS.
-          assert '查看持股狀態／出場模型狀態' in idx
-          assert '分析出場時機</button>' not in idx
+          # 12. Public holding UI may ask to analyse exit timing, but cannot promise or fabricate an exit price before PASS.
+          assert '分析出場時機</button>' in idx
           assert 'readinessStatus' in usable and 'holding-readiness.json' in usable
           assert '正式出場模型準備度' in usable
           assert "x.overall_status==='PASS'&&x.executable_exit_output===true" in usable
