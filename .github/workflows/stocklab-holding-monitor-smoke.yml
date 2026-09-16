@@ -1,0 +1,40 @@
+name: StockLab holding monitor smoke
+
+on:
+  push:
+    paths:
+      - 'stock-lab/holding-usable.js'
+      - 'stock-lab/health.js'
+      - 'stock-lab/position-input.js'
+      - 'stock-lab/browser-data.json'
+      - 'stock-lab/history-ogdl/manifest.json'
+      - '.github/workflows/stocklab-holding-monitor-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check stock-lab/holding-usable.js
+          node --check stock-lab/health.js
+      - name: Truth and usability invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          h=Path('stock-lab/holding-usable.js').read_text(encoding='utf-8')
+          health=Path('stock-lab/health.js').read_text(encoding='utf-8')
+          assert "import('./holding-usable.js')" in health
+          for s in ('查看持股狀態','licensed-open-data-cache','OGDL 1.0','未實現損益','正式出場建議目前為什麼沒有數字？','缺值不補','不是交易日數'):
+              assert s in h,s
+          assert 'StockLabPositionInput?.collect' in h
+          assert 'StockLabCompliance' in h and 'licensedCache' in h
+          assert '正式持股模型最低需要 120 根有效日線' in h
+          assert '賣出價' not in h and '停利價' not in h and '停損價' not in h
+          print('holding monitor factual-mode smoke passed')
+          PY
