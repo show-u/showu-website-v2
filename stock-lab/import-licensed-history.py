@@ -177,15 +177,39 @@ def main():
     ap.add_argument('--license-name',required=True)
     ap.add_argument('--legal-basis',required=True)
     ap.add_argument('--evidence-reference',required=True)
+    ap.add_argument('--terms-reference',required=True,help='Order/contract/terms version or retained evidence reference')
+    ap.add_argument('--terms-reviewed-date',required=True,help='YYYY-MM-DD')
+    ap.add_argument('--acquisition-mode',required=True,help='Exact authorised method, e.g. manual_provider_portal, provider_api, provider_sftp')
+    ap.add_argument('--acquisition-mode-authorized',action='store_true')
     ap.add_argument('--automated-processing-allowed',action='store_true')
     ap.add_argument('--derived-outputs-allowed',action='store_true')
+    ap.add_argument('--public-derived-outputs-allowed',action='store_true')
     ap.add_argument('--local-storage-allowed',action='store_true')
+    ap.add_argument('--processing-location',required=True,help='Exact private processing environment/location approved under the licence')
+    ap.add_argument('--processing-location-authorized',action='store_true')
     ap.add_argument('--raw-redistribution-allowed',action='store_true')
     ap.add_argument('--out',default='manifest.json')
     args=ap.parse_args()
 
-    if not (args.automated_processing_allowed and args.derived_outputs_allowed and args.local_storage_allowed):
-        raise SystemExit('LICENCE_GATE_FAIL: automated processing, derived outputs and local storage must all be explicitly allowed')
+    validate_date(args.terms_reviewed_date,'terms-reviewed-date')
+    for label,value in (
+        ('terms-reference',args.terms_reference),
+        ('acquisition-mode',args.acquisition_mode),
+        ('processing-location',args.processing_location),
+        ('legal-basis',args.legal_basis),
+        ('evidence-reference',args.evidence_reference),
+    ):
+        if not str(value).strip(): raise SystemExit(f'LICENCE_GATE_FAIL: {label} must be non-empty')
+    required_rights=(
+        args.acquisition_mode_authorized,
+        args.automated_processing_allowed,
+        args.derived_outputs_allowed,
+        args.public_derived_outputs_allowed,
+        args.local_storage_allowed,
+        args.processing_location_authorized,
+    )
+    if not all(required_rights):
+        raise SystemExit('LICENCE_GATE_FAIL: acquisition method, automated processing, derived output, public derived output, local storage and processing location must all be explicitly authorised')
 
     root=pathlib.Path(args.bundle_dir).resolve()
     if not root.is_dir(): raise SystemExit('bundle-dir not found')
@@ -227,9 +251,16 @@ def main():
         'license_name':args.license_name,
         'legal_basis':args.legal_basis,
         'evidence_reference':args.evidence_reference,
+        'terms_reference':args.terms_reference,
+        'terms_reviewed_date':args.terms_reviewed_date,
+        'acquisition_mode':args.acquisition_mode,
+        'acquisition_mode_authorized':True,
         'automated_processing_allowed':True,
         'derived_outputs_allowed':True,
+        'public_derived_outputs_allowed':True,
         'local_storage_allowed':True,
+        'processing_location':args.processing_location,
+        'processing_location_authorized':True,
         'raw_redistribution_allowed':bool(args.raw_redistribution_allowed),
       },
       'sources':sources,
@@ -242,7 +273,7 @@ def main():
     out=(root/args.out).resolve()
     if root not in out.parents: raise SystemExit('manifest output must remain inside bundle-dir')
     with open(out,'w',encoding='utf-8') as f: json.dump(manifest,f,ensure_ascii=False,indent=2)
-    print(json.dumps({'ok':True,'manifest':str(out),'coverage':coverage,'sources':len(sources),'raw_redistribution_allowed':args.raw_redistribution_allowed},ensure_ascii=False,indent=2))
+    print(json.dumps({'ok':True,'manifest':str(out),'coverage':coverage,'sources':len(sources),'raw_redistribution_allowed':args.raw_redistribution_allowed,'acquisition_mode':args.acquisition_mode,'processing_location':args.processing_location},ensure_ascii=False,indent=2))
 
 if __name__=='__main__':
     try: main()
