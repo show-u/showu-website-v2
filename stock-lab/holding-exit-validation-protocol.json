@@ -58,6 +58,24 @@
     "comparators": ["hold-to-fixed-horizon baseline", "simple MA-based trailing exit baseline", "buy-and-hold through the episode evaluation window"],
     "metrics": ["net return after costs", "max drawdown while held", "drawdown from peak before exit", "profit capture ratio", "false-exit rate followed by recovery", "time in market", "exit frequency", "execution rate", "delay-to-exit distribution", "worst-tail outcomes", "benchmark-relative return"]
   },
+  "confidence_calibration": {
+    "raw_input": "decision.evidenceScore from the frozen production holding model",
+    "raw_input_is_probability": false,
+    "raw_input_may_be_displayed_publicly_before_calibration": false,
+    "eligible_signal_states": ["出場條件檢視", "風險事件優先處理"],
+    "development_fit_only": true,
+    "fit_method": "five equal-frequency development bins followed by weighted pool-adjacent-violators isotonic calibration",
+    "target": "1 only when the next-session executable model exit produces net return at least as good as holding the same episode through the pre-frozen evaluation-window end; otherwise 0",
+    "oos_evaluation": "apply the development-only calibration map unchanged to untouched OOS exit signals",
+    "minimum_development_exit_signals": 100,
+    "minimum_oos_exit_signals": 60,
+    "minimum_oos_exit_signal_securities": 30,
+    "minimum_final_calibration_blocks": 3,
+    "maximum_oos_ece": 0.12,
+    "brier_must_not_exceed_constant_development_base_rate_brier": true,
+    "public_meaning": "calibrated historical reliability of a triggered exit decision under the frozen OOS contract; not a forecast of stock price, return, or guaranteed execution",
+    "failure_rule": "If any sample-size or calibration-quality threshold fails, confidence_calibrated remains false and no public confidence index may be emitted."
+  },
   "split_and_statistics": {
     "split": "chronological development period followed by untouched OOS period",
     "walk_forward": "required when enough licensed history exists",
