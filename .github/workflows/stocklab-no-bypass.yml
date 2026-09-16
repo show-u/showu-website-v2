@@ -105,16 +105,25 @@ jobs:
           assert 'productionPredictionReady:false' in runtime
 
           # 10. Historical source candidates are not data until subscription/licence and ingestion are complete.
+          # OGDL remains an active forward-only archive; it is not a licensed historical backfill source.
           assert sources['rules']['public_url_is_not_a_licence'] is True
           assert sources['rules']['no_scraping_for_backfill'] is True
           assert sources['rules']['no_unverified_third_party_backfill'] is True
           assert sources['rules']['no_imputation'] is True
-          assert sources['sources']['ogdl_daily_forward_archive']['status']=='active'
-          assert sources['sources']['ogdl_daily_forward_archive']['history_backfill'] is False
-          for k in ('twse_eshop_daily_close','tpex_eshop_afterhours_history'):
+          og=sources['sources']['ogdl_daily_forward_archive']
+          assert og['status']=='active_forward_archive_only'
+          assert og.get('role')=='forward_archive_only'
+          assert og['history_backfill'] is False
+          assert og.get('scoring_allowed_for_historical_backfill') is False
+          assert og['note']=='Open-data observations already lawfully collected may be archived forward. They are not a substitute for missing historical backfill.'
+          assert 'does not require waiting' in og.get('activation_note','')
+          for k in ('twse_eshop_daily_close','tpex_eshop_basic_group'):
               s=sources['sources'][k]
-              assert s['status']=='candidate_not_subscribed', (k,s)
+              assert s['status'] not in ('active','active_forward_archive_only'), (k,s)
               assert s['scoring_allowed_before_activation'] is False, (k,s)
+              assert s.get('automated_processing_right_confirmed') is False, (k,s)
+              assert s.get('derived_output_right_confirmed') is False, (k,s)
+              assert s.get('private_storage_right_confirmed') is False, (k,s)
 
           # 11. Formal holding/exit output is machine-locked until history + OOS + execution + calibration all pass.
           assert readiness['schema_version'] in (1,2,3) and readiness['model']=='TW-holding-exit-v4'
@@ -123,7 +132,8 @@ jobs:
           if readiness['schema_version']>=3:
               a=readiness.get('activation_path',{})
               assert a.get('primary')=='licensed_historical_backfill'
-              assert a.get('status') in ('pending_licensed_subscription_or_import','licensed_bundle_imported','oos_pending','active')
+              assert a.get('requires_waiting_120_trading_days') is False
+              assert a.get('status') in ('pending_licensed_subscription_or_import','licensed_bundle_imported','ready_for_oos','oos_pending','active')
               src=readiness.get('selected_history_source',{})
               if readiness['overall_status']!='PASS':
                   assert src.get('kind')!='licensed_history_bundle' or readiness['oos']['status']!='PASS' or readiness['oos']['execution_validated'] is not True or readiness['oos']['confidence_calibrated'] is not True
