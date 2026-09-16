@@ -33,7 +33,7 @@ jobs:
           node --check stock-lab/holding-router.js
           node --check stock-lab/position-input.js
           node --check stock-lab/hard-policy.js
-      - name: Session and backend-only holding invariants
+      - name: Session and safe holding invariants
         run: |
           python - <<'PY'
           import json
@@ -75,11 +75,14 @@ jobs:
           assert '首次買入日不在目前合法且驗證通過的歷史交易日序列中' in hold
           assert int(policy['history_requirements']['holding_exit']['minimum_valid_bars']) == 120
 
-          # Executable holding output is backend-only; browser cannot promote the local research model.
+          # Executable exit output remains backend-only. Public fallback may show only licensed verified facts/P&L.
           executable='\n'.join(line for line in router.splitlines() if not line.lstrip().startswith('//'))
           assert 'api.holding(code,p)' in router
           assert "backendResult(j,'holding')" in router
-          assert '正式私有分析後端尚未啟用；瀏覽器本地持股出場預測已停用' in router
+          assert 'loadPublicSnapshot' in router and 'publicFacts' in router
+          assert "x.schema_version!==2" in router and "x.source!=='licensed-open-data-cache'" in router and "includes('OGDL')" in router
+          assert '正式出場時機／觸發價格尚未解鎖' in router
+          assert '不以本地公式假造續抱／減碼／賣出價格' in router
           for forbidden in ('loader.load(','StockLabLicensedHistory','StockLabHolding?.analyze','localHolding(','bars.some('):
               assert forbidden not in executable,forbidden
           assert "oosStatus:'PASS'" not in executable
@@ -92,5 +95,5 @@ jobs:
           for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'):
               assert text in pos,text
 
-          print('PASS: session truth, exact position provenance and backend-only holding execution enforced')
+          print('PASS: session truth, exact position provenance, safe public facts fallback and backend-only exit execution enforced')
           PY
