@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "purpose": "Authoritative registry for historical Taiwan market-data acquisition. This registry contains policy/source metadata only; licensed raw market data must remain outside the public repository and outside third-party CI unless the provider explicitly permits that processing location.",
   "last_reviewed": "2026-09-16",
   "rules": {
@@ -43,7 +43,7 @@
     "exact_product_identified",
     "subscription_or_order_completed",
     "applicable_terms_retained_with_date_or_version",
-    "written_permission_or_contract_reference_retained_when_terms_are_ambiguous",
+    "written_permission_or contract_reference_retained_when_terms_are_ambiguous",
     "automated_processing_right_confirmed",
     "derived_output_right_confirmed",
     "private_storage_right_confirmed",
@@ -71,23 +71,62 @@
       "note": "Open-data observations already lawfully collected may be archived forward. They are not a substitute for missing historical backfill.",
       "activation_note": "The formal activation path does not require waiting for this archive to accumulate 120 trading days; licensed historical backfill remains the primary path."
     },
+    "twmd_api_private_backfill": {
+      "status": "candidate_entitlement_and_pit_review_required",
+      "role": "licensed_backfill_candidate",
+      "markets": ["TWSE", "TPEx"],
+      "provider": "TW Market Data",
+      "official_terms_url": "https://twmarketdata.com/zh-TW/legal/terms",
+      "official_licensing_url": "https://twmarketdata.com/en/legal/licensing",
+      "official_docs_url": "https://twmarketdata.com/en/docs/introduction",
+      "acquisition_mode": "provider_api",
+      "private_staging_importer": "stock-lab/prepare-twmd-private-backfill.py",
+      "documented_price_endpoints": {
+        "TWSE": "/v2/datasets/twse-daily-price",
+        "TPEx": "/v2/datasets/tpex-daily-price"
+      },
+      "documented_context_endpoints": {
+        "security_master": "/v2/datasets/security-master",
+        "trading_calendar": "/v2/datasets/trading-calendar",
+        "corporate_actions": "/v2/datasets/corporate-actions",
+        "attention_disposition": "/v2/datasets/attention-disposal-events",
+        "market_index": "/v2/datasets/market-index"
+      },
+      "documented_facts_reviewed_2026_09_16": [
+        "TWMD terms grant access/use according to plan entitlement and prohibit resale/sublicensing/redistribution except where a dataset licence separately permits it.",
+        "TWMD states that part of its Taiwan data is sourced from Government Open Data Platform under OGDL-1.0 and requires licence attribution when reused.",
+        "The free plan is explicitly non-commercial; commercial StockLab use therefore requires an eligible paid entitlement or separate written permission.",
+        "TWSE and TPEx daily-price endpoints expose historical OHLCV and identify official exchange source roles.",
+        "TWMD security-master documentation explicitly says the active snapshot is not point-in-time complete and warns of survivorship bias for backtests.",
+        "TWMD trading-calendar documentation says historical rows are derived from observed price rows rather than a complete official exchange calendar.",
+        "TWMD attention/disposition documentation warns that event_date is not the announcement knowledge date, so event_date alone is unsafe for historical information-set replay.",
+        "TWMD market-index documentation currently states TWSE rows are available while TPEx returns none, so a separate lawful TPEx broad-market index history is required for regime validation."
+      ],
+      "activation_requirements": [
+        "retain the exact paid-plan entitlement and current terms/version",
+        "retain explicit evidence that commercial API acquisition, automated processing, private storage, derived analysis and public derived outputs are allowed for StockLab",
+        "keep TWMD_API_KEY only in the approved private processing environment",
+        "run private staging outside the public repository and public CI",
+        "obtain PIT-safe historical security lifecycle rather than relying on the current active security-master snapshot",
+        "obtain a provenance-valid trading calendar that satisfies StockLab's no-guessing calendar contract",
+        "obtain PIT-safe corporate-action and attention/disposition knowledge dates for historical replay",
+        "obtain lawful broad-market index history for both TWSE and TPEx before bull/bear/sideways OOS labels are allowed",
+        "normalize all required datasets through import-licensed-history.py and then validate-licensed-bundle.py",
+        "cross-check overlapping recent OHLC observations against official exchange observations",
+        "never commit raw or staged provider rows to the public repository unless the exact contract explicitly permits redistribution"
+      ],
+      "formal_bundle_ready_from_twmd_price_alone": false,
+      "scoring_allowed_before_activation": false
+    },
     "twse_eshop_daily_close": {
       "status": "candidate_legal_review_required",
+      "role": "licensed_backfill_candidate",
       "market": "TWSE",
       "provider": "Taiwan Stock Exchange Data E-Shop",
       "official_product_url": "https://eshop.twse.com.tw/zh/product/detail/cfec9a1470e448ec91bfde006db361e8",
       "product": "每日收盤行情",
       "history_start": "2003-12-01",
-      "contains_confirmed_on_product_page": [
-        "security_code",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "trade_count",
-        "trade_value"
-      ],
+      "contains_confirmed_on_product_page": ["security_code","open","high","low","close","volume","trade_count","trade_value"],
       "required_ohlcv_fields_confirmed": true,
       "internal_use_price_twd_per_month_as_observed_2026_09_16": 1000,
       "external_use_price_twd_per_month_as_observed_2026_09_16": 1500,
@@ -122,17 +161,12 @@
     },
     "tpex_eshop_basic_group": {
       "status": "candidate_legal_and_format_review_required",
+      "role": "licensed_backfill_candidate",
       "market": "TPEx",
       "provider": "Taipei Exchange Data E-Shop",
       "official_product_url": "https://eshop.tpex.org.tw/zh/product/detail/BCDDCDFD315841EC011ED99B91DD528E",
       "product": "盤後資料 - 上櫃股票基本資料",
-      "relevant_files": [
-        "STKT1QUOTESN.TXT",
-        "STKT2QUOTESN.TXT",
-        "T30",
-        "T48",
-        "STKMININFO.TXT"
-      ],
+      "relevant_files": ["STKT1QUOTESN.TXT","STKT2QUOTESN.TXT","T30","T48","STKMININFO.TXT"],
       "individual_daily_quote_history_start": "2015-11-16",
       "corporate_action_history_start": "2011-11-30",
       "internal_use_price_twd_per_month_as_observed_2026_09_16": 1000,
