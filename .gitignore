@@ -1,0 +1,8 @@
+# StockLab licensed market history is private licensed data.
+# Raw licensed rows must never be committed to this public repository.
+stock-lab/history-licensed/*
+!stock-lab/history-licensed/README.md
+
+# Local/private StockLab validation artifacts that may contain licensed rows.
+stock-lab/private-history-work/
+stock-lab/private-oos-work/
