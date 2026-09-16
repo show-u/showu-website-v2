@@ -1,10 +1,31 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-09-16T07:44:35.943997+00:00",
+  "schema_version": 3,
+  "generated_at": "2026-09-16T07:48:00+00:00",
   "model": "TW-holding-exit-v4",
   "overall_status": "INSUFFICIENT",
   "executable_exit_output": false,
   "principle": "No verified gate, no formal holding/exit recommendation. Missing data is never imputed.",
+  "activation_path": {
+    "primary": "licensed_historical_backfill",
+    "status": "pending_licensed_subscription_or_import",
+    "requires_waiting_120_trading_days": false,
+    "licensed_source_candidates": [
+      {
+        "id": "twse_eshop_daily_close",
+        "status": "candidate_not_subscribed",
+        "provider": "Taiwan Stock Exchange Data E-Shop"
+      },
+      {
+        "id": "tpex_eshop_afterhours_history",
+        "status": "candidate_not_subscribed",
+        "provider": "Taipei Exchange Data E-Shop"
+      }
+    ],
+    "importer": "stock-lab/import-licensed-history.py",
+    "post_import_action": "validate licensed bundle, rebuild readiness, then rerun formal holding-exit OOS automatically",
+    "raw_licensed_data_publication": "prohibited_unless_explicit_redistribution_right_exists",
+    "fallback": "OGDL daily forward archive only; never impute missing past history"
+  },
   "selected_history_source": {
     "kind": "ogdl_daily_archive",
     "licence": "OGDL-1.0",
@@ -30,35 +51,23 @@
     "minimum_episodes": 300,
     "securities": 0,
     "minimum_securities": 80,
-    "required_regimes": [
-      "bear",
-      "bull",
-      "sideways"
-    ],
+    "required_regimes": ["bear", "bull", "sideways"],
     "regimes_present": [],
     "execution_validated": false,
     "confidence_calibrated": false,
     "production_formula_match": false
   },
   "history_sources": {
-    "active": [
-      "ogdl_daily_forward_archive"
-    ],
+    "active": ["ogdl_daily_forward_archive"],
     "inactive_candidates": [
-      {
-        "id": "twse_eshop_daily_close",
-        "status": "candidate_not_subscribed"
-      },
-      {
-        "id": "tpex_eshop_afterhours_history",
-        "status": "candidate_not_subscribed"
-      }
+      {"id": "twse_eshop_daily_close", "status": "candidate_not_subscribed"},
+      {"id": "tpex_eshop_afterhours_history", "status": "candidate_not_subscribed"}
     ],
     "rule": "candidate_not_subscribed or otherwise inactive sources cannot be used for scoring, OOS, or public predictions."
   },
   "blockers": [
     "正式歷史資料不足：目前選用 ogdl_daily_archive，單檔最多 2/120 根，達門檻標的 0/80 檔。",
-    "尚未偵測到已通過授權 Gate 的歷史 bundle；OGDL 僅作合法每日向前累積，不能假造過去資料。",
+    "主要解法不是等待 OGDL 累積。應取得 TWSE／TPEx 有明確外部使用與衍生分析權利的歷史資料，經 importer 驗證後建立私有 licensed bundle；OGDL 只作每日向前封存備援。",
     "OOS 樣本不足：episodes 0/300、securities 0/80。",
     "出場條件／價格尚未通過下一合法交易時段的可執行性驗證。",
     "信心指數尚未通過獨立樣本外校準。",
