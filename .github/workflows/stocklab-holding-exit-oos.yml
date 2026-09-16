@@ -30,10 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      LICENSED_BUNDLE_DIR: /tmp/stocklab-history-licensed
-      LICENSED_BUNDLE_ARCHIVE: /tmp/stocklab-history-licensed.zip
-      LICENSED_BUNDLE_URL: ${{ secrets.STOCKLAB_LICENSED_BUNDLE_URL }}
-      LICENSED_BUNDLE_SHA256: ${{ secrets.STOCKLAB_LICENSED_BUNDLE_SHA256 }}
+      LICENSED_BUNDLE_DIR: /tmp/stocklab-no-licensed
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -48,110 +45,38 @@ jobs:
           python -m py_compile stock-lab/run-holding-exit-oos.py stock-lab/build-holding-readiness.py stock-lab/import-licensed-history.py stock-lab/validate-licensed-bundle.py stock-lab/gate-holding-evaluator.py
           node --check stock-lab/holding-oos-evaluator.mjs
 
-      - name: Enforce public-repository licensed-data boundary
+      - name: Enforce public-CI legal boundary
         run: |
           set -euo pipefail
+          rm -rf "$LICENSED_BUNDLE_DIR"
+          mkdir -p "$LICENSED_BUNDLE_DIR"
           bad="$(git ls-files 'stock-lab/history-licensed/**' | grep -v '^stock-lab/history-licensed/README.md$' || true)"
           if [ -n "$bad" ]; then
             echo 'ERROR: licensed/raw history is tracked in the public repository:'
             echo "$bad"
             exit 1
           fi
-          test "$LICENSED_BUNDLE_DIR" = '/tmp/stocklab-history-licensed'
-          echo 'public repository contains no licensed raw history'
-
-      - name: Stage private licensed bundle when securely configured
-        run: |
-          set -euo pipefail
-          rm -rf "$LICENSED_BUNDLE_DIR" "$LICENSED_BUNDLE_ARCHIVE"
-          mkdir -p "$LICENSED_BUNDLE_DIR"
-
-          if [ -z "${LICENSED_BUNDLE_URL:-}" ]; then
-            echo 'No private licensed bundle is configured. OOS will remain fail-closed and use OGDL only as the forward-archive fallback.'
-            exit 0
-          fi
-          if [ -z "${LICENSED_BUNDLE_SHA256:-}" ]; then
-            echo 'ERROR: licensed bundle URL exists but SHA-256 secret is missing.'
+          if grep -Eq 'STOCKLAB_LICENSED_BUNDLE_URL|curl .*licensed|wget .*licensed' .github/workflows/stocklab-holding-exit-oos.yml; then
+            echo 'ERROR: public CI must not acquire licensed raw history.'
             exit 1
           fi
-          case "$LICENSED_BUNDLE_URL" in
-            https://*) ;;
-            *) echo 'ERROR: licensed bundle transport must use HTTPS.'; exit 1 ;;
-          esac
-
-          # Download an already-authorised private bundle. The importer itself remains offline.
-          # URL and digest are GitHub secrets and must never be committed or echoed.
-          curl --fail --silent --show-error --location --retry 2 \
-            --output "$LICENSED_BUNDLE_ARCHIVE" "$LICENSED_BUNDLE_URL"
-          printf '%s  %s\n' "$LICENSED_BUNDLE_SHA256" "$LICENSED_BUNDLE_ARCHIVE" | sha256sum -c -
-
-          python - <<'PY'
-          import os, pathlib, zipfile
-          src=pathlib.Path(os.environ['LICENSED_BUNDLE_ARCHIVE'])
-          dst=pathlib.Path(os.environ['LICENSED_BUNDLE_DIR']).resolve()
-          with zipfile.ZipFile(src) as z:
-              infos=z.infolist()
-              if not infos: raise SystemExit('licensed bundle archive is empty')
-              for info in infos:
-                  p=(dst/info.filename).resolve()
-                  if dst not in p.parents and p!=dst:
-                      raise SystemExit(f'unsafe archive path: {info.filename}')
-              z.extractall(dst)
-          # Permit one enclosing directory, but normalize it without copying data into the repository workspace.
-          if not (dst/'manifest.json').is_file():
-              children=[p for p in dst.iterdir() if p.is_dir()]
-              if len(children)==1 and (children[0]/'manifest.json').is_file():
-                  inner=children[0]
-                  for p in list(inner.iterdir()): p.rename(dst/p.name)
-                  inner.rmdir()
-          if not (dst/'manifest.json').is_file(): raise SystemExit('licensed bundle manifest.json missing')
-          print('private licensed bundle staged in ephemeral runtime directory')
-          PY
-          rm -f "$LICENSED_BUNDLE_ARCHIVE"
-
-          python stock-lab/validate-licensed-bundle.py "$LICENSED_BUNDLE_DIR" \
-            --contract stock-lab/licensed-data-contract.json \
-            --out /tmp/licensed-bundle-validation.json
-          python - <<'PY'
-          import json
-          x=json.load(open('/tmp/licensed-bundle-validation.json',encoding='utf-8'))
-          assert x['ok'] is True
-          t=x['truth_contract']
-          assert t['network_used'] is False and t['imputation_used'] is False
-          assert t['all_hashes_verified'] is True and t['all_sources_resolved'] is True
-          assert t['market_index_verified'] is True and t['historical_security_validity_verified'] is True
-          print('private licensed bundle passed offline truth validation')
-          PY
+          echo 'Public CI contains no licensed raw market data and performs no licensed-data acquisition.'
 
       - name: Prove evaluator is production-equivalent and fail-closed without licensed history
         run: |
-          rm -rf /tmp/stocklab-no-licensed
-          mkdir -p /tmp/stocklab-no-licensed
           node stock-lab/holding-oos-evaluator.mjs \
-            --bundle-dir /tmp/stocklab-no-licensed \
+            --bundle-dir "$LICENSED_BUNDLE_DIR" \
             --production stock-lab/holding-model.js \
-            --out /tmp/holding-evaluator-empty.json
+            --out /tmp/holding-evaluator.json
           python - <<'PY'
           import hashlib,json
-          x=json.load(open('/tmp/holding-evaluator-empty.json',encoding='utf-8'))
+          x=json.load(open('/tmp/holding-evaluator.json',encoding='utf-8'))
           h=hashlib.sha256(open('stock-lab/holding-model.js','rb').read()).hexdigest()
           assert x['status']=='INSUFFICIENT'
           assert x['no_imputation'] is True and x['network_used'] is False
           assert x['production_formula_sha256']==h
-          print('production-equivalent evaluator fail-closed contract passed')
+          print('public CI fail-closed contract passed')
           PY
-
-      - name: Run production-equivalent evaluator when private licensed history exists
-        run: |
-          if [ -f "$LICENSED_BUNDLE_DIR/manifest.json" ]; then
-            node stock-lab/holding-oos-evaluator.mjs \
-              --bundle-dir "$LICENSED_BUNDLE_DIR" \
-              --production stock-lab/holding-model.js \
-              --min-bars 120 --min-episodes 300 --min-securities 80 \
-              --out /tmp/holding-evaluator.json
-          else
-            echo '{"schema_version":1,"status":"INSUFFICIENT","reason":"private licensed bundle not configured","no_imputation":true,"network_used":false}' > /tmp/holding-evaluator.json
-          fi
 
       - name: Enforce market-regime truth gate
         run: |
@@ -162,13 +87,12 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('/tmp/holding-evaluator-gated.json',encoding='utf-8'))
-          if x.get('market_regime_verified') is not True:
-              assert x.get('regimes')==[]
-              assert x.get('status')=='INSUFFICIENT'
-          print('market regime truth gate:',x.get('market_regime_verified'))
+          assert x.get('status')=='INSUFFICIENT'
+          assert x.get('regimes')==[]
+          print('public CI market-regime gate remains fail-closed')
           PY
 
-      - name: Run formal holding-exit OOS gate
+      - name: Run public formal holding-exit gate using lawful forward archive only
         run: |
           python stock-lab/run-holding-exit-oos.py \
             --manifest stock-lab/history-ogdl/manifest.json \
@@ -178,65 +102,23 @@ jobs:
             --production stock-lab/holding-model.js \
             --out stock-lab/holding-exit-oos-result.json
 
-      - name: Merge real evaluator facts into formal OOS artifact
-        run: |
-          python - <<'PY'
-          import hashlib,json
-          from pathlib import Path
-          e=json.load(open('/tmp/holding-evaluator-gated.json',encoding='utf-8'))
-          o=json.load(open('stock-lab/holding-exit-oos-result.json',encoding='utf-8'))
-          prod=hashlib.sha256(open('stock-lab/holding-model.js','rb').read()).hexdigest()
-          if e.get('production_formula_sha256')==prod and e.get('network_used') is False and e.get('no_imputation') is True:
-              o['production_formula_match']=e.get('production_formula_match') is True
-              o['oos_episodes']=int(e.get('oos_episodes') or 0)
-              o['oos_securities']=int(e.get('oos_securities') or 0)
-              o['regimes']=list(e.get('regimes') or []) if e.get('market_regime_verified') is True else []
-              o['market_regime_verified']=e.get('market_regime_verified') is True
-              o['market_regime_blockers']=list(e.get('market_regime_blockers') or [])
-              o['exit_execution_validated']=e.get('exit_execution_validated') is True
-              o['confidence_calibrated']=e.get('confidence_calibrated') is True
-              o['metrics']=e.get('metrics') if e.get('metrics') is not None else None
-              o['evaluator_status']=e.get('status')
-              o['evaluator_network_used']=False
-              o['evaluator_no_imputation']=True
-              o['blockers']=[b for b in o.get('blockers',[]) if 'production-equivalent evaluator' not in b]
-              for b in o['market_regime_blockers']:
-                  if b not in o['blockers']: o['blockers'].append(b)
-          req=set(o.get('required_regimes') or [])
-          enough=(o['oos_episodes']>=o['minimum_oos_episodes'] and o['oos_securities']>=o['minimum_oos_securities'] and o.get('market_regime_verified') is True and req.issubset(set(o.get('regimes') or [])))
-          passed=(enough and o.get('exit_execution_validated') is True and o.get('confidence_calibrated') is True and o.get('production_formula_match') is True and not o.get('blockers'))
-          o['status']='PASS' if passed else 'INSUFFICIENT'
-          Path('stock-lab/holding-exit-oos-result.json').write_text(json.dumps(o,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          print('merged evaluator:',e.get('status'),'formal:',o['status'])
-          PY
-
-      - name: Validate OOS truth contract
+      - name: Validate public OOS truth contract
         run: |
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/holding-exit-oos-result.json',encoding='utf-8'))
           assert x['schema_version']==2 and x['model']=='TW-holding-exit-v4'
           assert x['pipeline_executed'] is True
-          assert x['status'] in ('PASS','INSUFFICIENT')
-          assert x['source']['class'] in ('ogdl_daily_archive','licensed_history_bundle')
-          assert x['source']['licence']
-          assert x['source']['provenance_rejections']>=0
-          assert len(x['production_formula_sha256'])==64
-          if x['status']!='PASS':
-            assert x['blockers'] or x.get('evaluator_status')=='INSUFFICIENT'
-            assert not (x['exit_execution_validated'] and x['confidence_calibrated'] and x['production_formula_match'] and x['oos_episodes']>=x['minimum_oos_episodes'] and x.get('market_regime_verified') is True)
-          else:
-            assert x['oos_episodes']>=x['minimum_oos_episodes']
-            assert x['oos_securities']>=x['minimum_oos_securities']
-            assert x.get('market_regime_verified') is True
-            assert set(x['required_regimes']).issubset(set(x['regimes']))
-            assert x['exit_execution_validated'] is True
-            assert x['confidence_calibrated'] is True
-            assert x['production_formula_match'] is True
-          print('holding-exit OOS truth contract:',x['status'],x['source']['class'])
+          assert x['source']['class']=='ogdl_daily_archive'
+          assert x['source']['licence']=='OGDL-1.0'
+          assert x['status']=='INSUFFICIENT'
+          assert x['metrics'] is None
+          assert x['exit_execution_validated'] is False
+          assert x['confidence_calibrated'] is False
+          print('public OOS remains truthfully INSUFFICIENT')
           PY
 
-      - name: Rebuild public readiness from private-runtime OOS artifact
+      - name: Rebuild public readiness
         run: |
           python stock-lab/build-holding-readiness.py \
             --manifest stock-lab/history-ogdl/manifest.json \
@@ -246,48 +128,26 @@ jobs:
             --oos stock-lab/holding-exit-oos-result.json \
             --out stock-lab/holding-readiness.json
 
-      - name: Validate readiness remains fail-closed
+      - name: Validate private licensed acquisition remains required
         run: |
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/holding-readiness.json',encoding='utf-8'))
-          assert x['schema_version']==3 and x['model']=='TW-holding-exit-v4'
-          assert x['selected_history_source']['kind'] in ('ogdl_daily_archive','licensed_history_bundle')
-          a=x['activation_path']
-          assert a['primary']=='licensed_historical_backfill'
-          assert a['requires_waiting_120_trading_days'] is False
-          assert 'never impute' in a['fallback']
-          if x['selected_history_source']['kind']=='ogdl_daily_archive':
-            assert a['status']=='pending_licensed_subscription_or_import'
-          if x['overall_status']!='PASS':
-            assert x['executable_exit_output'] is False
-            assert x['blockers']
-          else:
-            assert x['executable_exit_output'] is True
-            assert x['selected_history_source']['kind']=='licensed_history_bundle'
-          print('holding readiness:',x['overall_status'],x['selected_history_source']['kind'],a['status'])
+          assert x['overall_status']=='INSUFFICIENT'
+          assert x['executable_exit_output'] is False
+          assert x['selected_history_source']['kind']=='ogdl_daily_archive'
+          assert x['activation_path']['requires_waiting_120_trading_days'] is False
+          assert x['activation_path']['primary']=='licensed_historical_backfill'
+          print('licensed backfill must be acquired/processed outside public CI under provider-approved rights')
           PY
 
-      - name: Prove licensed raw history never entered repository workspace
-        if: always()
-        run: |
-          set -euo pipefail
-          bad="$(git status --porcelain --untracked-files=all | grep 'stock-lab/history-licensed/' || true)"
-          if [ -n "$bad" ]; then
-            echo 'ERROR: licensed raw data appeared in repository workspace:'
-            echo "$bad"
-            exit 1
-          fi
-          rm -rf "$LICENSED_BUNDLE_DIR" "$LICENSED_BUNDLE_ARCHIVE" /tmp/licensed-bundle-validation.json
-          echo 'ephemeral licensed bundle removed'
-
-      - name: Persist only derived OOS/readiness when changed
+      - name: Persist only public fail-closed readiness when changed
         run: |
           if [ -z "$(git status --porcelain -- stock-lab/holding-exit-oos-result.json stock-lab/holding-readiness.json)" ]; then echo 'No OOS/readiness change'; exit 0; fi
           git config user.name 'stocklab-bot'
           git config user.email 'stocklab-bot@users.noreply.github.com'
           git add stock-lab/holding-exit-oos-result.json stock-lab/holding-readiness.json
-          git commit -m 'update holding exit OOS readiness'
+          git commit -m 'update public holding exit readiness'
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
