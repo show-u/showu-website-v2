@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Offline orchestration for StockLab TW-holding-exit-v4.
 
-This is the agreed activation path for formal holding/exit output:
-validated licensed history -> production-equivalent evaluator -> market-regime gate ->
-strict public derived OOS artifact -> readiness rebuild.
+Agreed activation path:
+validated licensed history -> production-equivalent evaluator -> licensed market-regime
+gate -> strict formal OOS post-gate -> public derived artifact -> readiness rebuild.
 
 Hard boundary:
-- This script performs no network acquisition.
-- Raw licensed rows stay inside --bundle-dir and are never copied to the public repo.
+- No network acquisition is performed here.
+- Raw licensed rows stay inside --bundle-dir/private work and are never copied to the public repo.
 - Missing/invalid gates stay INSUFFICIENT; nothing is imputed or invented.
-- PASS is accepted only when the evaluator explicitly proves every frozen formal gate.
+- PASS is accepted only when every frozen formal gate is independently true.
 """
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ import argparse
 import datetime as dt
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -48,30 +47,30 @@ def protocol_thresholds(protocol: dict):
     }
 
 
-def public_artifact(gated: dict, manifest: dict, protocol: dict, production: Path):
+def public_artifact(formal: dict, manifest: dict, protocol: dict, production: Path):
     th = protocol_thresholds(protocol)
-    regimes = sorted(set(gated.get("regimes") or []))
-    episodes = int(gated.get("oos_episodes") or 0)
-    securities = int(gated.get("oos_securities") or 0)
-    calibration = gated.get("calibration") or {}
-    metrics = gated.get("metrics") if isinstance(gated.get("metrics"), dict) else None
+    regimes = sorted(set(formal.get("regimes") or []))
+    episodes = int(formal.get("oos_episodes") or 0)
+    securities = int(formal.get("oos_securities") or 0)
+    calibration = formal.get("calibration") or {}
+    metrics = formal.get("metrics") if isinstance(formal.get("metrics"), dict) else None
 
     gates = {
-        "evaluator_completed": gated.get("status") in {"EVALUATED", "PASS"},
-        "no_imputation": gated.get("no_imputation") is True,
-        "network_unused_by_evaluator": gated.get("network_used") is False,
-        "market_regime_verified": gated.get("market_regime_verified") is True,
+        "formal_post_gate_pass": formal.get("status") == "PASS",
+        "no_imputation": formal.get("no_imputation") is True,
+        "network_unused_by_evaluator": formal.get("network_used") is False,
+        "market_regime_verified": formal.get("market_regime_verified") is True,
         "minimum_oos_episodes": episodes >= th["minimum_oos_episodes"],
         "minimum_oos_securities": securities >= th["minimum_oos_securities"],
         "required_regimes": set(th["required_regimes"]).issubset(set(regimes)),
-        "exit_execution_validated": gated.get("exit_execution_validated") is True,
-        "production_formula_match": gated.get("production_formula_match") is True,
-        "confidence_calibrated": gated.get("confidence_calibrated") is True and calibration.get("status") == "PASS",
-        "formal_performance_gate": gated.get("formal_performance_gate") is True,
-        "non_overlapping_oos_verified": gated.get("non_overlapping_oos_verified") is True,
-        "walk_forward_verified": gated.get("walk_forward_verified") is True,
-        "baseline_comparison_verified": gated.get("baseline_comparison_verified") is True,
-        "cluster_uncertainty_verified": gated.get("cluster_uncertainty_verified") is True,
+        "exit_execution_validated": formal.get("exit_execution_validated") is True,
+        "production_formula_match": formal.get("production_formula_match") is True,
+        "confidence_calibrated": formal.get("confidence_calibrated") is True and calibration.get("status") == "PASS",
+        "formal_performance_gate": formal.get("formal_performance_gate") is True,
+        "non_overlapping_oos_verified": formal.get("non_overlapping_oos_verified") is True,
+        "walk_forward_verified": formal.get("walk_forward_verified") is True,
+        "baseline_comparison_verified": formal.get("baseline_comparison_verified") is True,
+        "cluster_uncertainty_verified": formal.get("cluster_uncertainty_verified") is True,
         "metrics_present": metrics is not None,
     }
     blockers = [k for k, ok in gates.items() if not ok]
@@ -111,6 +110,9 @@ def public_artifact(gated: dict, manifest: dict, protocol: dict, production: Pat
         "formal_gates": gates,
         "metrics": metrics,
         "calibration": calibration if gates["confidence_calibrated"] else None,
+        "walk_forward": formal.get("walk_forward") if gates["walk_forward_verified"] else None,
+        "cluster_bootstrap": formal.get("cluster_bootstrap") if gates["cluster_uncertainty_verified"] else None,
+        "performance_gate": formal.get("performance_gate"),
         "blockers": blockers,
     }
 
@@ -144,7 +146,8 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     validation = work / "licensed-bundle-validation.json"
     evaluator = work / "holding-evaluator.json"
-    gated = work / "holding-evaluator-gated.json"
+    regime_gated = work / "holding-evaluator-regime-gated.json"
+    formal_gated = work / "holding-evaluator-formal-gated.json"
 
     # 1) Legal/provenance/schema/hash/semantic gate. Offline only.
     run([sys.executable, str(STOCK / "validate-licensed-bundle.py"), str(bundle), "--contract", str(contract), "--out", str(validation)])
@@ -166,20 +169,24 @@ def main():
     if not all(required_truth):
         raise SystemExit("licensed bundle truth contract incomplete; formal holding output remains locked")
 
-    # 2) Run the actual production holding formula against historical episodes.
+    # 2) Run the exact production holding formula. Raw episode records stay in the ignored private work directory.
     run(["node", str(STOCK / "holding-oos-evaluator.mjs"), "--bundle-dir", str(bundle), "--production", str(production), "--protocol", str(protocol_path), "--out", str(evaluator)])
 
-    # 3) Independently prove that bull/bear/sideways comes from licensed broad-market history.
-    run([sys.executable, str(STOCK / "gate-holding-evaluator.py"), "--evaluator", str(evaluator), "--bundle-dir", str(bundle), "--out", str(gated)])
+    # 3) Prove bull/bear/sideways comes from licensed broad-market history, not from the tested stock itself.
+    run([sys.executable, str(STOCK / "gate-holding-evaluator.py"), "--evaluator", str(evaluator), "--bundle-dir", str(bundle), "--out", str(regime_gated)])
 
-    # 4) Publish only derived aggregate evidence. Raw licensed rows and per-episode rows stay private.
-    g = load(gated)
+    # 4) Formal post-gate: non-overlap, MA20/hold baselines, execution replay, recalibration,
+    #    walk-forward blocks, clustered uncertainty and the pre-frozen machine pass thresholds.
+    run([sys.executable, str(STOCK / "formalize-holding-oos.py"), "--evaluator", str(regime_gated), "--bundle-dir", str(bundle), "--protocol", str(protocol_path), "--out", str(formal_gated)])
+
+    # 5) Publish only aggregate derived evidence. Never publish licensed raw rows or episode rows.
+    formal = load(formal_gated)
     manifest = load(bundle / "manifest.json")
     protocol = load(protocol_path)
-    public = public_artifact(g, manifest, protocol, production)
+    public = public_artifact(formal, manifest, protocol, production)
     public_oos.write_text(json.dumps(public, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    # 5) Rebuild readiness from the derived public artifact. This automatically unlocks only on real PASS.
+    # 6) Rebuild readiness. Public exit recommendations unlock only when every real gate is PASS.
     run([sys.executable, str(STOCK / "build-holding-readiness.py"), "--licensed-bundle-dir", str(bundle), "--protocol", str(protocol_path), "--oos", str(public_oos), "--out", str(public_readiness)])
 
     print(json.dumps({
@@ -193,8 +200,6 @@ def main():
         "public_readiness": str(public_readiness),
         "private_work_dir": str(work),
     }, ensure_ascii=False, indent=2))
-
-    # The command succeeds when the pipeline ran truthfully. PASS/INSUFFICIENT is in the artifact.
 
 
 if __name__ == "__main__":
