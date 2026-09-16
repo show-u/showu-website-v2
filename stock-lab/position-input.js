@@ -16,6 +16,7 @@
   const num=v=>{const s=String(v??'').trim().replace(/,/g,'');if(!s)return null;const x=Number(s);return Number.isFinite(x)?x:null};
   const money=x=>Number(x).toLocaleString('zh-TW',{maximumFractionDigits:4});
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const validDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!Number.isNaN(new Date(`${v}T00:00:00+08:00`).getTime());
 
   function rowTemplate(){
     const id=++seq;
@@ -27,8 +28,8 @@
     if(mode.value!=='lots'){summary.innerHTML='<b>逐筆明細未啟用</b><div class="mini">目前以你輸入的券商總均價、目前持股數與首次買入日為準。</div>';return}
     const all=lotRows(),used=all.filter(x=>x.date||x.price!=null||x.shares!=null||x.note.trim());
     if(!used.length){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b>尚未輸入買入明細</b><div class="mini">逐筆模式不會自動猜測任何成本或日期。</div>';return}
-    const incomplete=used.filter(x=>!x.date||!(x.price>0)||!(x.shares>0));
-    if(incomplete.length){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b class="bad">買入明細不完整</b><div class="mini">每一筆已使用的明細都必須有買入日、正數買入價格與目前仍持有股數。缺值不補 0。</div>';return}
+    const incomplete=used.filter(x=>!validDate(x.date)||!(x.price>0)||!(x.shares>0));
+    if(incomplete.length){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b class="bad">買入明細不完整</b><div class="mini">每一筆已使用的明細都必須有有效買入日、正數買入價格與目前仍持有股數。缺值不補 0，也不推測日期。</div>';return}
     const totalShares=used.reduce((s,x)=>s+x.shares,0),totalCost=used.reduce((s,x)=>s+x.price*x.shares,0),weighted=totalShares?totalCost/totalShares:null,dates=used.map(x=>x.date).sort();
     if(!(totalShares>0)||!(weighted>0)){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b class="bad">明細無法形成有效部位</b>';return}
     avgCost.value=String(+weighted.toFixed(4));shares.value=String(+totalShares.toFixed(4));buyDate.value=dates[0]||'';
@@ -37,11 +38,13 @@
   function setMode(){const lots=mode.value==='lots';manual.classList.toggle('hidden',lots);lotsBox.classList.toggle('hidden',!lots);if(lots&&!rows.children.length)addRow();recompute()}
   function collect(){
     if(mode.value==='manual'){
-      const a=num(avgCost.value),s=num(shares.value),d=buyDate.value||null;if(!(a>0)||!(s>0))throw Error('請輸入有效的券商總均價與目前持有股數');
-      return{mode:'manual',averageCost:a,shares:s,buyDate:d,lots:null,provenance:{averageCost:'user_observed',shares:'user_observed',buyDate:d?'user_observed':'unavailable'}};
+      const a=num(avgCost.value),s=num(shares.value),d=buyDate.value||null;
+      if(!(a>0)||!(s>0))throw Error('請輸入有效的券商總均價與目前持有股數');
+      if(!validDate(d))throw Error('正式出場分析需要有效首次買入日；日期缺失時只能顯示持股事實與估算損益，不能產生出場時機');
+      return{mode:'manual',averageCost:a,shares:s,buyDate:d,lots:null,provenance:{averageCost:'user_observed',shares:'user_observed',buyDate:'user_observed'}};
     }
-    recompute();const a=num(avgCost.value),s=num(shares.value),d=buyDate.value||null;if(!(a>0)||!(s>0)||!d)throw Error('逐筆買入明細尚未完整');
-    const lots=lotRows().filter(x=>x.date&&x.price>0&&x.shares>0).map(x=>({date:x.date,price:x.price,shares:x.shares,note:x.note||null,provenance:'user_observed'}));
+    recompute();const a=num(avgCost.value),s=num(shares.value),d=buyDate.value||null;if(!(a>0)||!(s>0)||!validDate(d))throw Error('逐筆買入明細尚未完整');
+    const lots=lotRows().filter(x=>validDate(x.date)&&x.price>0&&x.shares>0).map(x=>({date:x.date,price:x.price,shares:x.shares,note:x.note||null,provenance:'user_observed'}));
     return{mode:'lots',averageCost:a,shares:s,buyDate:d,lots,provenance:{averageCost:'derived_from_user_lots',shares:'derived_from_user_lots',buyDate:'derived_from_user_lots'}};
   }
   function provenanceHtml(){return mode.value==='lots'?'<b>部位資料來源｜derived from user input</b><div class="mini">總股數、總成本均價與最早買入日由你輸入的逐筆「買入日＋價格＋目前仍持有股數」加權計算；不是券商原始欄位，也不是市場推估。</div>':'<b>部位資料來源｜user observed</b><div class="mini">成本均價、目前持有股數與首次買入日直接採用你輸入的券商／個人紀錄；系統不自行猜測。</div>'}
