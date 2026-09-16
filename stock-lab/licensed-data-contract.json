@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "contract_name": "StockLab Licensed Taiwan Market Data Bundle",
   "purpose": "Fail-closed contract for legally reusable historical data used by entry, scanner and holding-exit validation. This file is a schema/policy contract only and contains no market observations.",
   "non_negotiable_rules": {
@@ -12,7 +12,9 @@
     "every_observation_requires_source_provenance": true,
     "license_must_allow_automated_processing": true,
     "license_must_allow_derived_outputs": true,
-    "production_and_oos_use_same_normalization_rules": true
+    "production_and_oos_use_same_normalization_rules": true,
+    "market_regime_must_come_from_market_index_not_stock_price": true,
+    "historical_security_validity_must_be_respected": true
   },
   "required_manifest_fields": [
     "schema_version",
@@ -61,11 +63,16 @@
     },
     "corporate_actions": {
       "required": true,
-      "minimum_fields": ["ticker", "market", "effective_date", "event_type", "source_id"]
+      "minimum_fields": ["ticker", "market", "effective_date", "action_type", "source_id"]
     },
     "risk_states": {
       "required": true,
       "minimum_fields": ["ticker", "market", "date", "attention", "disposition", "suspended", "source_id"]
+    },
+    "market_index": {
+      "required": true,
+      "minimum_fields": ["date", "market", "index_code", "close", "source_id"],
+      "rule": "At least one legally reusable, provenance-identified broad market index series must cover each tested market/session used for bull/bear/sideways regime labels. TWSE and TPEx stock prices may not substitute for market-index history."
     }
   },
   "dataset_manifest_entry": {
