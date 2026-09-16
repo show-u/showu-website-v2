@@ -21,10 +21,10 @@
   <section id="result" class="card hidden"></section>
   <section id="holdPanel" class="card hidden">
     <label>股票代號／股票名稱<input id="holdTicker" inputmode="text" placeholder="例如：2454 或 聯發科"></label><div style="height:10px"></div>
-    <div id="manualPositionFields" class="grid"><label>總量成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>首次買入日（正式出場分析必要）<input id="holdBuyDate" type="date" required></label></div>
+    <div id="manualPositionFields" class="grid"><label>目前持股成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>首次買入日（正式出場分析必要）<input id="holdBuyDate" type="date" required></label></div>
     <label style="display:block;margin-top:10px">部位輸入方式<select id="positionInputMode"><option value="manual" selected>直接輸入目前均價／股數</option><option value="lots">進階：逐筆輸入仍持有明細</option></select></label>
     <div id="positionLots" class="hidden" style="margin-top:10px"><div id="positionLotRows"></div><button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button><div id="positionLotSummary" class="source-note compact-note"></div></div>
-    <p class="simple-rule">已持有股票不再套「短／中／長買入價」。目前先顯示你的實際成本、股數、買入日、最新合法收盤、損益與已驗證風險事實；只有合法歷史資料、正式樣本外 OOS、出場可執行性與信心校準全部通過後，才解鎖續抱／減碼／出場條件與價格。</p>
+    <p class="simple-rule">已持有股票不選「短／中／長」。分析期間由你的實際首次買入日與已驗證交易日自動決定；系統依實際持有交易日建立防守線、壓力區與出場條件。成本、股數、買入日、最新合法收盤與損益可先顯示；只有合法歷史資料、正式樣本外 OOS、出場可執行性與信心校準全部通過後，才解鎖續抱／減碼／出場條件與價格。</p>
     <button id="holdAnalyzeBtn">分析出場時機</button><div id="holdLoad" class="loader hidden">正在驗證持股資料與出場模型準備度…</div><div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">成本、股數與日期只採你的輸入，不自行推測。</div></div>
   </section>
   <section id="findPanel" class="card hidden"><h2 style="margin-top:0">目前值得研究的入場候選</h2><p class="muted">使用與「想買這檔」相同的完整模型。合格不足 10 檔就不補滿。</p><button id="scanBtn">找出 TOP 10</button><div id="scanLoad" class="loader hidden">正在驗證候選股票…</div></section>
