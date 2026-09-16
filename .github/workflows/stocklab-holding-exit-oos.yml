@@ -7,6 +7,7 @@ on:
       - 'stock-lab/history-ogdl/**'
       - 'stock-lab/import-licensed-history.py'
       - 'stock-lab/prepare-twmd-private-backfill.py'
+      - 'stock-lab/private-backfill-rights-template.json'
       - 'stock-lab/validate-licensed-bundle.py'
       - 'stock-lab/licensed-data-contract.json'
       - 'stock-lab/holding-oos-evaluator.mjs'
@@ -79,6 +80,43 @@ jobs:
               for n,line in hits: print(f'{n}: {line}')
               raise SystemExit(1)
           print('Public CI may syntax-check private importers but contains no private/licensed market-data acquisition.')
+          PY
+
+      - name: Prove TWMD importer refuses unconfirmed rights before network use
+        run: |
+          python - <<'PY'
+          import importlib.util,json,os,pathlib,sys,tempfile
+          spec=importlib.util.spec_from_file_location('twmd_private','stock-lab/prepare-twmd-private-backfill.py')
+          mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+          template=json.load(open('stock-lab/private-backfill-rights-template.json',encoding='utf-8'))
+          # Fill only descriptive metadata. All entitlement booleans deliberately remain false.
+          template.update({
+              'provider':'TWMD','plan':'CI-negative-fixture','terms_reference':'fixture-only',
+              'terms_reviewed_date':'2026-09-16','evidence_reference':'fixture-only',
+              'processing_location':'CI-negative-fixture'})
+          with tempfile.TemporaryDirectory() as td:
+              root=pathlib.Path(td)
+              rights=root/'rights.json';rights.write_text(json.dumps(template),encoding='utf-8')
+              symbols=root/'symbols.csv';symbols.write_text('ticker,market\n2454,TWSE\n',encoding='utf-8')
+              out=root/'private-out'
+              os.environ['TWMD_API_KEY']='DUMMY_KEY_MUST_NOT_BE_USED'
+              def no_network(*a,**k):
+                  raise AssertionError('NETWORK_CALLED_BEFORE_RIGHTS_GATE')
+              mod.urllib.request.urlopen=no_network
+              old=sys.argv[:]
+              sys.argv=['prepare-twmd-private-backfill.py','--symbols',str(symbols),'--start','2024-01-01','--end','2026-09-15','--rights-evidence',str(rights),'--out-dir',str(out)]
+              try:
+                  try:
+                      mod.main()
+                      raise AssertionError('importer unexpectedly accepted unconfirmed rights')
+                  except SystemExit as e:
+                      msg=str(e)
+                      assert 'explicit entitlement not confirmed' in msg,msg
+                      assert 'NETWORK_CALLED_BEFORE_RIGHTS_GATE' not in msg,msg
+                      assert not out.exists(),'private output directory should not be created before rights gate passes'
+                      print('TWMD_STAGING_REJECTED as required:',msg)
+              finally:
+                  sys.argv=old
           PY
 
       - name: Prove evaluator is production-equivalent and fail-closed without licensed history
