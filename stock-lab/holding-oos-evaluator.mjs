@@ -9,6 +9,8 @@
  * - A signal formed from completed-session data executes no earlier than the next
  *   verified trading session using that session OPEN (not hindsight high/low).
  * - Corporate-action/risk-state uncertainty excludes the episode/session.
+ * - Bull/bear/sideways labels come only from licensed broad-market index history,
+ *   never from the tested stock's own price path.
  * - Raw evidence strength is fitted on development data only; untouched OOS is
  *   used solely to validate the frozen calibration map.
  */
@@ -48,7 +50,7 @@ function validateBundle(){
   const mp=path.join(bundleDir,'manifest.json');if(!fs.existsSync(mp))return{usable:false,reason:'licensed bundle not present'};
   const m=json(mp),L=m.license||{};
   if(!(L.automated_processing_allowed===true&&L.derived_outputs_allowed===true&&L.local_storage_allowed===true&&m.no_imputation===true&&m.network_collection_performed_by_importer===false))die('licensed rights/integrity gate failed');
-  const required=['security_master','trading_calendar','daily_ohlc','corporate_actions','risk_states'];
+  const required=['security_master','trading_calendar','daily_ohlc','corporate_actions','risk_states','market_index'];
   const ds={};for(const n of required){const d=m.datasets?.[n];if(!d)die(`missing dataset ${n}`);const p=path.join(bundleDir,String(d.path||''));if(!fs.existsSync(p)||sha256(p)!==d.sha256)die(`checksum failed ${n}`);ds[n]=rowsFrom(p,d.format)}
   return{usable:true,manifest:m,ds};
 }
@@ -70,13 +72,20 @@ function calibrationConfig(){
   return c;
 }
 
+function validOn(meta,date){const from=String(meta?.valid_from||''),to=String(meta?.valid_to||'');return !!from&&date>=from&&(!to||date<=to)}
 function buildData(ds,manifest){
   const master=new Map(ds.security_master.filter(x=>x.security_type==='ordinary_stock').map(x=>[key(x.market,String(x.ticker)),x]));
   const calendar=new Map();for(const x of ds.trading_calendar){if(!truth(x.is_trading_day))continue;(calendar.get(x.market)||calendar.set(x.market,[]).get(x.market)).push(String(x.date))}for(const v of calendar.values())v.sort();
-  const bars=new Map();for(const x of ds.daily_ohlc){const k=key(x.market,String(x.ticker)),o=num(x.open),h=num(x.high),l=num(x.low),c=num(x.close),v=num(x.volume);if(!master.has(k)||![o,h,l,c].every(z=>z>0)||h<Math.max(o,l,c)||l>Math.min(o,h,c))continue;(bars.get(k)||bars.set(k,[]).get(k)).push({iso:String(x.date),d:String(x.date),o,h,l,c,v})}for(const v of bars.values())v.sort((a,b)=>a.iso.localeCompare(b.iso));
+  const bars=new Map();
+  for(const x of ds.daily_ohlc){const k=key(x.market,String(x.ticker)),meta=master.get(k),date=String(x.date),o=num(x.open),h=num(x.high),l=num(x.low),c=num(x.close),v=num(x.volume);if(!meta||!validOn(meta,date)||![o,h,l,c].every(z=>z>0)||h<Math.max(o,l,c)||l>Math.min(o,h,c))continue;(bars.get(k)||bars.set(k,[]).get(k)).push({iso:date,d:date,o,h,l,c,v})}
+  for(const v of bars.values())v.sort((a,b)=>a.iso.localeCompare(b.iso));
   const actions=new Map();for(const x of ds.corporate_actions){const k=key(x.market,String(x.ticker));(actions.get(k)||actions.set(k,[]).get(k)).push(x)}
   const risks=new Map();for(const x of ds.risk_states){const k=key(x.market,String(x.ticker));(risks.get(k)||risks.set(k,new Map()).get(k)).set(String(x.date),x)}
-  return{master,calendar,bars,actions,risks,manifest};
+  const marketIndex=new Map(),indexCodes=new Map();
+  for(const x of ds.market_index){const market=String(x.market),date=String(x.date),code=String(x.index_code||''),close=num(x.close);if(!['TWSE','TPEx'].includes(market)||!code||!(close>0))continue;(indexCodes.get(market)||indexCodes.set(market,new Set()).get(market)).add(code);(marketIndex.get(market)||marketIndex.set(market,[]).get(market)).push({date,close,index_code:code})}
+  for(const [market,codes] of indexCodes)if(codes.size!==1)die(`market_index must contain exactly one broad index_code for ${market}; found ${[...codes].join(',')}`);
+  for(const [market,v] of marketIndex){v.sort((a,b)=>a.date.localeCompare(b.date));const seen=new Set();for(const z of v){if(seen.has(z.date))die(`market_index duplicate date for ${market}: ${z.date}`);seen.add(z.date)}}
+  return{master,calendar,bars,actions,risks,marketIndex,indexCodes,manifest};
 }
 
 function actionNeutral(x){const t=String(x.action_type||'').trim().toLowerCase();return !t||['none','no_action','normal'].includes(t)}
@@ -86,21 +95,20 @@ function riskBlocked(r){return truth(r?.disposition)||truth(r?.suspended)}
 function nextBar(all,i){return i+1<all.length?all[i+1]:null}
 function netExitReturn(entry,exit){return exit*(1-COMMISSION-SELL_TAX-SLIPPAGE)/(entry*(1+COMMISSION+SLIPPAGE))-1}
 
-function regimeForBars(all,i){
-  if(i<120)return null;const c=all[i].c,ma20=mean(all.slice(i-19,i+1).map(x=>x.c)),ma60=mean(all.slice(i-59,i+1).map(x=>x.c)),ma120=mean(all.slice(i-119,i+1).map(x=>x.c));
-  if(![ma20,ma60,ma120].every(Number.isFinite))return null;
+function regimeForMarket(data,market,date){
+  const all=data.marketIndex.get(market)||[],i=all.findIndex(x=>x.date===date);if(i<119)return null;
+  const c=all[i].close,ma20=mean(all.slice(i-19,i+1).map(x=>x.close)),ma60=mean(all.slice(i-59,i+1).map(x=>x.close)),ma120=mean(all.slice(i-119,i+1).map(x=>x.close));
+  if(![c,ma20,ma60,ma120].every(Number.isFinite))return null;
   if(c>ma20&&ma20>ma60&&ma60>ma120)return'bull';
   if(c<ma20&&ma20<ma60&&ma60<ma120)return'bear';
   return'sideways';
 }
 
-function deterministicEntries(all){
-  // No future outcome is used. Every ~30 sessions after enough pre-entry context is eligible.
-  const out=[];for(let i=minBars-1;i<all.length-22;i+=30)out.push(i);return out;
-}
+function deterministicEntries(all){const out=[];for(let i=minBars-1;i<all.length-22;i+=30)out.push(i);return out}
 
-function runEpisode(prod,all,entryIndex,riskMap,actions){
+function runEpisode(prod,data,market,all,entryIndex,riskMap,actions){
   const entry=all[entryIndex],entryPrice=entry.o,buyDate=entry.iso;if(!(entryPrice>0)||!riskKnown(riskMap,buyDate))return null;
+  const regime=regimeForMarket(data,market,buyDate);if(!regime)return null;
   const maxEval=Math.min(all.length-2,entryIndex+240);let signal=null,signalIndex=null,decision=null,rawEvidence=null;
   for(let i=entryIndex;i<=maxEval;i++){
     const b=all.slice(0,i+1),today=all[i],risk=riskMap.get(today.iso);if(!risk)break;
@@ -115,31 +123,21 @@ function runEpisode(prod,all,entryIndex,riskMap,actions){
   if(signalIndex!=null&&nxt&&riskKnown(riskMap,nxt.iso)){
     const nr=riskMap.get(nxt.iso);if(!truth(nr?.suspended)){executed=true;exitPrice=nxt.o;exitDate=nxt.iso}
   }
-  const modelReturn=netExitReturn(entryPrice,exitPrice),holdReturn=netExitReturn(entryPrice,evaluationEnd.c),regime=regimeForBars(all,entryIndex);
+  const modelReturn=netExitReturn(entryPrice,exitPrice),holdReturn=netExitReturn(entryPrice,evaluationEnd.c);
   const calibrationEligible=signalIndex!=null&&Number.isFinite(rawEvidence),calibrationLabel=calibrationEligible?(executed&&modelReturn>=holdReturn?1:0):null;
   return{ticker:null,buyDate,entryPrice,regime,signal:signal||'NO_EXIT_SIGNAL',signalDate:signalIndex!=null?all[signalIndex].iso:null,executed,exitDate,exitPrice,netReturnPct:modelReturn*100,holdBaselineReturnPct:holdReturn*100,benefitVsHoldPct:(modelReturn-holdReturn)*100,holdingSessions:(signalIndex??maxEval)-entryIndex+1,productionState:decision?.decision?.state||null,rawEvidence,calibrationLabel};
 }
 
 function calibrationRecords(episodes){return episodes.filter(x=>HARD_EXIT_STATES.has(x.signal)&&Number.isFinite(x.rawEvidence)&&[0,1].includes(x.calibrationLabel))}
-
-function initialEqualFrequencyBins(records,count=5){
-  const v=[...records].sort((a,b)=>a.rawEvidence-b.rawEvidence);if(!v.length)return[];
-  const bins=[];for(let i=0;i<count;i++){const lo=Math.floor(i*v.length/count),hi=Math.floor((i+1)*v.length/count),rows=v.slice(lo,hi);if(!rows.length)continue;bins.push({lo:rows[0].rawEvidence,hi:rows.at(-1).rawEvidence,n:rows.length,successes:rows.reduce((s,x)=>s+x.calibrationLabel,0)})}return bins;
-}
-function isotonicBins(records){
-  const blocks=initialEqualFrequencyBins(records,5).map(b=>({...b,rate:b.successes/b.n}));
-  let i=0;while(i<blocks.length-1){if(blocks[i].rate<=blocks[i+1].rate+1e-12){i++;continue}const a=blocks[i],b=blocks[i+1],n=a.n+b.n,s=a.successes+b.successes;blocks.splice(i,2,{lo:a.lo,hi:b.hi,n,successes:s,rate:s/n});if(i>0)i--}
-  return blocks.map(b=>({lo:b.lo,hi:b.hi,n:b.n,rate:b.rate}));
-}
+function initialEqualFrequencyBins(records,count=5){const v=[...records].sort((a,b)=>a.rawEvidence-b.rawEvidence);if(!v.length)return[];const bins=[];for(let i=0;i<count;i++){const lo=Math.floor(i*v.length/count),hi=Math.floor((i+1)*v.length/count),rows=v.slice(lo,hi);if(!rows.length)continue;bins.push({lo:rows[0].rawEvidence,hi:rows.at(-1).rawEvidence,n:rows.length,successes:rows.reduce((s,x)=>s+x.calibrationLabel,0)})}return bins}
+function isotonicBins(records){const blocks=initialEqualFrequencyBins(records,5).map(b=>({...b,rate:b.successes/b.n}));let i=0;while(i<blocks.length-1){if(blocks[i].rate<=blocks[i+1].rate+1e-12){i++;continue}const a=blocks[i],b=blocks[i+1],n=a.n+b.n,s=a.successes+b.successes;blocks.splice(i,2,{lo:a.lo,hi:b.hi,n,successes:s,rate:s/n});if(i>0)i--}return blocks.map(b=>({lo:b.lo,hi:b.hi,n:b.n,rate:b.rate}))}
 function calibrationPredict(blocks,raw){if(!blocks.length||!Number.isFinite(raw))return null;let best=blocks[0];for(const b of blocks){if(raw>=b.lo&&raw<=b.hi)return clamp(b.rate);if(Math.abs(raw-(b.lo+b.hi)/2)<Math.abs(raw-(best.lo+best.hi)/2))best=b}return clamp(best.rate)}
 function calibrationMetrics(blocks,records,devBaseRate){
-  if(!records.length||!blocks.length)return null;let brier=0,ece=0;const perBlock=[];
-  for(const block of blocks){const rows=records.filter(x=>x.rawEvidence>=block.lo&&x.rawEvidence<=block.hi);if(!rows.length)continue;const p=clamp(block.rate),obs=mean(rows.map(x=>x.calibrationLabel));for(const x of rows)brier+=(p-x.calibrationLabel)**2;ece+=rows.length*Math.abs(obs-p);perBlock.push({lo:block.lo,hi:block.hi,n:rows.length,predicted_rate:p,observed_rate:obs})}
-  // Scores outside development range use nearest isotonic block and must still count.
-  const covered=new Set(perBlock.flatMap(()=>[]));void covered;
-  brier=records.reduce((s,x)=>{const p=calibrationPredict(blocks,x.rawEvidence);return s+(p-x.calibrationLabel)**2},0)/records.length;
-  ece=perBlock.reduce((s,b)=>s+b.n*Math.abs(b.observed_rate-b.predicted_rate),0)/Math.max(1,perBlock.reduce((s,b)=>s+b.n,0));
+  if(!records.length||!blocks.length)return null;
+  const brier=records.reduce((s,x)=>{const p=calibrationPredict(blocks,x.rawEvidence);return s+(p-x.calibrationLabel)**2},0)/records.length;
   const baselineBrier=records.reduce((s,x)=>s+(devBaseRate-x.calibrationLabel)**2,0)/records.length;
+  const groups=new Map();for(const x of records){const p=calibrationPredict(blocks,x.rawEvidence),k=p.toFixed(8),g=groups.get(k)||{p,n:0,y:0};g.n++;g.y+=x.calibrationLabel;groups.set(k,g)}
+  const perBlock=[...groups.values()].map(g=>({n:g.n,predicted_rate:g.p,observed_rate:g.y/g.n})),ece=perBlock.reduce((s,b)=>s+b.n*Math.abs(b.observed_rate-b.predicted_rate),0)/records.length;
   return{brier,ece,baseline_brier:baselineBrier,blocks:perBlock};
 }
 function calibrateConfidence(devEpisodes,oosEpisodes,cfg){
@@ -155,9 +153,8 @@ function evaluate(data,prod,cfg){
   const securities=[];for(const [k,all] of data.bars){if(all.length>=minBars+25)securities.push([k,all])}
   securities.sort((a,b)=>a[0].localeCompare(b[0]));
   if(!securities.length)return{status:'INSUFFICIENT',dev:[],oos:[],reason:'no securities with minimum history',calibration:calibrateConfidence([],[],cfg)};
-  // Chronological 70/30 split per security. Development episodes are used only to fit the frozen calibrator; OOS is untouched.
   const oos=[],dev=[];
-  for(const [k,all] of securities){const split=Math.floor(all.length*.70),risk=data.risks.get(k),actions=data.actions.get(k)||[];if(!risk)continue;for(const ei of deterministicEntries(all)){const ep=runEpisode(prod,all,ei,risk,actions);if(!ep)continue;ep.ticker=k;ep.sample=ei>=split?'oos':'development';(ep.sample==='oos'?oos:dev).push(ep)}}
+  for(const [k,all] of securities){const split=Math.floor(all.length*.70),risk=data.risks.get(k),actions=data.actions.get(k)||[],market=k.split(':',1)[0];if(!risk)continue;for(const ei of deterministicEntries(all)){const ep=runEpisode(prod,data,market,all,ei,risk,actions);if(!ep)continue;ep.ticker=k;ep.sample=ei>=split?'oos':'development';(ep.sample==='oos'?oos:dev).push(ep)}}
   const oosSecs=new Set(oos.map(x=>x.ticker)),regimes=[...new Set(oos.map(x=>x.regime).filter(Boolean))].sort(),rets=oos.map(x=>x.netReturnPct/100),exec=oos.filter(x=>HARD_EXIT_STATES.has(x.signal)),executed=exec.filter(x=>x.executed),benefit=oos.map(x=>x.benefitVsHoldPct);
   const metrics=oos.length?{oos_episodes:oos.length,oos_securities:oosSecs.size,exit_signals:exec.length,executed_exits:executed.length,execution_rate_pct:exec.length?100*executed.length/exec.length:null,avg_net_return_pct:100*mean(rets),median_net_return_pct:100*median(rets),max_drawdown_pct:maxDrawdown(rets),q05_net_return_pct:100*quantile(rets,.05),avg_benefit_vs_hold_pct:mean(benefit),median_benefit_vs_hold_pct:median(benefit)}:null;
   const enough=oos.length>=minEpisodes&&oosSecs.size>=minSecurities&&['bull','bear','sideways'].every(x=>regimes.includes(x));
@@ -168,7 +165,7 @@ function evaluate(data,prod,cfg){
 let payload;
 try{
   const b=validateBundle(),prod=loadProduction(),cfg=calibrationConfig();
-  if(!b.usable)payload={schema_version:2,status:'INSUFFICIENT',reason:b.reason,production_formula_sha256:prod.sha,no_imputation:true,network_used:false,confidence_calibrated:false,calibration:{status:'INSUFFICIENT',reason:'licensed bundle not present'}};
-  else{const data=buildData(b.ds,b.manifest),r=evaluate(data,prod,cfg);payload={schema_version:2,generated_at:new Date().toISOString(),status:r.status,source_bundle_id:b.manifest.bundle_id,production_formula_sha256:prod.sha,no_imputation:true,network_used:false,chronological_oos:true,next_session_open_execution:true,development_episodes:r.development_episodes||0,oos_episodes:r.oos_episodes||0,oos_securities:r.oos_securities||0,regimes:r.regimes||[],exit_execution_validated:r.execution_validated===true,production_formula_match:r.production_formula_match===true,confidence_calibrated:r.calibration?.confidence_calibrated===true,calibration:r.calibration||null,metrics:r.metrics||null,episodes:r.oos||[],development_calibration_records:calibrationRecords(r.dev||[])}}
-}catch(e){payload={schema_version:2,status:'INSUFFICIENT',reason:String(e.message||e),no_imputation:true,network_used:false,confidence_calibrated:false}}
+  if(!b.usable)payload={schema_version:2,status:'INSUFFICIENT',reason:b.reason,production_formula_sha256:prod.sha,no_imputation:true,network_used:false,confidence_calibrated:false,market_regime_source:null,calibration:{status:'INSUFFICIENT',reason:'licensed bundle not present'}};
+  else{const data=buildData(b.ds,b.manifest),r=evaluate(data,prod,cfg);payload={schema_version:2,generated_at:new Date().toISOString(),status:r.status,source_bundle_id:b.manifest.bundle_id,production_formula_sha256:prod.sha,no_imputation:true,network_used:false,chronological_oos:true,next_session_open_execution:true,development_episodes:r.development_episodes||0,oos_episodes:r.oos_episodes||0,oos_securities:r.oos_securities||0,regimes:r.regimes||[],market_regime_source:'licensed_market_index',exit_execution_validated:r.execution_validated===true,production_formula_match:r.production_formula_match===true,confidence_calibrated:r.calibration?.confidence_calibrated===true,calibration:r.calibration||null,metrics:r.metrics||null,episodes:r.oos||[],development_calibration_records:calibrationRecords(r.dev||[])}}
+}catch(e){payload={schema_version:2,status:'INSUFFICIENT',reason:String(e.message||e),no_imputation:true,network_used:false,confidence_calibrated:false,market_regime_source:null}}
 fs.writeFileSync(outPath,JSON.stringify(payload,null,2)+'\n');console.log(JSON.stringify({...payload,episodes:undefined,development_calibration_records:undefined},null,2));
