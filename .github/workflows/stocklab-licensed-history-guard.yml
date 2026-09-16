@@ -5,6 +5,7 @@ on:
     paths:
       - 'stock-lab/history-licensed/**'
       - 'stock-lab/prepare-twmd-private-backfill.py'
+      - 'stock-lab/private-backfill-rights-template.json'
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
       - '.github/workflows/stocklab-holding-exit-oos.yml'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'stock-lab/history-licensed/**'
       - 'stock-lab/prepare-twmd-private-backfill.py'
+      - 'stock-lab/private-backfill-rights-template.json'
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
       - '.github/workflows/stocklab-holding-exit-oos.yml'
@@ -27,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reject licensed raw history in public repository
+      - name: Reject licensed raw history and private evidence in public repository
         run: |
           set -euo pipefail
           bad="$(git ls-files 'stock-lab/history-licensed/**' | grep -v '^stock-lab/history-licensed/README.md$' || true)"
@@ -36,8 +38,41 @@ jobs:
             echo "$bad"
             exit 1
           fi
-          grep -Fq 'stock-lab/history-licensed/*' .gitignore
-          echo 'licensed-history repository boundary passed'
+          for p in \
+            'stock-lab/history-licensed/*' \
+            'stock-lab/private-backfill-work/' \
+            'stock-lab/private-backfill-rights.json' \
+            'stock-lab/.twmd-api-key'; do
+            grep -Fq "$p" .gitignore || { echo "ERROR: missing .gitignore protection: $p"; exit 1; }
+          done
+          if git ls-files --error-unmatch stock-lab/private-backfill-rights.json >/dev/null 2>&1; then
+            echo 'ERROR: completed private rights evidence is tracked in public repository'
+            exit 1
+          fi
+          if git ls-files --error-unmatch stock-lab/.twmd-api-key >/dev/null 2>&1; then
+            echo 'ERROR: TWMD API key file is tracked in public repository'
+            exit 1
+          fi
+          echo 'licensed-history/private-evidence repository boundary passed'
+
+      - name: Require rights template to remain fail-closed
+        run: |
+          python - <<'PY'
+          import json
+          p='stock-lab/private-backfill-rights-template.json'
+          x=json.load(open(p,encoding='utf-8'))
+          rights=(
+            'commercial_use_allowed','api_acquisition_allowed','automated_processing_allowed',
+            'derived_analysis_allowed','public_derived_output_allowed','private_storage_allowed',
+            'processing_location_allowed')
+          for k in rights:
+              assert x.get(k) is False, f'template permission must default false: {k}'
+          for k in ('provider','plan','terms_reference','terms_reviewed_date','evidence_reference','processing_location'):
+              assert x.get(k)=='' or x.get(k) is None, f'template must not contain real entitlement evidence: {k}'
+          notes=str(x.get('notes') or '')
+          assert 'Template only' in notes and 'API keys' in notes and 'public repository' in notes
+          print('private rights template is fail-closed')
+          PY
 
       - name: Reject licensed raw acquisition in public CI
         run: |
@@ -53,6 +88,8 @@ jobs:
               s=line.strip()
               if 'STOCKLAB_LICENSED_BUNDLE_URL' in line or 'STOCKLAB_LICENSED_BUNDLE_SHA256' in line:
                   bad.append((n,line))
+              # Direct execution would be a network acquisition path. A subprocess fixture
+              # is allowed only for the explicit fail-before-network rights-gate test below.
               if s.startswith('python stock-lab/prepare-twmd-private-backfill.py'):
                   bad.append((n,line))
               if re.search(r'\b(curl|wget)\b.*licensed',line,re.I) or re.search(r'\b(aws\s+s3|gsutil)\b.*licensed',line,re.I):
@@ -64,6 +101,8 @@ jobs:
           required=(
               'Public CI may syntax-check private importers but contains no private/licensed market-data acquisition.',
               'rm -rf "$LICENSED_BUNDLE_DIR"',
+              'Prove TWMD importer refuses unconfirmed rights before network use',
+              'explicit entitlement not confirmed',
           )
           for x in required:
               assert x in text,x
