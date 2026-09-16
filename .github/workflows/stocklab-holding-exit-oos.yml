@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - 'stock-lab/history-ogdl/**'
+      - 'stock-lab/history-licensed/**'
+      - 'stock-lab/import-licensed-history.py'
       - 'stock-lab/run-holding-exit-oos.py'
       - 'stock-lab/build-holding-readiness.py'
       - 'stock-lab/holding-model.js'
@@ -31,12 +33,13 @@ jobs:
           python-version: '3.12'
       - name: Syntax check
         run: |
-          python -m py_compile stock-lab/run-holding-exit-oos.py stock-lab/build-holding-readiness.py
+          python -m py_compile stock-lab/run-holding-exit-oos.py stock-lab/build-holding-readiness.py stock-lab/import-licensed-history.py
       - name: Run formal holding-exit OOS gate
         run: |
           python stock-lab/run-holding-exit-oos.py \
             --manifest stock-lab/history-ogdl/manifest.json \
             --history-dir stock-lab/history-ogdl \
+            --licensed-bundle-dir stock-lab/history-licensed \
             --protocol stock-lab/holding-exit-validation-protocol.json \
             --production stock-lab/holding-model.js \
             --out stock-lab/holding-exit-oos-result.json
@@ -45,10 +48,11 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/holding-exit-oos-result.json',encoding='utf-8'))
-          assert x['schema_version']==1 and x['model']=='TW-holding-exit-v4'
+          assert x['schema_version']==2 and x['model']=='TW-holding-exit-v4'
           assert x['pipeline_executed'] is True
           assert x['status'] in ('PASS','INSUFFICIENT')
-          assert x['source']['licence']=='OGDL-1.0'
+          assert x['source']['class'] in ('ogdl_daily_archive','licensed_history_bundle')
+          assert x['source']['licence']
           assert x['source']['provenance_rejections']>=0
           assert len(x['production_formula_sha256'])==64
           if x['status']!='PASS':
@@ -62,12 +66,13 @@ jobs:
             assert x['exit_execution_validated'] is True
             assert x['confidence_calibrated'] is True
             assert x['production_formula_match'] is True
-          print('holding-exit OOS truth contract:',x['status'])
+          print('holding-exit OOS truth contract:',x['status'],x['source']['class'])
           PY
       - name: Rebuild public readiness from OOS artifact
         run: |
           python stock-lab/build-holding-readiness.py \
             --manifest stock-lab/history-ogdl/manifest.json \
+            --licensed-bundle-dir stock-lab/history-licensed \
             --protocol stock-lab/holding-exit-validation-protocol.json \
             --sources stock-lab/history-source-registry.json \
             --oos stock-lab/holding-exit-oos-result.json \
@@ -77,13 +82,14 @@ jobs:
           python - <<'PY'
           import json
           x=json.load(open('stock-lab/holding-readiness.json',encoding='utf-8'))
-          assert x['model']=='TW-holding-exit-v4'
+          assert x['schema_version']==2 and x['model']=='TW-holding-exit-v4'
+          assert x['selected_history_source']['kind'] in ('ogdl_daily_archive','licensed_history_bundle')
           if x['overall_status']!='PASS':
             assert x['executable_exit_output'] is False
             assert x['blockers']
           else:
             assert x['executable_exit_output'] is True
-          print('holding readiness:',x['overall_status'])
+          print('holding readiness:',x['overall_status'],x['selected_history_source']['kind'])
           PY
       - name: Persist OOS/readiness only when changed
         run: |
