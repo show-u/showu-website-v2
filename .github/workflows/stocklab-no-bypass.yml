@@ -113,9 +113,16 @@ jobs:
               assert s['scoring_allowed_before_activation'] is False, (k,s)
 
           # 11. Formal holding/exit output is machine-locked until history + OOS + execution + calibration all pass.
-          assert readiness['schema_version']==1 and readiness['model']=='TW-holding-exit-v4'
+          assert readiness['schema_version'] in (1,2,3) and readiness['model']=='TW-holding-exit-v4'
           assert readiness['history']['no_imputation'] is True
           assert readiness['principle'].startswith('No verified gate')
+          if readiness['schema_version']>=3:
+              a=readiness.get('activation_path',{})
+              assert a.get('primary')=='licensed_historical_backfill'
+              assert a.get('status') in ('pending_licensed_subscription_or_import','licensed_bundle_imported','oos_pending','active')
+              src=readiness.get('selected_history_source',{})
+              if readiness['overall_status']!='PASS':
+                  assert src.get('kind')!='licensed_history_bundle' or readiness['oos']['status']!='PASS' or readiness['oos']['execution_validated'] is not True or readiness['oos']['confidence_calibrated'] is not True
           assert protocol['frozen_before_historical_oos'] is True
           assert protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
           assert protocol['non_negotiable_rules']['no_horizon_selector'] is True
