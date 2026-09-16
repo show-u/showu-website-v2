@@ -23,7 +23,7 @@ jobs:
           s=Path('stock-lab/import-licensed-history.py').read_text(encoding='utf-8')
           for forbidden in ('urllib.request','requests.get','http://','https://'):
               assert forbidden not in s, forbidden
-          for required in ('LICENCE_GATE_FAIL','no impute','raw_redistribution_allowed','source_id mismatch','impossible OHLC','network_collection_performed_by_importer'):
+          for required in ('LICENCE_GATE_FAIL','no_imputation','raw_redistribution_allowed','source_id mismatch','impossible OHLC','network_collection_performed_by_importer'):
               assert required.lower() in s.lower(), required
           print('no-network licensed importer invariant passed')
           PY
