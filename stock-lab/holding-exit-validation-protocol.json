@@ -16,7 +16,9 @@
     "chronological_oos_required": true,
     "oos_parameters_may_not_be_tuned_after_viewing_results": true,
     "no_hindsight_high_low_execution": true,
-    "confidence_requires_separate_oos_calibration": true
+    "confidence_requires_separate_oos_calibration": true,
+    "same_security_oos_episodes_must_not_overlap": true,
+    "market_regime_must_come_from_verified_broad_market_index": true
   },
   "required_position_input": {
     "manual": ["current_average_cost", "current_shares", "first_buy_date"],
@@ -43,11 +45,13 @@
     "cost_basis": "official entry-session executable-price rule frozen before OOS; cost is not optimized to improve later exit results",
     "initial_shares": "normalized shares for signal evaluation; monetary P/L may use a fixed notional. Share count must not alter the exit signal.",
     "holding_age": "count exact historical trading sessions from the episode entry date exactly as production TW-holding-exit-v4 does",
-    "episode_overlap": "no overlapping episode for the same security in the same test stream unless explicitly treated as one continuing position"
+    "episode_overlap": "same-security episodes may not overlap; the next episode starts only after the previous episode evaluation window has ended"
   },
   "evaluation": {
     "decision_frequency": "once per completed official trading session; no intraday information unless a separately licensed production feed exists",
     "execution": "an exit condition observed at completed-session close may execute no earlier than the next legally tradable session using a frozen deterministic rule based only on information that would then be available",
+    "episode_evaluation_window_sessions": 240,
+    "simple_ma_baseline_period": 20,
     "execution_validation": [
       "report signals, executable signals, executed exits, execution rate and delayed/non-executed exits",
       "daily-bar tests may not choose the more favorable intraday high or low after seeing the full bar",
@@ -55,7 +59,7 @@
       "Taiwan tick size, price limits, reference price and known restrictions must be applied"
     ],
     "costs": ["broker commission on executed exit", "applicable Taiwan stock transaction tax", "slippage assumption frozen before OOS"],
-    "comparators": ["hold-to-fixed-horizon baseline", "simple MA-based trailing exit baseline", "buy-and-hold through the episode evaluation window"],
+    "comparators": ["hold-to-fixed-horizon baseline", "simple MA20 close-break trailing exit baseline", "buy-and-hold through the episode evaluation window"],
     "metrics": ["net return after costs", "max drawdown while held", "drawdown from peak before exit", "profit capture ratio", "false-exit rate followed by recovery", "time in market", "exit frequency", "execution rate", "delay-to-exit distribution", "worst-tail outcomes", "benchmark-relative return"]
   },
   "confidence_calibration": {
@@ -78,16 +82,31 @@
   },
   "split_and_statistics": {
     "split": "chronological development period followed by untouched OOS period",
-    "walk_forward": "required when enough licensed history exists",
+    "development_fraction": 0.7,
+    "walk_forward": "three chronological untouched-OOS reporting blocks; no threshold or formula may be refit on those blocks",
+    "minimum_walk_forward_blocks": 3,
+    "minimum_episodes_per_walk_forward_block": 30,
     "minimum_oos_episodes_total": 300,
     "minimum_oos_securities": 80,
     "minimum_regime_coverage": ["bull", "bear", "sideways"],
-    "confidence_intervals": "bootstrap or another documented resampling method on security/episode clusters",
+    "confidence_intervals": "security-cluster bootstrap with 500 deterministic resamples",
+    "bootstrap_resamples": 500,
     "report_all_results": true
+  },
+  "formal_machine_gate": {
+    "description": "Frozen non-inferiority/risk guard evaluated only after all sample, legal, provenance, execution, regime and calibration gates pass. These thresholds were recorded while formal licensed OOS was still unavailable and must not be retuned after viewing untouched OOS.",
+    "minimum_avg_benefit_vs_hold_pct": 0.0,
+    "minimum_avg_benefit_vs_ma20_pct": 0.0,
+    "maximum_q05_worsening_vs_hold_pct_points": 2.0,
+    "maximum_q05_worsening_vs_ma20_pct_points": 2.0,
+    "maximum_mdd_worsening_vs_hold_pct_points": 5.0,
+    "maximum_mdd_worsening_vs_ma20_pct_points": 5.0,
+    "minimum_cluster_bootstrap_lower95_avg_benefit_vs_hold_pct": -1.0,
+    "minimum_cluster_bootstrap_lower95_avg_benefit_vs_ma20_pct": -1.0
   },
   "pass_rule": {
     "status_before_requirements_met": "INSUFFICIENT",
-    "required": ["all legal/provenance gates pass", "minimum OOS episode and security counts pass", "all required market regimes represented", "no material look-ahead or survivorship defect found", "production formula hash/version matches tested formula", "exit execution logic passes the pre-frozen OOS executability checks", "net-of-cost outcome is not materially worse than both frozen baselines on primary risk-adjusted measures", "no catastrophic tail-risk deterioration relative to baselines", "confidence index calibration passes on untouched OOS data"],
+    "required": ["all legal/provenance gates pass", "minimum OOS episode and security counts pass", "all required market regimes represented", "same-security OOS episodes are non-overlapping", "walk-forward OOS reporting blocks satisfy the frozen minimum sizes", "security-cluster uncertainty intervals are reported", "no material look-ahead or survivorship defect found", "production formula hash/version matches tested formula", "exit execution logic passes the pre-frozen OOS executability checks", "net-of-cost outcome passes the frozen hold and MA20 baseline non-inferiority/risk thresholds", "no catastrophic tail-risk deterioration relative to baselines", "confidence index calibration passes on untouched OOS data"],
     "prohibited": ["declaring PASS from win rate alone", "retuning thresholds on the untouched OOS set", "dropping losing securities/episodes after seeing results", "using future session high/low to manufacture an executable exit", "converting INSUFFICIENT to PASS because the UI needs a recommendation"]
   }
 }
