@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'stock-lab/history-licensed/**'
+      - 'stock-lab/prepare-twmd-private-backfill.py'
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
       - '.github/workflows/stocklab-holding-exit-oos.yml'
@@ -12,6 +13,7 @@ on:
   pull_request:
     paths:
       - 'stock-lab/history-licensed/**'
+      - 'stock-lab/prepare-twmd-private-backfill.py'
       - '.gitignore'
       - '.github/workflows/stocklab-licensed-history-guard.yml'
       - '.github/workflows/stocklab-holding-exit-oos.yml'
@@ -42,13 +44,31 @@ jobs:
           set -euo pipefail
           f='.github/workflows/stocklab-holding-exit-oos.yml'
           grep -Fq 'LICENSED_BUNDLE_DIR: /tmp/stocklab-no-licensed' "$f"
-          forbidden='STOCKLAB_LICENSED_BUNDLE_URL|STOCKLAB_LICENSED_BUNDLE_SHA256|curl .*licensed|wget .*licensed|aws s3 .*licensed|gsutil .*licensed'
-          if grep -Eq "$forbidden" "$f"; then
-            echo 'ERROR: public CI must not fetch or stage licensed raw market history.'
-            exit 1
-          fi
-          grep -Fq 'Public CI contains no licensed raw market data and performs no licensed-data acquisition.' "$f"
-          echo 'licensed-history public-CI boundary passed'
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          text=Path('.github/workflows/stocklab-holding-exit-oos.yml').read_text(encoding='utf-8')
+          bad=[]
+          for n,line in enumerate(text.splitlines(),1):
+              s=line.strip()
+              if 'STOCKLAB_LICENSED_BUNDLE_URL' in line or 'STOCKLAB_LICENSED_BUNDLE_SHA256' in line:
+                  bad.append((n,line))
+              if s.startswith('python stock-lab/prepare-twmd-private-backfill.py'):
+                  bad.append((n,line))
+              if re.search(r'\b(curl|wget)\b.*licensed',line,re.I) or re.search(r'\b(aws\s+s3|gsutil)\b.*licensed',line,re.I):
+                  bad.append((n,line))
+          if bad:
+              print('ERROR: public CI must not fetch or stage licensed/private raw market history.')
+              for n,line in bad: print(f'{n}: {line}')
+              raise SystemExit(1)
+          required=(
+              'Public CI may syntax-check private importers but contains no private/licensed market-data acquisition.',
+              'rm -rf "$LICENSED_BUNDLE_DIR"',
+          )
+          for x in required:
+              assert x in text,x
+          print('licensed-history public-CI boundary passed')
+          PY
 
       - name: Require legal acquisition gates in source registry
         run: |
@@ -79,5 +99,10 @@ jobs:
               'semantic_ohlcv_validation_passed',
               'cross_check_against_official_recent observations passed'}
           assert required.issubset(gates), sorted(required-gates)
+          twmd=x['sources']['twmd_api_private_backfill']
+          assert twmd['status']=='candidate_entitlement_and_pit_review_required'
+          assert twmd['scoring_allowed_before_activation'] is False
+          assert twmd['formal_bundle_ready_from_twmd_price_alone'] is False
+          assert twmd['private_staging_importer']=='stock-lab/prepare-twmd-private-backfill.py'
           print('legal acquisition gate contract passed')
           PY
