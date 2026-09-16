@@ -36,6 +36,7 @@ jobs:
           banned=('短線入場區間','中期入場區間','長期佈局區間','fivePricePlan','data-five-price-matrix','id="horizon"','scanHorizon','<option value="1m"','<option value="3m"','<option value="long"')
           for x in banned:
               assert x not in idx+router+top10, f'legacy horizon buy path returned: {x}'
+          assert '不選短／中／長' in idx
 
           # 2. Executable buy/scan/holding numbers are backend-only.
           assert 'api.analyze(code)' in router
@@ -44,20 +45,32 @@ jobs:
           assert '正式私有分析後端尚未啟用' in router+top10+holding
           for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan','localHolding(','StockLabHolding?.analyze','StockLabLicensedHistory'):
               assert forbidden not in router+holding, f'local production formula bypass returned: {forbidden}'
-
-          # Strip comments before checking that a hard-coded OOS PASS cannot execute in browser holding route.
           executable='\n'.join(line for line in holding.splitlines() if not line.lstrip().startswith('//'))
           assert "oosStatus:'PASS'" not in executable
           assert 'imputation_used===true' in holding
           assert "backendResult(j,'holding')" in holding
 
-          # 3. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
-          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'):
+          # 3. Target trading day is derived from verified data date + licensed calendar, never from clock alone.
+          assert 'StockLabSessionContext' in router and 'StockLabSessionContext' in holding
+          assert 'String(target)!==String(s.targetDate)' in router
+          assert 'String(target)!==String(s.targetDate)' in holding
+          assert '13:30 後也必須等當日官方收盤資料實際前進並完成驗證' in router
+          assert '09:00 後沒有合法即時／延遲行情授權時不重算當日價格' in router
+
+          # 4. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
+          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null','validDate(d)','正式出場分析需要有效首次買入日'):
               assert x in pos,x
           assert 'market-data inference' in pos
-          assert 'averageCost:a' in pos and 'shares:s' in pos
+          assert 'averageCost:a' in pos and 'shares:s' in pos and 'buyDate:d' in pos
+          assert '首次買入日（正式出場分析必要）' in idx
 
-          # 4. Same-origin data must be explicitly licensed and has no network fallback.
+          # 5. Holding backend must independently attest every user position fact.
+          for x in ('average_cost_verified!==true','shares_verified!==true','buy_date_verified!==true','validISODate(ctx.userBuyDate)'):
+              assert x in hard,x
+          for x in ('average_cost_verified!==true','shares_verified!==true','buy_date_verified!==true'):
+              assert x in holding,x
+
+          # 6. Same-origin data must be explicitly licensed and has no network fallback.
           assert "source!=='licensed-open-data-cache'" in cache
           assert "licence!=='政府資料開放授權條款-第1版 / OGDL-1.0'" in cache
           assert 'licence_verified!==true' in cache
@@ -66,20 +79,20 @@ jobs:
           assert 'remoteFallback:false' in cache
           assert 'remoteJget' not in cache
 
-          # 5. TOP10 may not silently compute a browser-local replacement ranking.
+          # 7. TOP10 may not silently compute a browser-local replacement ranking.
           for forbidden in ('jget(','hist(','tech(','combine(','adaptiveBand','entryLow','entryHigh'):
               assert forbidden not in top10, f'local TOP10 fallback returned: {forbidden}'
           assert 'oos_validation_passed!==true' in top10
           assert 'entry_range_execution_validated!==true' in top10
           assert 'confidence_calibrated!==true' in top10
 
-          # 6. Hard policy rejects missing legality, imputation, unverified OOS, uncalibrated confidence.
+          # 8. Hard policy rejects missing legality, imputation, unverified OOS, uncalibrated confidence.
           for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
               assert x in hard,x
           for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS'):
               assert k in policy['absolute_invariants'],k
 
-          # 7. Public runtime remains closed until independently validated production gates are changed deliberately.
+          # 9. Public runtime remains closed until independently validated production gates are changed deliberately.
           assert 'allowLocalFallback:false' in runtime
           assert 'productionPredictionReady:false' in runtime
 
