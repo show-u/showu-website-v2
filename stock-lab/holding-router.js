@@ -13,13 +13,12 @@
   function positionFacts(code,name,p){const total=p.averageCost*p.shares;return `<div class=toprow><div><h2>${esc(name?`${name}／${code}`:code)}</h2><div class=muted>已持有｜持倉管理與出場時機</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>首次買入日</b>${esc(p.buyDate)}</div><div class=sourceitem><b>持倉總成本</b>${money(total)}<br><span class=mini>只由你的輸入計算</span></div></div>`}
 
   async function loadSnapshot(code,market){
-    const r=await fetch('./browser-data.json',{cache:'no-store'});if(!r.ok)throw Error('合法公開資料快照讀取失敗');const x=await r.json();
-    if(x.schema_version!==2||x.source!=='licensed-open-data-cache'||!String(x.licence||'').includes('OGDL'))throw Error('公開資料快照授權／版本未通過');if(!x.generated_at||ageDays(x.generated_at)>4)throw Error('公開資料快照過期');
-    const d=x.datasets||{};let row;
-    if(market==='TWSE')row=(d.twse_snapshot||[]).find(z=>String(z.Code||'').trim()===code);else if(market==='TPEx')row=(d.tpex_snapshot||[]).find(z=>String(pick(z,['SecuritiesCompanyCode','Code','證券代號'])||'').trim()===code);else throw Error('市場別未驗證');
-    if(!row)throw Error(`${market} 最新收盤資料未取得`);
-    const close=n(pick(row,market==='TWSE'?['ClosingPrice','收盤價']:['Close','ClosingPrice','收盤價','收盤'])),open=n(pick(row,['OpeningPrice','Open','開盤價','開盤'])),high=n(pick(row,['HighestPrice','High','最高價','最高'])),low=n(pick(row,['LowestPrice','Low','最低價','最低'])),date=String(pick(row,['Date','date','日期'])||x.data_date||'').trim();
-    if(!(close>0))throw Error(`${market} 收盤價格式未通過`);return{close,open,high,low,date:date||null,source:`${market} OGDL 授權公開資料`,licence:'OGDL-1.0'};
+    const src=window.StockLabSameOrigin;if(!src?.latest)throw Error('合法市場事實介面尚未初始化');
+    const row=await src.latest(code,market);
+    if(row.licence!=='OGDL-1.0'||row.provenance!=='observed')throw Error('市場事實授權／來源驗證未通過');
+    const close=n(row.close),open=n(row.open),high=n(row.high),low=n(row.low),date=String(row.date||'').trim();
+    if(!(close>0)||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error(`${market} 收盤價／交易日格式未通過`);
+    return{close,open,high,low,date,source:`${market} OGDL 授權市場事實｜${row.source_id||'source-id unavailable'}`,licence:'OGDL-1.0'};
   }
 
   async function legalBars(code,market,snap){
