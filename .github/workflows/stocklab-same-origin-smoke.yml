@@ -1,12 +1,13 @@
-name: StockLab licensed same-origin data smoke
+name: StockLab licensed market facts smoke
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'stock-lab/browser-data.json'
+      - 'stock-lab/market-facts.json'
       - 'stock-lab/same-origin-cache.js'
-      - 'stock-lab/index.html'
+      - 'stock-lab/ui-patch.js'
+      - 'stock-lab/holding-router.js'
       - '.github/workflows/stocklab-same-origin-smoke.yml'
 
 jobs:
@@ -17,31 +18,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify licensed same-origin adapter
+      - name: Verify licensed public market facts adapter
         run: |
           node --check stock-lab/same-origin-cache.js
-          grep -q './same-origin-cache.js' stock-lab/index.html
-          grep -q 'browser-data.json' stock-lab/same-origin-cache.js
-          grep -q 'licensed-open-data-cache' stock-lab/same-origin-cache.js
-          grep -q 'OGDL-1.0' stock-lab/same-origin-cache.js
-          if grep -q 'remoteJget' stock-lab/same-origin-cache.js; then echo 'remote fallback is forbidden'; exit 1; fi
-      - name: Verify licensed datasets and provenance
+          node --check stock-lab/ui-patch.js
+          node --check stock-lab/holding-router.js
+          grep -q 'market-facts.json' stock-lab/same-origin-cache.js
+          grep -q 'ogdl-normalized-market-facts' stock-lab/same-origin-cache.js
+          grep -q "licence!=='OGDL-1.0'" stock-lab/same-origin-cache.js
+          grep -q 'missingDataFallback:false' stock-lab/same-origin-cache.js
+          if grep -q 'browser-data.json' stock-lab/same-origin-cache.js; then echo 'obsolete browser-data dependency returned'; exit 1; fi
+      - name: Verify normalized facts provenance
         run: |
           python - <<'PY'
-          import json
-          x=json.load(open('stock-lab/browser-data.json',encoding='utf-8'))
-          req={'twse_snapshot','twse_valuation','twse_revenue','twse_income','twse_balance','twse_dividend','twse_exright_prepost','tpex_snapshot','tpex_valuation','tpex_institution','tpex_revenue','tpex_income','tpex_balance','tpex_dividend','tpex_exright_prepost','tpex_exright_daily'}
-          assert x['schema_version']==2 and x['source']=='licensed-open-data-cache'
-          assert x['licence']=='政府資料開放授權條款-第1版 / OGDL-1.0'
-          assert set(x['datasets'])==req
-          assert set(x['meta'])==req
-          for k in req:
-              rows=x['datasets'][k];m=x['meta'][k]
-              assert isinstance(rows,list) and len(rows)>0,k
-              assert m['count']==len(rows) and m['count']>0,k
-              assert m['licence_verified'] is True and m['licence']=='OGDL-1.0',k
-              assert isinstance(m['data_gov_dataset'],int) and m['data_gov_dataset']>0,k
-              assert m['attribution'],k
-              assert isinstance(m['sha256'],str) and len(m['sha256'])==64,k
-          print('licensed same-origin OGDL datasets and provenance verified')
+          import json,re
+          x=json.load(open('stock-lab/market-facts.json',encoding='utf-8'))
+          assert x['schema_version']==1 and x['source']=='ogdl-normalized-market-facts'
+          assert x['licence']=='OGDL-1.0' and x['no_imputation'] is True
+          assert isinstance(x['rows'],list) and len(x['rows'])>1000
+          assert {'TWSE','TPEx'} <= set(x['markets'])
+          found=False
+          for r in x['rows']:
+              assert r['licence']=='OGDL-1.0' and r['provenance']=='observed'
+              assert re.fullmatch(r'\d{4}-\d{2}-\d{2}',r['date'])
+              assert all(float(r[k])>0 for k in ('open','high','low','close'))
+              assert re.fullmatch(r'[a-f0-9]{64}',r['raw_sha256'])
+              if r['ticker']=='2454' and r['market']=='TWSE':
+                  assert r['name']=='聯發科' and float(r['close'])>0
+                  found=True
+          assert found,'2454 licensed fact missing'
+          print('licensed normalized market facts verified')
           PY
