@@ -19,7 +19,22 @@
   const industryNames={'01':'水泥','02':'食品','03':'塑膠','04':'紡織纖維','05':'電機機械','06':'電器電纜','08':'玻璃陶瓷','09':'造紙','10':'鋼鐵','11':'橡膠','12':'汽車','14':'建材營造','15':'航運','17':'金融保險','18':'貿易百貨','20':'其他','21':'化學','22':'生技醫療','23':'油電燃氣','24':'半導體','25':'電腦及週邊設備','26':'光電','27':'通信網路','28':'電子零組件','29':'電子通路','30':'資訊服務','31':'其他電子','32':'文化創意','33':'農業科技','34':'電子商務','35':'綠能環保','36':'數位雲端','37':'運動休閒','38':'居家生活'};
 
   let cachePromise=null,factorPromise=null;
-  async function licensedCache(){if(cachePromise)return cachePromise;cachePromise=fetch('./browser-data.json',{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error(`合法公開資料快取讀取失敗 ${r.status}`);const x=await r.json();if(x.schema_version!==2||x.source!=='licensed-open-data-cache'||!String(x.licence||'').includes('OGDL'))throw Error('公開資料快取授權／版本驗證未通過');return x}).catch(e=>{cachePromise=null;throw e});return cachePromise}
+  async function licensedCache(){
+    if(cachePromise)return cachePromise;
+    cachePromise=(async()=>{
+      const src=window.StockLabSameOrigin;if(!src?.loadMarketFacts)throw Error('合法市場事實介面尚未初始化');
+      const x=await src.loadMarketFacts();
+      if(x.schema_version!==1||x.source!=='ogdl-normalized-market-facts'||x.licence!=='OGDL-1.0'||x.no_imputation!==true)throw Error('市場事實授權／版本驗證未通過');
+      const tw=[],otc=[];
+      for(const r of x.rows||[]){
+        if(r.market==='TWSE')tw.push({Date:String(r.date).replaceAll('-',''),Code:r.ticker,Name:r.name,TradeVolume:r.volume,TradeValue:r.trade_value,OpeningPrice:r.open,HighestPrice:r.high,LowestPrice:r.low,ClosingPrice:r.close});
+        else if(r.market==='TPEx')otc.push({Date:String(r.date).replaceAll('-',''),SecuritiesCompanyCode:r.ticker,CompanyName:r.name,TradingShares:r.volume,TransactionAmount:r.trade_value,Open:r.open,High:r.high,Low:r.low,Close:r.close});
+      }
+      return{schema_version:1,source:'ogdl-normalized-market-facts',licence:'OGDL-1.0',generated_at:x.generated_at,datasets:{twse_snapshot:tw,tpex_snapshot:otc},meta:x.markets||{}};
+    })().catch(e=>{cachePromise=null;throw e});
+    return cachePromise;
+  }
+
   async function factorData(){if(factorPromise)return factorPromise;factorPromise=fetch('./taiwan-factors.json',{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('台股衍生因子資料未取得');const x=await r.json();if(x.schema_version<3||x.source!=='official-derived-no-imputation')throw Error('台股衍生因子來源驗證未通過');return x}).catch(e=>({schema_version:0,source:'unavailable',stocks:{},source_status:{},market:{},error:String(e.message||e)}));return factorPromise}
   function twseObs(r){return{market:'TWSE',code:String(r.Code||'').trim(),name:String(r.Name||'').trim(),date:rocDate(r.Date),open:num(r.OpeningPrice),high:num(r.HighestPrice),low:num(r.LowestPrice),close:num(r.ClosingPrice),volume:num(r.TradeVolume),tradeValue:num(r.TradeValue)}}
   function tpexObs(r){return{market:'TPEx',code:String(pick(r,['SecuritiesCompanyCode','Code','證券代號','代號'])||'').trim(),name:String(pick(r,['CompanyName','SecuritiesCompanyName','Name','證券名稱','名稱'])||'').trim(),date:rocDate(pick(r,['Date','日期'])),open:num(pick(r,['Open','OpeningPrice','開盤價','開盤'])),high:num(pick(r,['High','HighestPrice','最高價','最高'])),low:num(pick(r,['Low','LowestPrice','最低價','最低'])),close:num(pick(r,['Close','ClosingPrice','收盤價','收盤'])),volume:num(pick(r,['TradingShares','TradeVolume','成交股數','成交量'])),tradeValue:num(pick(r,['TransactionAmount','TradeValue','TradingAmount','成交金額']))}}
