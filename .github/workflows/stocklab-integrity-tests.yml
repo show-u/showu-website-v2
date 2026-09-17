@@ -63,7 +63,7 @@ jobs:
           # A. Non-negotiable Taiwan truth rules.
           assert policy['version']>=10
           assert policy['policy_name']=='StockLab Taiwan Truth Rules'
-          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED')
+          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','FOUR_FIELD_HOLDING_INPUT','EXECUTABLE_ENTRY_ONLY')
           for k in required: assert k in policy['absolute_invariants'],k
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices'):
@@ -74,16 +74,16 @@ jobs:
           assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
 
           # B. Old short/mid/long buy-price UX must never return.
-          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','分析出場時機','總量成本均價','目前持有股數','首次買入日'):
+          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','分析出場時機','目前成本均價','目前持有股數','目前部位總成本','首次買入時間'):
               assert text in idx,text
           for legacy in ('id="horizon"','scanHorizon','holdHorizon','短線｜約1個月','波段｜約3個月','長期｜1年以上','短線入場區間','中期入場區間','長期佈局區間'):
               assert legacy not in idx+router+top10,legacy
           assert '不選短／中／長' in idx
 
           # C. Position facts come only from the user.
-          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null','validDate(d)'):
+          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)'):
               assert text in pos,text
-          assert 'averageCost:a' in pos and 'shares:s' in pos and 'buyDate:d' in pos
+          assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
           assert 'market-data inference' in pos
 
           # D. Entry/scanner remain prediction-gated; holding is separate deterministic rules.
