@@ -50,7 +50,7 @@
     return{mode:'lots',averageCost:a,shares:sh,totalCost:tc,buyTime:bt,buyDate:bt.slice(0,10),lots,positionComplete:true,provenance:{averageCost:'derived_from_user_lots',shares:'derived_from_user_lots',totalCost:'derived_from_user_lots',buyTime:'derived_from_user_lots'}};
   }
   function provenanceHtml(){return mode.value==='lots'?'<b>部位資料來源｜derived from user input</b><div class="mini">總股數、總成本、加權均價與最早買入時間由你輸入的逐筆「買入時間＋價格＋目前仍持有股數」確定性計算；不是市場推估。</div>':'<b>部位資料來源｜user observed</b><div class="mini">買入時間、目前持有股數、目前部位總成本與成本均價全部直接採用你的券商／個人紀錄；系統不自行猜測。四項任一缺漏或明顯矛盾時顯示無法判定。</div>'}
-  function stampProvenance(){if(!holdResult||!holdResult.querySelector('h2'))return;let n=holdResult.querySelector('[data-position-provenance]');if(!n){n=document.createElement('div');n.className='source-note compact-note';n.dataset.positionProvenance='1';const top=holdResult.querySelector('.toprow');top?.insertAdjacentElement('afterend',n)}if(n)n.innerHTML=provenanceHtml()}
+  function stampProvenance(){if(!holdResult||!holdResult.querySelector('h2'))return;if(holdResult.querySelector('[data-position-provenance]'))return;const n=document.createElement('div');n.className='source-note compact-note';n.dataset.positionProvenance='1';n.innerHTML=provenanceHtml();const top=holdResult.querySelector('.toprow');top?.insertAdjacentElement('afterend',n)}
 
   mode.addEventListener('change',setMode);addBtn.addEventListener('click',addRow);
   rows.addEventListener('input',recompute);rows.addEventListener('change',recompute);rows.addEventListener('click',e=>{const b=e.target.closest('[data-remove-lot]');if(!b)return;b.closest('.position-lot')?.remove();if(!rows.children.length)addRow();recompute()});
