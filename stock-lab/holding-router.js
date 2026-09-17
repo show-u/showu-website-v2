@@ -10,6 +10,7 @@
   const pick=(o,keys)=>{for(const k of keys){const v=o?.[k];if(v!=null&&String(v).trim()!=='')return v}return null};
   const ageDays=iso=>{const d=new Date(iso);return Number.isNaN(d.getTime())?999:Math.floor((Date.now()-d.getTime())/86400000)};
   const withTimeout=(promise,ms,label)=>Promise.race([Promise.resolve(promise),new Promise((_,reject)=>setTimeout(()=>reject(Error(label)),ms))]);
+  const stage=name=>{window.StockLabHoldingRuntime={stage:name,at:Date.now()};console.info('StockLabHoldingStage:'+name)};
 
   function positionFacts(code,name,p){return `<div class=toprow><div><h2>${esc(name?`${name}／${code}`:code)}</h2><div class=muted>已持有｜持有／減碼／出場分析</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>目前部位總成本</b>${money(p.totalCost)}<br><span class=mini>直接採用你的輸入</span></div><div class=sourceitem><b>首次買入時間</b>${esc(p.buyTime)}</div></div>`}
 
@@ -74,12 +75,15 @@
     box.innerHTML=positionFacts(code,name,p)+`<div class=source-note><b>目前持倉判斷：${esc(q.state)}</b><div class=mini>${esc(q.reason)}</div><div style="margin-top:6px"><b>下一步：</b>${esc(q.nextAction)}</div></div><div class=sourcegrid style="margin-top:8px"><div class=sourceitem><b>最新已驗證收盤</b>${money(snap.close)}${snap.date?`｜${esc(snap.date)}`:''}<br><span class=mini>${esc(snap.source)}｜非盤中即時價</span></div><div class=sourceitem><b>依收盤估算損益</b>${profit>=0?'+':''}${money(profit)}｜${pct>=0?'+':''}${Number.isFinite(pct)?pct.toFixed(2):'—'}%</div><div class=sourceitem><b>風險觸發參考</b>${triggerText}<br><span class=mini>${esc(q.riskTriggerMeaning)}</span></div><div class=sourceitem><b>壓力參考</b>${pressureText}<br><span class=mini>${esc(q.pressureMeaning)}</span></div><div class=sourceitem><b>可用價格資料</b>${esc(d.historyLevel||'—')}｜${money(d.availableBars)} 根<br><span class=mini>${esc(barSource)}</span></div><div class=sourceitem><b>台股特殊狀態</b>${esc(ctx.riskLabel)}<br><span class=mini>${ctx.corporateKnown?'公司行動資料層已取得':'公司行動狀態未完整驗證'}</span></div></div><div class=source-note><b>執行時間</b><div class=mini>${esc(session)}。本頁用完成交易日資料形成條件；沒有合法即時行情時，不宣稱知道盤中現在價格。</div></div><div class=disclaimer><b>這不是 OOS 鎖定模型</b>持倉管理採已驗證事實＋確定性規則。OOS 尚未通過只代表不能宣稱勝率、成功率、機率或校準信心；不再把持股分析整頁鎖住。資料不足時不捏造賣價，價格型觸發線會顯示「—」，但仍提供可執行的下一步與風險條件。</div>`;
   }
 
-  btn.onclick=async()=>{load.classList.remove('hidden');try{
-    const resolver=window.StockLabTickerResolver;if(!resolver?.resolve||!resolver?.loadUniverse)throw Error('股票代號／名稱解析器尚未就緒');const code=await resolver.resolve(input.value);input.value=code;
-    const p=window.StockLabPositionInput?.collect?.();if(!p)throw Error('持股輸入模組尚未就緒');
-    const u=await resolver.loadUniverse(),meta=u.find(x=>x.code===code)||{},name=meta.name||'',market=meta.market;if(!market)throw Error('股票市場別未能由合法名稱索引驗證');
-    const snap=await loadSnapshot(code,market),[hb,ctx]=await Promise.all([legalBars(code,market,snap),context(code,market)]),model=window.StockLabHolding;if(!model?.analyze)throw Error('持倉規則模型尚未載入');
-    const res=model.analyze(p,hb.bars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,oosStatus:window.StockLabDataStatus?.validation?.models?.holding_exit?.status||'UNVALIDATED'}),session=await sessionInfo(market,snap.date||res.dataDate);
-    render(code,name,market,p,snap,res,ctx,hb.source,session);
-  }catch(e){box.innerHTML=`<h3 class=bad>持倉分析失敗</h3><p>${esc(e.message||e)}</p><div class=mini>缺少的資料維持缺少，不以假資料補值。</div>`}finally{load.classList.add('hidden')}};
+  btn.onclick=async()=>{stage('clicked');load.classList.remove('hidden');try{
+    const resolver=window.StockLabTickerResolver;if(!resolver?.resolve||!resolver?.loadUniverse)throw Error('股票代號／名稱解析器尚未就緒');const code=await resolver.resolve(input.value);input.value=code;stage('resolved');
+    const p=window.StockLabPositionInput?.collect?.();if(!p)throw Error('持股輸入模組尚未就緒');stage('position-collected');
+    const u=await resolver.loadUniverse(),meta=u.find(x=>x.code===code)||{},name=meta.name||'',market=meta.market;if(!market)throw Error('股票市場別未能由合法名稱索引驗證');stage('market-resolved');
+    const snap=await loadSnapshot(code,market);stage('snapshot-loaded');
+    const [hb,ctx]=await Promise.all([legalBars(code,market,snap),context(code,market)]);stage('enrichments-finished');
+    const model=window.StockLabHolding;if(!model?.analyze)throw Error('持倉規則模型尚未載入');
+    const res=model.analyze(p,hb.bars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,oosStatus:window.StockLabDataStatus?.validation?.models?.holding_exit?.status||'UNVALIDATED'});stage('model-finished');
+    const session=await sessionInfo(market,snap.date||res.dataDate);stage('session-finished');
+    render(code,name,market,p,snap,res,ctx,hb.source,session);stage('rendered');
+  }catch(e){stage('error');box.innerHTML=`<h3 class=bad>持倉分析失敗</h3><p>${esc(e.message||e)}</p><div class=mini>缺少的資料維持缺少，不以假資料補值。</div>`}finally{load.classList.add('hidden')}};
 })();
