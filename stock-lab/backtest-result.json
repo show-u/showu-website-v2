@@ -1,21 +1,23 @@
 {
-  "schema_version": 9,
-  "architecture": "unified-entry-holding-v9",
-  "formal_validation_status": "BLOCKED_DATA_LAYER",
+  "schema_version": 10,
+  "architecture": "unified-entry-rule-holding-v10",
+  "formal_prediction_validation_status": "BLOCKED_DATA_LAYER",
   "network_history_collection_performed": false,
   "network_history_collection_disabled": true,
   "legacy_horizon_entry_results_are_production_valid": false,
-  "reason": "StockLab v9 has no connected dataset-specific legally reusable historical OHLC/universe bundle sufficient for production-equivalent chronological OOS. No website-history request is used to fill that gap, and no blocked model is labelled PASS.",
   "models": {
     "entry_decision_9plus3": "BLOCKED_DATA_LAYER",
     "entry_scanner_9plus3": "BLOCKED_DATA_LAYER",
-    "holding_exit": "BLOCKED_DATA_LAYER"
+    "holding_rules": "AVAILABLE_RULE_BASED"
   },
   "truth_contract": {
     "missing_data_imputed": false,
     "unverified_source_used_as_fact": false,
     "stale_data_relabelled_current": false,
-    "oos_required_for_recommendation": true
+    "legacy_horizon_buy_model_used": false,
+    "predictive_oos_required": true,
+    "deterministic_holding_rules_oos_required": false,
+    "holding_statistical_claims_oos_required": true
   },
-  "next_gate": "Connect legally reusable historical OHLC/universe data, complete security/trading-calendar/corporate-action/Taiwan-risk/context gates, then run production-equivalent chronological OOS separately for unified entry, scanner and TW-holding-exit-v3."
+  "reason": "Entry and scanner predictions remain blocked until their formal legal-data/OOS/execution/calibration gates pass. Existing-position management is a separate deterministic rule path and is available from user position facts plus legally verified completed-session market facts; missing enhancements remain unavailable and are never imputed."
 }
