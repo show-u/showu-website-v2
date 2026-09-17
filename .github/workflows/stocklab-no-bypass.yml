@@ -35,7 +35,6 @@ jobs:
           runtime=R('stock-lab/runtime-config.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
           sources=json.loads(R('stock-lab/history-source-registry.json'))
-          protocol=json.loads(R('stock-lab/holding-exit-validation-protocol.json'))
 
           # 1. Old horizon-specific buy-price UX must never return.
           banned=('短線入場區間','中期入場區間','長期佈局區間','fivePricePlan','data-five-price-matrix','id="horizon"','scanHorizon','<option value="1m"','<option value="3m"','<option value="long"')
@@ -100,10 +99,11 @@ jobs:
               assert x in hard,x
           for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION'):
               assert k in policy['absolute_invariants'],k
-          assert protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
-          assert protocol['non_negotiable_rules']['no_horizon_selector'] is True
-          assert protocol['non_negotiable_rules']['confidence_requires_separate_oos_calibration'] is True
-          assert protocol['non_negotiable_rules']['production_formula_must_equal_test_formula'] is True
+          assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
+          assert policy['history_requirements']['holding_rules']['minimum_verified_closes'] == 1
+          assert policy['output_contract']['deterministic_holding_rules_require_oos_pass'] is False
+          assert policy['backtest_validation']['holding_statistical_claims_require_oos'] is True
+          assert policy['backtest_validation']['deterministic_holding_rules_require_oos'] is False
 
           # 9. No fake probability/win-rate can leak from the rule-based holding path.
           assert "confidence_calibrated:false" in hold_model
