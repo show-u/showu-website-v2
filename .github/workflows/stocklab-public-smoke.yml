@@ -17,6 +17,8 @@ on:
       - 'stock-lab/holding-model.js'
       - 'stock-lab/holding-router.js'
       - 'stock-lab/ui-patch.js'
+      - 'stock-lab/same-origin-cache.js'
+      - 'stock-lab/market-facts.json'
       - 'stock-lab/compliance-gate.js'
       - 'stock-lab/public-output.js'
       - 'stock-lab/session-context.js'
@@ -77,7 +79,7 @@ jobs:
             need "./$s" /tmp/index.html "missing deployed module $s"
           done
 
-          for f in runtime-config.js api-client.js health.js licensed-history.js session-context.js entry-decision.js top10-gate.js market-router.js position-input.js holding-model.js holding-router.js ui-patch.js hard-policy.js public-output.js compliance-gate.js verification-policy.json; do
+          for f in runtime-config.js api-client.js health.js licensed-history.js session-context.js entry-decision.js top10-gate.js market-router.js position-input.js holding-model.js holding-router.js ui-patch.js same-origin-cache.js market-facts.json hard-policy.js public-output.js compliance-gate.js verification-policy.json; do
             out="/tmp/$(echo "$f" | tr '/' '_')"
             curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors --max-time 20 "$base/$f?smoke=$RANDOM" -o "$out"
             test -s "$out" || { echo "::error::public asset missing or empty: $f"; exit 1; }
@@ -104,10 +106,16 @@ jobs:
           need 'target_session_date' /tmp/hard-policy.js 'backend policy missing target-session contract'
           need 'sessionPairOK' /tmp/hard-policy.js 'backend policy missing verified base/target session pairing'
           need 'window.StockLabTickerResolver' /tmp/ui-patch.js 'ticker resolver unavailable'
+          need "mode:'licensed-normalized-market-facts'" /tmp/same-origin-cache.js 'licensed market facts adapter unavailable'
           forbid 'horizon=document.querySelector' /tmp/ui-patch.js 'legacy horizon routing returned'
 
           python - <<'PY'
           import json
+          mf=json.load(open('/tmp/market-facts.json',encoding='utf-8'))
+          assert mf['schema_version']==1 and mf['source']=='ogdl-normalized-market-facts'
+          assert mf['licence']=='OGDL-1.0' and mf['no_imputation'] is True
+          hits=[r for r in mf['rows'] if r.get('ticker')=='2454' and r.get('market')=='TWSE']
+          assert hits and hits[-1].get('name')=='聯發科' and float(hits[-1].get('close',0))>0
           p=json.load(open('/tmp/verification-policy.json',encoding='utf-8'))
           assert p['version'] >= 9
           inv=p['absolute_invariants']
