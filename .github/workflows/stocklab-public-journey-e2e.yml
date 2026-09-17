@@ -51,6 +51,23 @@ jobs:
           for(const z of bad.slice(0,50)) console.log(JSON.stringify(z));
           if(bad.length) process.exit(2);
           NODE
+      - name: Wait for matching public deployment
+        env:
+          ASSET_URL: https://www.showujapan.com/stock-lab/holding-router.js
+        run: |
+          set -euo pipefail
+          ready=0
+          for i in $(seq 1 24); do
+            curl -fsSL --max-time 15 "${ASSET_URL}?deploy=${RANDOM}" -o /tmp/live-holding-router.js || true
+            if grep -Fq '合法歷史資料逾時' /tmp/live-holding-router.js 2>/dev/null \
+              && grep -Fq '公司行動資料逾時' /tmp/live-holding-router.js 2>/dev/null \
+              && grep -Fq 'withTimeout' /tmp/live-holding-router.js 2>/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ready" = 1 || { echo '::error::latest holding-router deployment not visible'; exit 1; }
       - name: Verify live StockLab holding journey
         env:
           BASE_URL: https://www.showujapan.com/stock-lab/
