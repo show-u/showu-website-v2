@@ -92,6 +92,28 @@ jobs:
             });
 
             console.log('stage: page-loaded');
+            const layerDiag = await page.evaluate(async () => {
+              const race = async (label, p, ms=3000) => {
+                const t0 = Date.now();
+                try {
+                  const v = await Promise.race([
+                    Promise.resolve(p),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+                  ]);
+                  return {label, ok:true, ms:Date.now()-t0, summary:Array.isArray(v)?('array:'+v.length):(v&&typeof v==='object'?Object.keys(v).slice(0,8):String(v))};
+                } catch (e) {
+                  return {label, ok:false, ms:Date.now()-t0, error:String(e&&e.message||e)};
+                }
+              };
+              const out=[];
+              out.push(await race('resolver.resolve', window.StockLabTickerResolver?.resolve?.('2454')));
+              out.push(await race('resolver.loadUniverse', window.StockLabTickerResolver?.loadUniverse?.()));
+              out.push(await race('sameOrigin.latest', window.StockLabSameOrigin?.latest?.('2454','TWSE')));
+              if (window.StockLabTaiwan?.loadFactors) out.push(await race('taiwan.loadFactors', window.StockLabTaiwan.loadFactors()));
+              if (window.StockLabLicensedHistory?.load) out.push(await race('licensedHistory.load', window.StockLabLicensedHistory.load({code:'2454',market:'TWSE',minimumBars:1})));
+              return out;
+            });
+            console.log('layer-diagnostics', JSON.stringify(layerDiag));
             await page.locator('#holdBtn').click({timeout:10000});
             console.log('stage: hold-opened');
             await page.locator('#holdTicker').fill('2454');
@@ -109,7 +131,7 @@ jobs:
               if (!box) return false;
               const t = box.innerText || '';
               return t.includes('目前持倉判斷') || t.includes('持倉分析失敗');
-            }, { timeout: 15000 });
+            }, null, { timeout: 15000 });
             console.log('stage: result-rendered');
 
             const result = await page.locator('#holdResult').innerText();
