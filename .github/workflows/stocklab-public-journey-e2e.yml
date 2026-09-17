@@ -62,7 +62,8 @@ jobs:
             if grep -Fq '合法歷史資料逾時' /tmp/live-holding-router.js 2>/dev/null \
               && grep -Fq '公司行動資料逾時' /tmp/live-holding-router.js 2>/dev/null \
               && grep -Fq 'withTimeout' /tmp/live-holding-router.js 2>/dev/null \
-              && grep -Fq 'StockLabHoldingStage:' /tmp/live-holding-router.js 2>/dev/null; then
+              && grep -Fq 'StockLabHoldingStage:' /tmp/live-holding-router.js 2>/dev/null \
+              && grep -Fq 'licensedHistoricalOHLC' /tmp/live-holding-router.js 2>/dev/null; then
               ready=1
               break
             fi
@@ -112,7 +113,7 @@ jobs:
               out.push(await race('resolver.loadUniverse', window.StockLabTickerResolver?.loadUniverse?.()));
               out.push(await race('sameOrigin.latest', window.StockLabSameOrigin?.latest?.('2454','TWSE')));
               if (window.StockLabTaiwan?.loadFactors) out.push(await race('taiwan.loadFactors', window.StockLabTaiwan.loadFactors()));
-              if (window.StockLabLicensedHistory?.load) out.push(await race('licensedHistory.load', window.StockLabLicensedHistory.load({code:'2454',market:'TWSE',minimumBars:1})));
+              if (window.STOCKLAB_RUNTIME?.gates?.licensedHistoricalOHLC===true && window.StockLabLicensedHistory?.load) out.push(await race('licensedHistory.load', window.StockLabLicensedHistory.load({code:'2454',market:'TWSE',minimumBars:1}))); else out.push({label:'licensedHistory.load',ok:false,skipped:true,error:'runtime gate disabled'});
               return out;
             });
             console.log('layer-diagnostics', JSON.stringify(layerDiag));
