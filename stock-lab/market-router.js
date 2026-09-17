@@ -13,23 +13,25 @@
   const normDate=v=>iso(v)||roc(v);
 
   async function licensedSnapshot(code){
-    const r=await fetch('./browser-data.json',{cache:'no-store'});if(!r.ok)throw Error('合法公開資料快照讀取失敗');
-    const x=await r.json();
-    if(x.schema_version!==2||x.source!=='licensed-open-data-cache'||!String(x.licence||'').includes('OGDL'))throw Error('資料來源授權／版本驗證未通過');
-    const d=x.datasets||{},meta=x.meta||{};
-    let row=(d.twse_snapshot||[]).find(z=>String(z.Code||'').trim()===String(code));
-    if(row){const m=meta.twse_snapshot||{};if(m.licence_verified!==true||m.licence!=='OGDL-1.0')throw Error('TWSE 快照授權驗證未通過');return{market:'TWSE',name:String(row.Name||'').trim(),row,meta:m,cacheGeneratedAt:x.generated_at}}
-    row=(d.tpex_snapshot||[]).find(z=>String(z.SecuritiesCompanyCode||z.Code||'').trim()===String(code));
-    if(row){const m=meta.tpex_snapshot||{};if(m.licence_verified!==true||m.licence!=='OGDL-1.0')throw Error('TPEx 快照授權驗證未通過');return{market:'TPEx',name:String(row.CompanyName||row.Name||'').trim(),row,meta:m,cacheGeneratedAt:x.generated_at}}
-    throw Error('合法公開資料中找不到此股票代號');
+    const cache=window.StockLabSameOrigin;
+    if(!cache?.latest)throw Error('合法 OGDL 市場事實層尚未就緒');
+    const row=await cache.latest(code);
+    if(!row||row.provenance!=='observed'||row.licence!=='OGDL-1.0')throw Error('市場事實來源授權／驗證未通過');
+    return{
+      market:row.market,
+      name:String(row.name||'').trim(),
+      row,
+      meta:{licence_verified:true,licence:'OGDL-1.0',data_gov_dataset:row.source_id||'',attribution:row.source_name||row.source_id||''},
+      cacheGeneratedAt:null
+    };
   }
   function snapshotFacts(s){
     const r=s.row||{};
-    const close=s.market==='TWSE'?num(r.ClosingPrice):num(r.Close??r.ClosingPrice??r['收盤價']);
-    const date=normDate(r.Date??r.TradeDate??r['日期']??r.TradingDate??r['資料日期']);
-    const open=s.market==='TWSE'?num(r.OpeningPrice):num(r.Open??r.OpeningPrice??r['開盤價']);
-    const high=s.market==='TWSE'?num(r.HighestPrice):num(r.High??r.HighestPrice??r['最高價']);
-    const low=s.market==='TWSE'?num(r.LowestPrice):num(r.Low??r.LowestPrice??r['最低價']);
+    const close=num(r.close??r.ClosingPrice??r.Close??r['收盤價']);
+    const date=normDate(r.date??r.Date??r.TradeDate??r['日期']??r.TradingDate??r['資料日期']);
+    const open=num(r.open??r.OpeningPrice??r.Open??r['開盤價']);
+    const high=num(r.high??r.HighestPrice??r.High??r['最高價']);
+    const low=num(r.low??r.LowestPrice??r.Low??r['最低價']);
     return{close,date,open,high,low};
   }
   async function sessionLabel(market,date){
