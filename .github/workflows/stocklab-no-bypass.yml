@@ -72,7 +72,7 @@ jobs:
           assert '非盤中即時價' in holding
 
           # 5. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
-          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)','正式出場分析需要有效首次買入時間'):
+          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)','請完整輸入買入時間、目前持有股數、目前部位總成本與成本均價'):
               assert x in pos,x
           assert 'market-data inference' in pos
           assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
