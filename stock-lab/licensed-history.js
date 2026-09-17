@@ -3,6 +3,10 @@
 (function(){
   const MANIFEST='./licensed-data/manifest.json';
   let manifestPromise=null,fileCache=new Map();
+  function bundleConfigured(){
+    const g=window.STOCKLAB_RUNTIME?.gates||{};
+    return g.licensedHistoricalOHLC===true||g.securityMaster===true||g.tradingCalendar===true||g.corporateActions===true;
+  }
   const req=(o,keys,where)=>{for(const k of keys)if(o?.[k]===undefined||o?.[k]===null||o?.[k]==='')throw Error(`${where}.${k} 缺漏`)};
   function sameOriginPath(rel){const u=new URL(rel,location.href);if(u.origin!==location.origin)throw Error('合法資料 bundle 禁止跨網域 payload');return u.href}
   async function sha256(buf){const d=await crypto.subtle.digest('SHA-256',buf),a=[...new Uint8Array(d)];return a.map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -17,6 +21,7 @@
     return m
   }
   async function manifest(){
+    if(!bundleConfigured())throw Error('合法歷史資料 bundle 尚未提供');
     if(!manifestPromise)manifestPromise=fetch(MANIFEST,{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('合法歷史資料 bundle 尚未提供');return validateManifest(await r.json())}).catch(e=>{manifestPromise=null;throw e});return manifestPromise
   }
   function parseJsonl(text){const out=[];for(const [i,line] of text.split(/\r?\n/).entries()){if(!line.trim())continue;try{out.push(JSON.parse(line))}catch{throw Error(`JSONL 第 ${i+1} 行格式錯誤`)}}return out}
