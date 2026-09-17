@@ -60,9 +60,10 @@ jobs:
           need '已持有' /tmp/index.html 'missing holding workflow'
           need '分析進場價格' /tmp/index.html 'missing entry action'
           need '分析出場時機' /tmp/index.html 'missing holding action'
-          need '總量成本均價' /tmp/index.html 'missing holding average-cost input'
+          need '目前成本均價' /tmp/index.html 'missing holding average-cost input'
           need '目前持有股數' /tmp/index.html 'missing holding shares input'
-          need '首次買入日' /tmp/index.html 'missing holding buy-date input'
+          need '目前部位總成本' /tmp/index.html 'missing holding total-cost input'
+          need '首次買入時間' /tmp/index.html 'missing holding buy-time input'
           need '資料不完整就不預測；不以假資料補值' /tmp/index.html 'missing no-imputation statement'
           need '合格不足 10 檔就不補滿' /tmp/index.html 'missing TOP10 no-fill statement'
           forbid 'id="horizon"' /tmp/index.html 'legacy horizon selector returned'
@@ -117,13 +118,13 @@ jobs:
           hits=[r for r in mf['rows'] if r.get('ticker')=='2454' and r.get('market')=='TWSE']
           assert hits and hits[-1].get('name')=='聯發科' and float(hits[-1].get('close',0))>0
           p=json.load(open('/tmp/verification-policy.json',encoding='utf-8'))
-          assert p['version'] >= 9
+          assert p['version'] >= 11
           inv=p['absolute_invariants']
           required=(
             'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION',
             'TRACEABILITY','FAIL_CLOSED','NO_FAKE_CONFIDENCE','NO_HORIZON_BUY_MODEL',
             'NO_UNBUYABLE_ENTRY_BANDS','TARGET_SESSION_BY_DATA_DATE',
-            'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION'
+            'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','FOUR_FIELD_HOLDING_INPUT','EXECUTABLE_ENTRY_ONLY'
           )
           missing=[x for x in required if x not in inv]
           assert not missing, missing
