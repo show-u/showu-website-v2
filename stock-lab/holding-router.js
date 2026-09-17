@@ -10,7 +10,7 @@
   const pick=(o,keys)=>{for(const k of keys){const v=o?.[k];if(v!=null&&String(v).trim()!=='')return v}return null};
   const ageDays=iso=>{const d=new Date(iso);return Number.isNaN(d.getTime())?999:Math.floor((Date.now()-d.getTime())/86400000)};
 
-  function positionFacts(code,name,p){const total=p.averageCost*p.shares;return `<div class=toprow><div><h2>${esc(name?`${name}／${code}`:code)}</h2><div class=muted>已持有｜持倉管理與出場時機</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>首次買入日</b>${esc(p.buyDate)}</div><div class=sourceitem><b>持倉總成本</b>${money(total)}<br><span class=mini>只由你的輸入計算</span></div></div>`}
+  function positionFacts(code,name,p){return `<div class=toprow><div><h2>${esc(name?`${name}／${code}`:code)}</h2><div class=muted>已持有｜持有／減碼／出場分析</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>目前部位總成本</b>${money(p.totalCost)}<br><span class=mini>直接採用你的輸入</span></div><div class=sourceitem><b>首次買入時間</b>${esc(p.buyTime)}</div></div>`}
 
   async function loadSnapshot(code,market){
     const src=window.StockLabSameOrigin;if(!src?.latest)throw Error('合法市場事實介面尚未初始化');
@@ -43,7 +43,7 @@
 
   btn.onclick=async()=>{load.classList.remove('hidden');try{
     const resolver=window.StockLabTickerResolver;if(!resolver?.resolve||!resolver?.loadUniverse)throw Error('股票代號／名稱解析器尚未就緒');const code=await resolver.resolve(input.value);input.value=code;
-    const p=window.StockLabPositionInput?.collect?.({allowMissingDate:false});if(!p)throw Error('持股輸入模組尚未就緒');
+    const p=window.StockLabPositionInput?.collect?.();if(!p)throw Error('持股輸入模組尚未就緒');
     const u=await resolver.loadUniverse(),meta=u.find(x=>x.code===code)||{},name=meta.name||'',market=meta.market;if(!market)throw Error('股票市場別未能由合法名稱索引驗證');
     const snap=await loadSnapshot(code,market),hb=await legalBars(code,market,snap),ctx=await context(code,market),model=window.StockLabHolding;if(!model?.analyze)throw Error('持倉規則模型尚未載入');
     const res=model.analyze(p,hb.bars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,oosStatus:window.StockLabDataStatus?.validation?.models?.holding_exit?.status||'UNVALIDATED'}),session=await sessionInfo(market,snap.date||res.dataDate);
