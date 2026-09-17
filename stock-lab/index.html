@@ -15,16 +15,16 @@
   <section class="card"><div class="tabs"><button id="findBtn" class="ghost">不知道買什麼</button><button id="singleBtn">想買這檔</button><button id="holdBtn" class="ghost">已持有</button></div></section>
   <section id="singlePanel" class="card">
     <label>股票代號／股票名稱<input id="ticker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <p class="simple-rule">不選短／中／長。先顯示合法且已驗證的最新市場事實；正式進場價格只有在必要資料與執行條件通過後才顯示。缺資料不補值。</p>
+    <p class="simple-rule">未持有股票只回答「當日／次一合法交易日是否有可執行入場價格」。不選短／中／長；只有合法、已驗證且符合台灣市場交易規則的必要資料完整時才顯示數字，否則明確顯示無法判定。</p>
     <button id="analyzeBtn">分析進場價格</button><div id="singleLoad" class="loader hidden">正在驗證資料並建立入場判斷…</div>
   </section>
   <section id="result" class="card hidden"></section>
   <section id="holdPanel" class="card hidden">
     <label>股票代號／股票名稱<input id="holdTicker" inputmode="text" placeholder="例如：2454 或 聯發科"></label><div style="height:10px"></div>
-    <div id="manualPositionFields" class="grid"><label>總量成本均價（目前持股成本均價）<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>首次買入日<input id="holdBuyDate" type="date" required></label></div>
+    <div id="manualPositionFields" class="grid"><label>目前成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>目前部位總成本<input id="holdTotalCost" inputmode="decimal" placeholder="例如：4380000"></label><label>首次買入時間<input id="holdBuyTime" type="datetime-local" required></label></div>
     <label style="display:block;margin-top:10px">部位輸入方式<select id="positionInputMode"><option value="manual" selected>直接輸入目前均價／股數</option><option value="lots">進階：逐筆輸入仍持有明細</option></select></label>
     <div id="positionLots" class="hidden" style="margin-top:10px"><div id="positionLotRows"></div><button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button><div id="positionLotSummary" class="source-note compact-note"></div></div>
-    <p class="simple-rule">已持有股票不再套用短／中／長買入價。系統使用你的實際成本、股數、買入日與合法已驗證行情做持倉管理。OOS 驗證只決定能不能顯示勝率／機率／校準信心，不得再把持股分析整頁鎖住；資料不足時不捏造出場價，但仍提供可行動的風險條件與下一步。</p>
+    <p class="simple-rule">已持有股票不再套用短／中／長買入價。系統要求你輸入買入時間、目前股數、目前部位總成本與成本均價，再配合法且已驗證行情做持有／減碼／出場分析。任一必要欄位未取得或彼此明顯矛盾時顯示無法判定；不以假資料補缺漏。</p>
     <button id="holdAnalyzeBtn">分析出場時機</button><div id="holdLoad" class="loader hidden">正在驗證持股資料與市場事實…</div><div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">成本、股數與日期只採你的輸入，不自行推測。</div></div>
   </section>
   <section id="findPanel" class="card hidden"><h2 style="margin-top:0">目前值得研究的入場候選</h2><p class="muted">使用與「想買這檔」相同的完整模型。合格不足 10 檔就不補滿。</p><button id="scanBtn">找出 TOP 10</button><div id="scanLoad" class="loader hidden">正在驗證候選股票…</div></section>
