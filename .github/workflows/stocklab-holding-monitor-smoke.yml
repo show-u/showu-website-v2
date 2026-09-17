@@ -8,7 +8,8 @@ on:
       - 'stock-lab/health.js'
       - 'stock-lab/position-input.js'
       - 'stock-lab/index.html'
-      - 'stock-lab/browser-data.json'
+      - 'stock-lab/market-facts.json'
+      - 'stock-lab/same-origin-cache.js'
       - 'stock-lab/history-ogdl/manifest.json'
       - '.github/workflows/stocklab-holding-monitor-smoke.yml'
   workflow_dispatch:
@@ -46,5 +47,7 @@ jobs:
           assert '不得顯示勝率、成功率、機率或校準信心指數' in model
           assert '缺少的資料維持缺少，不以假資料補值' in router
           assert '非盤中即時價' in router
+          assert 'StockLabSameOrigin' in router
+          assert 'browser-data.json' not in router
           print('holding rule-based smoke passed; obsolete OOS-locked monitor absent')
           PY
