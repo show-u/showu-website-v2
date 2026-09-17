@@ -8,12 +8,12 @@
   function roundTick(p,mode='nearest'){if(!Number.isFinite(p))return null;const t=tickSize(Math.max(.01,p)),q=p/t,z=mode==='up'?Math.ceil(q):mode==='down'?Math.floor(q):Math.round(q);return +(z*t).toFixed(t<.1?2:t<1?1:0)}
   function dateMs(v){if(!v)return null;const d=new Date(`${v}T00:00:00+08:00`);return Number.isNaN(d.getTime())?null:d.getTime()}
   function barDate(x){return x?.iso||x?.date||null}
-  function positionInput(x){const averageCost=num(x?.averageCost),shares=num(x?.shares),buyDate=x?.buyDate||null;if(!(averageCost>0))throw Error('成本均價必須大於 0');if(!(shares>0))throw Error('持有股數必須大於 0');if(!buyDate||dateMs(buyDate)==null)throw Error('首次買入日必須由使用者輸入有效日期');return{averageCost,shares,buyDate,lots:Array.isArray(x?.lots)?x.lots:null,provenance:x?.provenance||{averageCost:'user_observed',shares:'user_observed',buyDate:'user_observed'}}}
+  function positionInput(x){const averageCost=num(x?.averageCost),shares=num(x?.shares),totalCost=num(x?.totalCost),buyTime=String(x?.buyTime||'').trim(),buyDate=buyTime.slice(0,10);if(!(averageCost>0))throw Error('成本均價必須大於 0');if(!(shares>0))throw Error('持有股數必須大於 0');if(!(totalCost>0))throw Error('目前部位總成本必須大於 0');if(!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(buyTime)||dateMs(buyDate)==null)throw Error('首次買入時間必須由使用者輸入有效日期時間');const implied=averageCost*shares,delta=Math.abs(implied-totalCost),tol=Math.max(1,totalCost*.02);if(delta>tol)throw Error('總成本與均價 × 股數差異超過 2%，部位資料無法一致驗證');return{averageCost,shares,totalCost,buyTime,buyDate,lots:Array.isArray(x?.lots)?x.lots:null,provenance:x?.provenance||{averageCost:'user_observed',shares:'user_observed',totalCost:'user_observed',buyTime:'user_observed'}}}
   function normalizeBars(bars){return (Array.isArray(bars)?bars:[]).filter(x=>Number.isFinite(Number(x?.c))&&Number(x.c)>0).map(x=>({...x,c:Number(x.c),o:num(x.o),h:num(x.h),l:num(x.l)})).sort((a,b)=>String(barDate(a)).localeCompare(String(barDate(b))))}
   function analyze(input,bars,ctx={}){
     const p=positionInput(input),r=normalizeBars(bars);if(!r.length)throw Error('沒有可用的已驗證收盤資料');if(ctx.legalSource!==true)throw Error('行情來源授權未通過');if(ctx.priceVerified!==true)throw Error('最新收盤尚未通過驗證');
     const L=r.at(-1),dataDate=barDate(L);if(!dataDate)throw Error('最新交易日缺漏');
-    const cost=p.averageCost*p.shares,marketValue=L.c*p.shares,pnl=marketValue-cost,pnlPct=cost?100*pnl/cost:null;
+    const cost=p.totalCost,marketValue=L.c*p.shares,pnl=marketValue-cost,pnlPct=cost?100*pnl/cost:null;
     const usable=r.slice(-Math.min(20,r.length)),lows=usable.map(x=>x.l).filter(Number.isFinite),highs=usable.map(x=>x.h).filter(Number.isFinite),closes=usable.map(x=>x.c).filter(Number.isFinite);
     // One verified close is sufficient for factual P/L, but never sufficient to invent price structure.
     // Support/resistance and price triggers require a real 20-session structure; MA5/MA20 require their full windows.
