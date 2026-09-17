@@ -1,0 +1,84 @@
+name: StockLab public journey e2e
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/stocklab-public-journey-e2e.yml'
+      - 'stock-lab/index.html'
+      - 'stock-lab/position-input.js'
+      - 'stock-lab/holding-model.js'
+      - 'stock-lab/holding-router.js'
+      - 'stock-lab/same-origin-cache.js'
+      - 'stock-lab/market-facts.json'
+
+jobs:
+  holding-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 --no-save
+          npx playwright install --with-deps chromium
+      - name: Verify live StockLab holding journey
+        env:
+          BASE_URL: https://www.showujapan.com/stock-lab/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            const errors = [];
+            page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+            page.on('console', m => {
+              if (m.type() === 'error') errors.push('console: ' + m.text());
+            });
+
+            await page.goto(process.env.BASE_URL + '?e2e=' + Date.now(), {
+              waitUntil: 'networkidle',
+              timeout: 60000
+            });
+
+            await page.locator('#holdBtn').click();
+            await page.locator('#holdTicker').fill('2454');
+            await page.locator('#holdAvgCost').fill('1000');
+            await page.locator('#holdShares').fill('100');
+            await page.locator('#holdTotalCost').fill('100000');
+            await page.locator('#holdBuyTime').fill('2026-09-01T10:00');
+
+            await page.locator('#holdAnalyzeBtn').click();
+
+            await page.waitForFunction(() => {
+              const box = document.querySelector('#holdResult');
+              if (!box) return false;
+              const t = box.innerText || '';
+              return t.includes('目前持倉判斷') || t.includes('持倉分析失敗');
+            }, { timeout: 30000 });
+
+            const result = await page.locator('#holdResult').innerText();
+
+            if (result.includes('持倉分析失敗')) {
+              throw new Error('Live holding journey reached controlled failure instead of usable result:\n' + result);
+            }
+            for (const required of ['聯發科／2454','成本均價','目前持有股數','目前部位總成本','首次買入時間','目前持倉判斷','最新已驗證收盤']) {
+              if (!result.includes(required)) throw new Error('Missing live holding output: ' + required + '\n' + result);
+            }
+            if (!result.includes('100,000')) throw new Error('User total cost was not preserved in output:\n' + result);
+            if (errors.length) throw new Error('Browser runtime errors:\n' + errors.join('\n'));
+
+            console.log('PASS: live mobile holding journey produced a usable result');
+            console.log(result);
+            await browser.close();
+          })().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
