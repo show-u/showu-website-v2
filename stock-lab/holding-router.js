@@ -25,6 +25,7 @@
 
   async function legalBars(code,market,snap){
     try{
+      if(window.STOCKLAB_RUNTIME?.gates?.licensedHistoricalOHLC!==true)throw Error('合法歷史資料尚未啟用');
       const h=window.StockLabLicensedHistory;
       if(h?.load){
         const bars=await withTimeout(h.load({code,market,minimumBars:1}),1500,'合法歷史資料逾時');
@@ -49,6 +50,7 @@
     })();
     const corporateTask=(async()=>{
       try{
+        if(window.STOCKLAB_RUNTIME?.gates?.corporateActions!==true)return;
         const h=window.StockLabLicensedHistory;
         if(h?.context){
           await withTimeout(h.context({code,market}),1200,'公司行動資料逾時');
@@ -62,6 +64,7 @@
 
   async function sessionInfo(market,dataDate){
     try{
+      if(window.STOCKLAB_RUNTIME?.gates?.tradingCalendar!==true)return'下一合法交易日尚未驗證';
       const resolver=window.StockLabSessionContext?.resolve;
       if(!resolver)return'下一合法交易日尚未驗證';
       const s=await withTimeout(resolver({market,dataDate}),1200,'交易日曆逾時');
