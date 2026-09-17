@@ -19,22 +19,16 @@
   function conciseBlock(title,base,detail){return `<div class=toprow><div><h2>${esc(title)}</h2><div class=muted>${esc(base)}</div></div></div><div class=source-note><b class=bad>暫不提供數字建議</b><div class=mini>${esc(detail)}</div></div><div class=disclaimer><b>資料規則</b>必要資料、合法性、正式樣本外驗證或信心校準有任何一項未通過，就不產生入場價格與信心指數，也不以舊值、0、平均值、其他網站或 AI 補值。</div>`}
 
   async function observation(q){
-    const resolver=window.StockLabTickerResolver;if(!resolver?.resolve||!resolver?.loadUniverse)throw Error('股票索引尚未通過驗證');
-    const code=await resolver.resolve(q),u=await resolver.loadUniverse(),meta=u.find(x=>x.code===code);if(!meta)throw Error('合法股票索引找不到此標的');
-    const c=await window.StockLabSameOrigin?.loadCache?.();if(!c)throw Error('合法公開資料快取尚未通過驗證');
-    const d=c.datasets||{};let row=null,close=null,dateRaw=null;
-    if(meta.market==='TWSE'){
-      row=(d.twse_snapshot||[]).find(x=>String(x.Code||'').trim()===code);close=num(row?.ClosingPrice);dateRaw=row?.Date;
-    }else{
-      row=(d.tpex_snapshot||[]).find(x=>String(pick(x,['SecuritiesCompanyCode','Code','證券代號'])||'').trim()===code);close=num(pick(row,['Close','ClosingPrice','收盤價','收盤']));dateRaw=pick(row,['Date','日期']);
-    }
-    const date=normalizeTradeDate(dateRaw),age=date?dateAgeDays(date):9999;
-    if(!row||!(close>0))throw Error('最新合法收盤資料未取得／未通過驗證');
+    const resolver=window.StockLabTickerResolver;if(!resolver?.resolve)throw Error('股票索引尚未通過驗證');
+    const code=await resolver.resolve(q),src=window.StockLabSameOrigin;
+    if(!src?.latest)throw Error('合法市場事實介面尚未初始化');
+    const row=await src.latest(code),close=num(row.close),date=normalizeTradeDate(row.date),age=date?dateAgeDays(date):9999;
+    if(!(close>0))throw Error('最新合法收盤資料未取得／未通過驗證');
     if(!date)throw Error('收盤資料缺少可驗證交易日期；禁止當成最新資料');
-    if(age<0||age>4)throw Error(`收盤資料日期過舊或異常：${date}；禁止當成目前資料`);
+    if(age<0||age>4)throw Error(`最新合法市場事實過舊：${date}；不把舊資料冒充目前行情`);
     let session={verified:false,state:'SESSION_GATE_UNAVAILABLE',label:'交易時段／下一交易日尚未驗證'};
-    try{if(window.StockLabSessionContext?.resolve)session=await window.StockLabSessionContext.resolve({market:meta.market,dataDate:date})}catch(e){session={verified:false,state:'SESSION_GATE_ERROR',label:`交易時段驗證失敗：${e.message||e}`}}
-    return{code,name:meta.name,market:meta.market,close,date,ageDays:age,session,provenance:'observed_close'};
+    try{if(window.StockLabSessionContext?.resolve)session=await window.StockLabSessionContext.resolve({market:row.market,dataDate:date})}catch(e){session={verified:false,state:'SESSION_GATE_ERROR',label:`交易時段驗證失敗：${e.message||e}`}}
+    return{code,name:row.name,market:row.market,close,date,ageDays:age,session,provenance:'observed_close',sourceId:row.source_id,licence:row.licence};
   }
   function sessionHtml(s){const label=s?.label||'交易時段未驗證',bad=s?.verified===false||s?.state==='WAITING_TODAY_CLOSE_DATA';return `<div class=source-note><b${bad?' class=bad':''}>交易時段／資料截點</b><div class=mini>${esc(label)}</div></div>`}
 
