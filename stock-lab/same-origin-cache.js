@@ -5,7 +5,7 @@
   const req=(o,k)=>Object.prototype.hasOwnProperty.call(o,k)&&o[k]!==null&&o[k]!==undefined&&String(o[k]).trim()!=='';
   function validRow(r){
     if(!r||r.provenance!=='observed'||r.licence!=='OGDL-1.0')return false;
-    if(!['TWSE','TPEx'].includes(r.market)||!/^\\d{4,6}$/.test(String(r.ticker||''))||!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(r.date||'')))return false;
+    if(!['TWSE','TPEx'].includes(r.market)||!/^[0-9]{4,6}$/.test(String(r.ticker||''))||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(r.date||'')))return false;
     for(const k of ['open','high','low','close'])if(!Number.isFinite(Number(r[k]))||Number(r[k])<=0)return false;
     if(Number(r.high)<Math.max(Number(r.open),Number(r.low),Number(r.close)))return false;
     if(Number(r.low)>Math.min(Number(r.open),Number(r.high),Number(r.close)))return false;
