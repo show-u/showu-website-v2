@@ -66,8 +66,10 @@ jobs:
           assert 'browser-data.json' not in router+cache
 
           # User position provenance only.
-          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'):
-              assert text in pos,text
+          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','holdTotalCost','holdBuyTime','validDateTime(bt)'):
+              assert text in pos+idx,text
+          for k in ('FOUR_FIELD_HOLDING_INPUT','EXECUTABLE_ENTRY_ONLY'):
+              assert k in policy['absolute_invariants'],k
 
           # OOS applies to statistical/predictive claims, not deterministic holding rules.
           assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
