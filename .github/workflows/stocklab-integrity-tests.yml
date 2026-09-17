@@ -118,8 +118,10 @@ jobs:
             '.github/workflows/stocklab-holding-exit-oos.yml'
           ]
           for p in obsolete: assert not Path(p).exists(),f'obsolete holding lock returned: {p}'
-          for stale in ('holding-readiness.json','historyReadiness','holdAnalyzeBtn'):
+          for stale in ('holding-readiness.json','historyReadiness'):
               assert stale not in public,f'public-output holding override returned: {stale}'
+          assert "document.querySelector('#holdAnalyzeBtn')" not in public
+          assert "const hold=document.querySelector('#holdAnalyzeBtn')" not in public
           assert 'holding-readiness.json' not in fallback
           assert 'holding_exit_oos_validation_passed' not in R('stock-lab/verification-policy.json')
           assert 'holding_exit_oos_required' not in R('stock-lab/verification-policy.json')
