@@ -61,7 +61,8 @@ jobs:
             curl -fsSL --max-time 15 "${ASSET_URL}?deploy=${RANDOM}" -o /tmp/live-holding-router.js || true
             if grep -Fq '合法歷史資料逾時' /tmp/live-holding-router.js 2>/dev/null \
               && grep -Fq '公司行動資料逾時' /tmp/live-holding-router.js 2>/dev/null \
-              && grep -Fq 'withTimeout' /tmp/live-holding-router.js 2>/dev/null; then
+              && grep -Fq 'withTimeout' /tmp/live-holding-router.js 2>/dev/null \
+              && grep -Fq 'StockLabHoldingStage:' /tmp/live-holding-router.js 2>/dev/null; then
               ready=1
               break
             fi
@@ -83,6 +84,7 @@ jobs:
             const errors = [];
             page.on('pageerror', e => errors.push('pageerror: ' + e.message));
             page.on('console', m => {
+              console.log('browser-console[' + m.type() + ']: ' + m.text());
               if (m.type() === 'error') errors.push('console: ' + m.text());
             });
 
