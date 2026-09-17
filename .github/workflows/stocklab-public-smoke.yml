@@ -101,7 +101,8 @@ jobs:
           need 'StockLabSessionContext.resolve' /tmp/public-output.js 'public output not session-aware'
           need 'base_session_date' /tmp/hard-policy.js 'backend policy missing base-session contract'
           need 'target_session_date' /tmp/hard-policy.js 'backend policy missing target-session contract'
-          need 'next_eligible_session_date' /tmp/hard-policy.js 'backend policy missing next-session contract'
+          need 'target_session_date' /tmp/hard-policy.js 'backend policy missing target-session contract'
+          need 'sessionPairOK' /tmp/hard-policy.js 'backend policy missing verified base/target session pairing'
           need 'window.StockLabTickerResolver' /tmp/ui-patch.js 'ticker resolver unavailable'
           forbid 'horizon=document.querySelector' /tmp/ui-patch.js 'legacy horizon routing returned'
 
