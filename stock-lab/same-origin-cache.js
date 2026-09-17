@@ -5,7 +5,7 @@
   const req=(o,k)=>Object.prototype.hasOwnProperty.call(o,k)&&o[k]!==null&&o[k]!==undefined&&String(o[k]).trim()!=='';
   function validRow(r){
     if(!r||r.provenance!=='observed'||r.licence!=='OGDL-1.0')return false;
-    if(!['TWSE','TPEx'].includes(r.market)||!/^[0-9]{4,6}$/.test(String(r.ticker||''))||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(r.date||'')))return false;
+    if(!['TWSE','TPEx'].includes(r.market)||!/^[0-9A-Z]{4,6}$/i.test(String(r.ticker||''))||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(r.date||'')))return false;
     for(const k of ['open','high','low','close'])if(!Number.isFinite(Number(r[k]))||Number(r[k])<=0)return false;
     if(Number(r.high)<Math.max(Number(r.open),Number(r.low),Number(r.close)))return false;
     if(Number(r.low)>Math.min(Number(r.open),Number(r.high),Number(r.close)))return false;
@@ -18,8 +18,10 @@
       const x=await r.json();
       if(x.schema_version!==1||x.source!=='ogdl-normalized-market-facts'||x.licence!=='OGDL-1.0'||x.no_imputation!==true)throw Error('市場事實檔授權／版本驗證未通過');
       if(!Array.isArray(x.rows)||!x.rows.length)throw Error('市場事實檔沒有可用資料');
-      for(const z of x.rows)if(!validRow(z))throw Error('市場事實檔存在未通過 schema／來源驗證的列');
-      return x;
+      const valid=x.rows.filter(validRow),rejected=x.rows.length-valid.length;
+      if(!valid.length)throw Error('市場事實檔沒有通過 schema／來源驗證的可用資料');
+      if(rejected>0)console.warn(`StockLab: ${rejected} 列市場事實未通過驗證，已逐列隔離；不以其資料進行分析`);
+      return {...x,rows:valid,rejected_row_count:rejected};
     }).catch(e=>{factsPromise=null;throw e});
     return factsPromise;
   }
