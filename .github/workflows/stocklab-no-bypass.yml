@@ -31,6 +31,7 @@ jobs:
           cache=R('stock-lab/same-origin-cache.js')
           compliance=R('stock-lab/compliance-gate.js')
           hard=R('stock-lab/hard-policy.js')
+          health=R('stock-lab/health.js')
           runtime=R('stock-lab/runtime-config.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
           sources=json.loads(R('stock-lab/history-source-registry.json'))
@@ -76,9 +77,13 @@ jobs:
               assert x in pos,x
           assert 'market-data inference' in pos
           assert 'averageCost:a' in pos and 'shares:s' in pos and 'buyDate:d' in pos
-          assert '首次買入日（正式出場分析必要）' in idx
+          assert 'id="holdBuyDate"' in idx and 'type="date" required' in idx
 
-          # 6. Current public data boundary remains legally explicit and no missing-data fallback exists.
+          # 6. The obsolete OOS-locked holding monitor must stay deleted and must never be loaded indirectly.
+          assert not Path('stock-lab/holding-usable.js').exists(), 'obsolete holding-usable.js returned'
+          assert 'holding-usable.js' not in idx+health, 'obsolete holding override returned'
+
+          # 7. Current public data boundary remains legally explicit and no missing-data fallback exists.
           assert "mode:'online-only'" in cache
           assert 'persistentMirror:false' in cache
           assert 'remoteFallback:false' in cache
@@ -90,7 +95,7 @@ jobs:
           assert '授權／版本驗證未通過' in compliance
           assert '不以 0、平均值、舊值或 AI 補齊' in compliance
 
-          # 7. Statistical/predictive claims remain hard-gated; deterministic holding rules do not inherit that lock.
+          # 8. Statistical/predictive claims remain hard-gated; deterministic holding rules do not inherit that lock.
           for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
               assert x in hard,x
           for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION'):
@@ -100,13 +105,13 @@ jobs:
           assert protocol['non_negotiable_rules']['confidence_requires_separate_oos_calibration'] is True
           assert protocol['non_negotiable_rules']['production_formula_must_equal_test_formula'] is True
 
-          # 8. No fake probability/win-rate can leak from the rule-based holding path.
+          # 9. No fake probability/win-rate can leak from the rule-based holding path.
           assert "confidence_calibrated:false" in hold_model
           assert '不得顯示勝率、成功率、機率或校準信心指數' in hold_model
           for fake in ('保證出場價','保證停損價','勝率：','成功率：','上漲機率：'):
               assert fake not in holding+hold_model, fake
 
-          # 9. Historical source candidates are not data until entitlement/licence and validation are complete.
+          # 10. Historical source candidates are not data until entitlement/licence and validation are complete.
           assert sources['rules']['public_url_is_not_a_licence'] is True
           assert sources['rules']['no_scraping_for_backfill'] is True
           assert sources['rules']['no_unverified_third_party_backfill'] is True
@@ -117,10 +122,10 @@ jobs:
           assert og['history_backfill'] is False
           assert og.get('scoring_allowed_for_historical_backfill') is False
 
-          # 10. General production predictions stay locked; this must never be used to re-lock deterministic holding management.
+          # 11. General production predictions stay locked; this must never be used to re-lock deterministic holding management.
           assert 'productionPredictionReady:false' in runtime
           assert 'no OOS lock' in holding
           assert 'actionable deterministic holding rules' in holding
 
-          print('StockLab no-bypass truth gate passed: verified rule-based holding path is allowed; fake statistical claims remain blocked')
+          print('StockLab no-bypass truth gate passed: obsolete holding lock absent; verified rule-based holding path allowed')
           PY
