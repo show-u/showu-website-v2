@@ -8,9 +8,10 @@
   const summary=document.querySelector('#positionLotSummary');
   const avgCost=document.querySelector('#holdAvgCost');
   const shares=document.querySelector('#holdShares');
-  const buyDate=document.querySelector('#holdBuyDate');
+  const totalCost=document.querySelector('#holdTotalCost');
+  const buyTime=document.querySelector('#holdBuyTime');
   const holdResult=document.querySelector('#holdResult');
-  if(!mode||!manual||!lotsBox||!rows||!addBtn||!summary||!avgCost||!shares||!buyDate)return;
+  if(!mode||!manual||!lotsBox||!rows||!addBtn||!summary||!avgCost||!shares||!totalCost||!buyTime)return;
 
   let seq=0;
   const num=v=>{const s=String(v??'').trim().replace(/,/g,'');if(!s)return null;const x=Number(s);return Number.isFinite(x)?x:null};
@@ -20,35 +21,35 @@
 
   function rowTemplate(){
     const id=++seq;
-    return `<div class="sourceitem position-lot" data-lot-id="${id}"><div class="grid"><label>買入日<input type="date" data-lot-date></label><label>買入價格<input inputmode="decimal" data-lot-price placeholder="例如：4380"></label><label>目前仍持有股數<input inputmode="numeric" data-lot-shares placeholder="例如：500"></label><label>備註（選填）<input data-lot-note placeholder="例如：第一批"></label></div><button type="button" class="ghost" data-remove-lot style="margin-top:8px">刪除此筆</button></div>`;
+    return `<div class="sourceitem position-lot" data-lot-id="${id}"><div class="grid"><label>買入時間<input type="datetime-local" data-lot-time></label><label>買入價格<input inputmode="decimal" data-lot-price placeholder="例如：4380"></label><label>目前仍持有股數<input inputmode="numeric" data-lot-shares placeholder="例如：500"></label><label>備註（選填）<input data-lot-note placeholder="例如：第一批"></label></div><button type="button" class="ghost" data-remove-lot style="margin-top:8px">刪除此筆</button></div>`;
   }
   function addRow(){rows.insertAdjacentHTML('beforeend',rowTemplate());recompute()}
-  function lotRows(){return[...rows.querySelectorAll('.position-lot')].map(el=>({el,date:el.querySelector('[data-lot-date]')?.value||'',price:num(el.querySelector('[data-lot-price]')?.value),shares:num(el.querySelector('[data-lot-shares]')?.value),note:el.querySelector('[data-lot-note]')?.value||''}))}
+  function lotRows(){return[...rows.querySelectorAll('.position-lot')].map(el=>({el,time:el.querySelector('[data-lot-time]')?.value||'',price:num(el.querySelector('[data-lot-price]')?.value),shares:num(el.querySelector('[data-lot-shares]')?.value),note:el.querySelector('[data-lot-note]')?.value||''}))}
   function recompute(){
     if(mode.value!=='lots'){summary.innerHTML='<b>逐筆明細未啟用</b><div class="mini">目前以你輸入的券商總均價、目前持股數與首次買入日為準。</div>';return}
-    const all=lotRows(),used=all.filter(x=>x.date||x.price!=null||x.shares!=null||x.note.trim());
-    if(!used.length){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b>尚未輸入買入明細</b><div class="mini">逐筆模式不會自動猜測任何成本或日期。</div>';return}
-    const incomplete=used.filter(x=>!validDate(x.date)||!(x.price>0)||!(x.shares>0));
-    if(incomplete.length){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b class="bad">買入明細不完整</b><div class="mini">每一筆已使用的明細都必須有有效買入日、正數買入價格與目前仍持有股數。缺值不補 0，也不推測日期。</div>';return}
-    const totalShares=used.reduce((s,x)=>s+x.shares,0),totalCost=used.reduce((s,x)=>s+x.price*x.shares,0),weighted=totalShares?totalCost/totalShares:null,dates=used.map(x=>x.date).sort();
+    const all=lotRows(),used=all.filter(x=>x.time||x.price!=null||x.shares!=null||x.note.trim());
+    if(!used.length){avgCost.value='';shares.value='';totalCost.value='';buyTime.value='';summary.innerHTML='<b>尚未輸入買入明細</b><div class="mini">逐筆模式不會自動猜測任何成本或日期。</div>';return}
+    const incomplete=used.filter(x=>!validDateTime(x.time)||!(x.price>0)||!(x.shares>0));
+    if(incomplete.length){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b class="bad">買入明細不完整</b><div class="mini">每一筆已使用的明細都必須有有效買入時間、正數買入價格與目前仍持有股數。缺值不補 0，也不推測日期。</div>';return}
+    const totalShares=used.reduce((s,x)=>s+x.shares,0),sumCost=used.reduce((s,x)=>s+x.price*x.shares,0),weighted=totalShares?sumCost/totalShares:null,times=used.map(x=>x.time).sort();
     if(!(totalShares>0)||!(weighted>0)){avgCost.value='';shares.value='';buyDate.value='';summary.innerHTML='<b class="bad">明細無法形成有效部位</b>';return}
-    avgCost.value=String(+weighted.toFixed(4));shares.value=String(+totalShares.toFixed(4));buyDate.value=dates[0]||'';
-    summary.innerHTML=`<b>逐筆明細計算結果</b><div class="mini">目前仍持有 ${money(totalShares)} 股｜輸入成本合計 ${money(totalCost)}｜加權均價 ${money(weighted)}｜最早買入日 ${esc(dates[0])}<br>以上全部來自你的輸入，不是市場推估；未含你未輸入的手續費、交易稅、股利或已賣出部位。</div>`;
+    avgCost.value=String(+weighted.toFixed(4));shares.value=String(+totalShares.toFixed(4));totalCost.value=String(+sumCost.toFixed(4));buyTime.value=times[0]||'';
+    summary.innerHTML=`<b>逐筆明細計算結果</b><div class="mini">目前仍持有 ${money(totalShares)} 股｜輸入成本合計 ${money(sumCost)}｜加權均價 ${money(weighted)}｜最早買入時間 ${esc(times[0])}<br>以上全部來自你的輸入，不是市場推估；未含你未輸入的手續費、交易稅、股利或已賣出部位。</div>`;
   }
   function setMode(){const lots=mode.value==='lots';manual.classList.toggle('hidden',lots);lotsBox.classList.toggle('hidden',!lots);if(lots&&!rows.children.length)addRow();recompute()}
   function collect(options={}){
-    const allowMissingDate=options?.allowMissingDate===true;
     if(mode.value==='manual'){
-      const a=num(avgCost.value),s=num(shares.value),raw=buyDate.value||'',d=validDate(raw)?raw:null;
-      if(!(a>0)||!(s>0))throw Error('請輸入有效的券商總均價與目前持有股數');
-      if(!d&&!allowMissingDate)throw Error('正式出場分析需要有效首次買入日；日期缺失時只能顯示持股事實與估算損益，不能產生出場時機');
-      return{mode:'manual',averageCost:a,shares:s,buyDate:d,lots:null,positionComplete:!!d,provenance:{averageCost:'user_observed',shares:'user_observed',buyDate:d?'user_observed':'unavailable'}};
+      const a=num(avgCost.value),sh=num(shares.value),tc=num(totalCost.value),raw=buyTime.value||'',bt=validDateTime(raw)?raw:null;
+      if(!(a>0)||!(sh>0)||!(tc>0)||!bt)throw Error('請完整輸入買入時間、目前持有股數、目前部位總成本與成本均價');
+      const implied=a*sh,delta=Math.abs(implied-tc),tol=Math.max(1,tc*0.02);
+      if(delta>tol)throw Error('總成本與「均價 × 股數」差異超過 2%，請先核對部位資料後再分析');
+      return{mode:'manual',averageCost:a,shares:sh,totalCost:tc,buyTime:bt,buyDate:bt.slice(0,10),lots:null,positionComplete:true,provenance:{averageCost:'user_observed',shares:'user_observed',totalCost:'user_observed',buyTime:'user_observed'}};
     }
-    recompute();const a=num(avgCost.value),s=num(shares.value),d=buyDate.value||null;if(!(a>0)||!(s>0)||!validDate(d))throw Error('逐筆買入明細尚未完整');
-    const lots=lotRows().filter(x=>validDate(x.date)&&x.price>0&&x.shares>0).map(x=>({date:x.date,price:x.price,shares:x.shares,note:x.note||null,provenance:'user_observed'}));
-    return{mode:'lots',averageCost:a,shares:s,buyDate:d,lots,positionComplete:true,provenance:{averageCost:'derived_from_user_lots',shares:'derived_from_user_lots',buyDate:'derived_from_user_lots'}};
+    recompute();const a=num(avgCost.value),sh=num(shares.value),tc=num(totalCost.value),bt=buyTime.value||null;if(!(a>0)||!(sh>0)||!(tc>0)||!validDateTime(bt))throw Error('逐筆買入明細尚未完整');
+    const lots=lotRows().filter(x=>validDateTime(x.time)&&x.price>0&&x.shares>0).map(x=>({time:x.time,date:x.time.slice(0,10),price:x.price,shares:x.shares,note:x.note||null,provenance:'user_observed'}));
+    return{mode:'lots',averageCost:a,shares:sh,totalCost:tc,buyTime:bt,buyDate:bt.slice(0,10),lots,positionComplete:true,provenance:{averageCost:'derived_from_user_lots',shares:'derived_from_user_lots',totalCost:'derived_from_user_lots',buyTime:'derived_from_user_lots'}};
   }
-  function provenanceHtml(){return mode.value==='lots'?'<b>部位資料來源｜derived from user input</b><div class="mini">總股數、總成本均價與最早買入日由你輸入的逐筆「買入日＋價格＋目前仍持有股數」加權計算；不是券商原始欄位，也不是市場推估。</div>':'<b>部位資料來源｜user observed</b><div class="mini">成本均價、目前持有股數與首次買入日直接採用你輸入的券商／個人紀錄；系統不自行猜測。首次買入日未填時，只能顯示已知持股事實與損益，正式出場模型保持鎖定。</div>'}
+  function provenanceHtml(){return mode.value==='lots'?'<b>部位資料來源｜derived from user input</b><div class="mini">總股數、總成本均價與最早買入日由你輸入的逐筆「買入日＋價格＋目前仍持有股數」加權計算；不是券商原始欄位，也不是市場推估。</div>':'<b>部位資料來源｜user observed</b><div class="mini">買入時間、目前持有股數、目前部位總成本與成本均價全部直接採用你的券商／個人紀錄；系統不自行猜測。四項任一缺漏或明顯矛盾時顯示無法判定。</div>'}
   function stampProvenance(){if(!holdResult||!holdResult.querySelector('h2'))return;let n=holdResult.querySelector('[data-position-provenance]');if(!n){n=document.createElement('div');n.className='source-note compact-note';n.dataset.positionProvenance='1';const top=holdResult.querySelector('.toprow');top?.insertAdjacentElement('afterend',n)}if(n)n.innerHTML=provenanceHtml()}
 
   mode.addEventListener('change',setMode);addBtn.addEventListener('click',addRow);
