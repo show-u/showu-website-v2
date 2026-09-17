@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "principle": "Operational continuity is mandatory, but never by fabricating, imputing or silently substituting unverified market data.",
+  "modes": {
+    "FULL_MODEL": {
+      "requires": [
+        "validated licensed historical bundle",
+        "current verified market facts",
+        "production formula match",
+        "formal untouched OOS PASS",
+        "execution validation PASS",
+        "confidence calibration PASS"
+      ],
+      "allows": ["entry output", "holding/exit output", "ranking", "calibrated confidence"]
+    },
+    "VERIFIED_FACTS_ONLY": {
+      "requires": ["current legally usable and verified official/open-data observations"],
+      "allows": [
+        "ticker/name lookup",
+        "latest verified EOD facts",
+        "valuation/revenue/risk facts when independently verified",
+        "user position input",
+        "cost basis",
+        "close-based market value and unrealized P/L",
+        "source/date/licence diagnostics"
+      ],
+      "forbids": ["invented entry price", "invented exit price", "fake win rate", "fake confidence", "silent stale-data substitution"]
+    },
+    "INPUT_ONLY": {
+      "requires": [],
+      "allows": ["user position input", "local position arithmetic", "source/readiness diagnostics"],
+      "forbids": ["market facts without a verified source", "prediction", "ranking"]
+    }
+  },
+  "history_source_fallback_order": [
+    {
+      "priority": 1,
+      "id": "existing_validated_private_bundle",
+      "rule": "Use any already-imported bundle only if the StockLab licensed-bundle validator passes rights, provenance, schema, checksum, PIT context and market coverage."
+    },
+    {
+      "priority": 2,
+      "id": "licensed_provider_private_api",
+      "examples": ["TW Market Data", "TEJ or another contracted Taiwan data provider"],
+      "rule": "Provider identity is not enough. Exact paid entitlement must explicitly allow commercial use, automated acquisition/processing, private storage, derived analysis, public derived outputs and the actual processing location."
+    },
+    {
+      "priority": 3,
+      "id": "twse_tpex_data_eshop",
+      "rule": "Use only after the exact ordered products and terms or written clarification authorize the required automated/model/derived-output use. Raw licensed rows stay private unless redistribution is explicitly granted."
+    },
+    {
+      "priority": 4,
+      "id": "user_supplied_authorized_bundle",
+      "rule": "Accept lawfully obtained CSV/JSON/JSONL from any provider through import-licensed-history.py only when a retained rights manifest proves the required rights. Missing datasets are not synthesized."
+    },
+    {
+      "priority": 5,
+      "id": "ogdl_forward_archive",
+      "rule": "Keep the app operational in VERIFIED_FACTS_ONLY mode and continue lawful forward archiving. Never pretend that forward accumulation backfills missing past history."
+    }
+  ],
+  "failure_behavior": {
+    "one_dataset_failure": "isolate that factor and mark unavailable; do not crash unrelated verified features",
+    "historical_model_failure": "downgrade to VERIFIED_FACTS_ONLY",
+    "current_market_fact_failure": "downgrade to INPUT_ONLY",
+    "licensed_provider_failure": "move to next authorized source candidate; never fall back to scraping",
+    "unknown_or_ambiguous_rights": "treat as unusable until documented",
+    "missing_value": "preserve null/unavailable; never replace with zero, previous value, average, median, another site or AI-generated value"
+  }
+}
