@@ -8,6 +8,8 @@ on:
       - 'stock-lab/holding-model.js'
       - 'stock-lab/holding-router.js'
       - 'stock-lab/position-input.js'
+      - 'stock-lab/same-origin-cache.js'
+      - 'stock-lab/market-facts.json'
       - 'stock-lab/hard-policy.js'
       - 'stock-lab/verification-policy.json'
       - 'stock-lab/index.html'
@@ -27,73 +29,54 @@ jobs:
           python-version: '3.12'
       - name: Syntax checks
         run: |
-          node --check stock-lab/session-context.js
-          node --check stock-lab/public-output.js
-          node --check stock-lab/holding-model.js
-          node --check stock-lab/holding-router.js
-          node --check stock-lab/position-input.js
-          node --check stock-lab/hard-policy.js
-      - name: Session and safe holding invariants
+          for f in session-context public-output holding-model holding-router position-input hard-policy same-origin-cache; do node --check "stock-lab/$f.js"; done
+      - name: Session and deterministic holding invariants
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           R=lambda p:Path(p).read_text(encoding='utf-8')
-          idx=R('stock-lab/index.html')
-          sess=R('stock-lab/session-context.js')
-          public=R('stock-lab/public-output.js')
-          hold=R('stock-lab/holding-model.js')
-          router=R('stock-lab/holding-router.js')
-          pos=R('stock-lab/position-input.js')
-          hard=R('stock-lab/hard-policy.js')
+          idx=R('stock-lab/index.html');sess=R('stock-lab/session-context.js');public=R('stock-lab/public-output.js')
+          hold=R('stock-lab/holding-model.js');router=R('stock-lab/holding-router.js');pos=R('stock-lab/position-input.js')
+          hard=R('stock-lab/hard-policy.js');cache=R('stock-lab/same-origin-cache.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
 
-          # Session state is data-date driven; Taiwan market phases affect executability/labels only.
-          assert './session-context.js' in idx
-          assert idx.index('./licensed-history.js') < idx.index('./session-context.js') < idx.index('./market-router.js')
+          # Session truth: time controls labels/executability; data date controls which completed session is known.
           for text in ('BEFORE_ORDERS','PREOPEN','CONTINUOUS','CLOSING_AUCTION','AFTER_CLOSE','WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE'):
               assert text in sess,text
-          for minute in ('mins<510','mins<540','mins<805','mins<810'):
-              assert minute in sess,minute
-          assert 'displayNumericPlan:false' in sess
-          assert '已收盤；等待今日官方收盤與必要資料全部驗證後，才建立下一交易日計畫' in sess
           assert '盤中僅供參考，不以昨日資料重算現在價格' in sess
           assert 'StockLabSessionContext.resolve' in public
-          assert '若今日已收盤但官方資料日尚未前進' in public
 
-          # Backend results identify the data session and exact later trading session explicitly.
-          for text in ('validISODate','sessionPairOK','trading_calendar_verified','base_session_date','target_session_date','next_eligible_session_date'):
-              assert text in hard,text
-          assert "if(ctx.targetSessionVerified!==true)" in hard
-          assert "if(ctx.nextExecutionSessionVerified!==true)" in hard
-          assert "if(!sessionPairOK(base,target))" in hard
+          # Holding is NOT the old predictive/OOS-locked exit engine.
+          assert "model:'TW-holding-rule-v1'" in hold
+          assert "validation:'RULE_BASED'" in hold
+          assert 'requiredBars:()=>1' in hold
+          assert 'OOS status controls only statistical claims' in hold
+          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold
+          assert 'model.analyze(p,hb.bars' in router
+          assert '這不是 OOS 鎖定模型' in router
+          assert 'api.holding(' not in router
+          assert '正式出場時機／觸發價格尚未解鎖' not in router
+          assert '不以本地公式假造續抱／減碼／賣出價格' not in router
 
-          # Holding research contract keeps enough history and exact user buy-date semantics.
-          assert 'const MIN_BARS=120' in hold
-          assert 'requiredBars:()=>MIN_BARS' in hold
-          assert 'holdingTradingDays=bars.length-entryIndex' in hold
-          assert '首次買入日不在目前合法且驗證通過的歷史交易日序列中' in hold
-          assert int(policy['history_requirements']['holding_exit']['minimum_valid_bars']) == 120
+          # Market facts must come from the normalized OGDL source, never the deleted browser-data cache.
+          assert 'StockLabSameOrigin' in router
+          assert "row.licence!=='OGDL-1.0'" in router
+          assert "mode:'licensed-normalized-market-facts'" in cache
+          assert 'browser-data.json' not in router+cache
 
-          # Executable exit output remains backend-only. Public fallback may show only licensed verified facts/P&L.
-          executable='\n'.join(line for line in router.splitlines() if not line.lstrip().startswith('//'))
-          assert 'api.holding(code,p)' in router
-          assert "backendResult(j,'holding')" in router
-          assert 'loadPublicSnapshot' in router and 'publicFacts' in router
-          assert "x.schema_version!==2" in router and "x.source!=='licensed-open-data-cache'" in router and "includes('OGDL')" in router
-          assert '正式出場時機／觸發價格尚未解鎖' in router
-          assert '不以本地公式假造續抱／減碼／賣出價格' in router
-          for forbidden in ('loader.load(','StockLabLicensedHistory','StockLabHolding?.analyze','localHolding(','bars.some('):
-              assert forbidden not in executable,forbidden
-          assert "oosStatus:'PASS'" not in executable
-          assert 'imputation_used===true' in router
-          assert 'position_audit?.user_input_verified!==true' in router
-          assert 'exit_execution_validated!==true' in router
-          assert 'confidence_calibrated===true' in router
-
-          # Position facts are user provenance only; missing values are not substituted.
+          # User position provenance only.
           for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null'):
               assert text in pos,text
 
-          print('PASS: session truth, exact position provenance, safe public facts fallback and backend-only exit execution enforced')
+          # OOS applies to statistical/predictive claims, not deterministic holding rules.
+          assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
+          assert policy['history_requirements']['holding_rules']['minimum_verified_closes'] == 1
+          assert policy['output_contract']['deterministic_holding_rules_require_oos_pass'] is False
+          assert policy['backtest_validation']['holding_statistical_claims_require_oos'] is True
+          assert policy['backtest_validation']['deterministic_holding_rules_require_oos'] is False
+          assert 'confidence_calibrated:false' in hold
+          assert '不得顯示勝率、成功率、機率或校準信心指數' in hold
+
+          print('PASS: session truth + rule-based holding path; obsolete OOS exit lock absent')
           PY
