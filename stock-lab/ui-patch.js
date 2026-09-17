@@ -17,13 +17,15 @@
   const has=(o,k)=>o&&Object.prototype.hasOwnProperty.call(o,k);
   async function loadUniverse(){
     if(cachePromise)return cachePromise;
-    cachePromise=fetch('./browser-data.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('股票名稱索引暫時無法讀取');return r.json()}).then(x=>{
-      if(x.schema_version!==2||x.source!=='licensed-open-data-cache'||!String(x.licence||'').includes('OGDL'))throw Error('股票名稱索引授權／版本驗證未通過');
-      const d=x.datasets||{},out=[];
-      for(const r of d.twse_snapshot||[]){if(!has(r,'Code')||!has(r,'Name'))throw Error('TWSE 股票名稱索引 schema 不符');const code=String(r.Code).trim(),name=String(r.Name).trim();if(code&&name)out.push({code,name,market:'TWSE'})}
-      for(const r of d.tpex_snapshot||[]){if(!has(r,'SecuritiesCompanyCode')||!has(r,'CompanyName'))throw Error('TPEx 股票名稱索引 schema 不符');const code=String(r.SecuritiesCompanyCode).trim(),name=String(r.CompanyName).trim();if(code&&name)out.push({code,name,market:'TPEx'})}
+    cachePromise=(async()=>{
+      const src=window.StockLabSameOrigin;
+      if(!src?.universe)throw Error('合法股票名稱索引尚未初始化');
+      const out=await src.universe();
+      if(!Array.isArray(out)||!out.length)throw Error('合法股票名稱索引沒有可用資料');
+      for(const r of out)if(!r?.code||!r?.name||!['TWSE','TPEx'].includes(r.market))throw Error('股票名稱索引 schema 不符');
       return out;
-    }).catch(e=>{cachePromise=null;throw e});return cachePromise;
+    })().catch(e=>{cachePromise=null;throw e});
+    return cachePromise;
   }
   async function resolveQuery(q){
     q=String(q||'').trim();if(/^\d{4,6}$/.test(q))return q;if(!q)throw Error('請輸入股票代號或名稱');
