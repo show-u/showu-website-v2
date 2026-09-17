@@ -86,7 +86,9 @@ jobs:
           assert "mode:'licensed-normalized-market-facts'" in cache
           for text in ('persistentMirror:true','rawDatasetMirror:false','remoteFallback:false','cacheIsSource:true','missingDataFallback:false','market-facts.json'):
               assert text in cache,text
-          assert 'browser-data.json' not in cache+compliance+holding
+          assert 'browser-data.json' not in cache+compliance+holding+router
+          assert 'StockLabSameOrigin' in router
+          assert 'cache.latest(code)' in router
           assert 'ogdl-normalized-market-facts' in compliance
           assert "x.licence!=='OGDL-1.0'" in compliance
           assert '市場事實授權／版本驗證未通過' in compliance
