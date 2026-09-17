@@ -1,28 +1,64 @@
 {
-  "schema_version": 5,
-  "architecture": "unified-entry-rule-holding-v10",
-  "generated_rule": "Predictive entry/scanner outputs remain fail-closed and require formal OOS plus execution/reachability validation. Existing-position management is a separate deterministic rule path using user position facts and legally verified completed-session market facts; it is not OOS-locked. OOS remains mandatory for any future statistical holding claim such as win rate, probability or calibrated confidence.",
+  "schema_version": 6,
+  "architecture": "unified-executable-entry-four-field-holding-v11",
+  "generated_rule": "New-position analysis may output only a legally verified Taiwan-market executable price for the current or next legal trading session; otherwise it must say unable to determine. Existing-position management uses four user position facts: buy time, current shares, current total cost and current average cost. Missing, unverified or materially inconsistent inputs are never imputed.",
   "legacy_horizon_entry_results_are_production_valid": false,
   "models": {
     "entry_decision_9plus3": {
       "status": "BLOCKED_DATA_LAYER",
       "validation_protocol": "stock-lab/entry-validation-protocol.json",
       "reason": "The production entry contract requires nine verified entry factors plus verified US-market, TAIFEX TX and international-event contexts. Legal historical OHLC, all required contexts, production-equivalent OOS validation, entry-range execution/reachability validation and confidence calibration are not all complete.",
-      "required_before_pass": ["licensed historical OHLC", "supported security master", "trading calendar", "corporate-action adjustments", "Taiwan active risk states", "all nine entry factors verified", "verified US-market context", "verified TAIFEX TX context", "verified international-event context", "chronological OOS", "cost/slippage", "OOS entry-range touch/fill/reachability validation", "production-formula match", "untouched OOS confidence calibration"]
+      "required_before_pass": [
+        "licensed historical OHLC",
+        "supported security master",
+        "trading calendar",
+        "corporate-action adjustments",
+        "Taiwan active risk states",
+        "all nine entry factors verified",
+        "verified US-market context",
+        "verified TAIFEX TX context",
+        "verified international-event context",
+        "chronological OOS",
+        "cost/slippage",
+        "OOS entry-range touch/fill/reachability validation",
+        "production-formula match",
+        "untouched OOS confidence calibration"
+      ]
     },
     "entry_scanner_9plus3": {
       "status": "BLOCKED_DATA_LAYER",
       "validation_protocol": "stock-lab/entry-validation-protocol.json",
       "reason": "TOP10 must use exactly the same 9+3 contract as single-stock entry analysis. No former short/mid/long ranking or buy-price model may substitute. Ranking remains blocked until all required legal data and formal validation gates pass.",
-      "required_before_pass": ["licensed survivorship-safe TWSE+TPEx universe/history", "all nine entry factors for every candidate", "verified US-market context", "verified TAIFEX TX context", "verified international-event context", "Taiwan active risk states", "chronological OOS", "benchmark", "production-formula match", "untouched OOS confidence calibration"]
+      "required_before_pass": [
+        "licensed survivorship-safe TWSE+TPEx universe/history",
+        "all nine entry factors for every candidate",
+        "verified US-market context",
+        "verified TAIFEX TX context",
+        "verified international-event context",
+        "Taiwan active risk states",
+        "chronological OOS",
+        "benchmark",
+        "production-formula match",
+        "untouched OOS confidence calibration"
+      ]
     },
     "holding_rules": {
       "status": "AVAILABLE_RULE_BASED",
       "formula": "TW-holding-rule-v1",
-      "position_input_contract": "User-supplied current average cost + current shares + first buy date, or user-entered remaining lots from which weighted average is deterministically derived. No position field may be inferred from market data.",
+      "position_input_contract": "User-supplied first buy time + current shares + current total cost + current average cost, or user-entered remaining lots from which those fields are deterministically derived. No position field may be inferred from market data or AI.",
       "reason": "Deterministic holding management is available from user position facts plus legally verified completed-session market facts. Missing price history, corporate-action state or active risk state stays unknown and only suppresses the affected enhancement; it does not recreate an OOS lock. No win rate, probability or calibrated confidence is claimed.",
-      "minimum_required": ["user average cost", "user current shares", "user first buy date", "legally usable verified latest completed-session close"],
-      "optional_enhancements": ["additional verified OHLC bars for support/resistance", "verified active Taiwan risk state", "verified corporate-action context"],
+      "minimum_required": [
+        "user first buy time",
+        "user current shares",
+        "user current total cost",
+        "user current average cost",
+        "legally usable verified latest completed-session close"
+      ],
+      "optional_enhancements": [
+        "additional verified OHLC bars for support/resistance",
+        "verified active Taiwan risk state",
+        "verified corporate-action context"
+      ],
       "oos_required_for_rule_output": false,
       "oos_required_for_statistical_claims": true,
       "confidence_calibrated": false,
