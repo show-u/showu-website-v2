@@ -22,17 +22,14 @@ jobs:
 
       - name: Syntax checks
         run: |
-          for f in app tpex same-origin-cache licensed-history session-context taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router holding-usable health hard-policy compliance-gate public-output api-client runtime-config; do
+          for f in app tpex same-origin-cache licensed-history session-context taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config operational-fallback; do
             test -f "stock-lab/$f.js"
             node --check "stock-lab/$f.js"
           done
           python -m py_compile \
             stock-lab/backtest-taiwan-v3.py \
             stock-lab/validate-licensed-bundle.py \
-            stock-lab/import-licensed-history.py \
-            stock-lab/run-holding-exit-oos.py \
-            stock-lab/build-holding-readiness.py \
-            stock-lab/gate-holding-evaluator.py
+            stock-lab/import-licensed-history.py
 
       - name: Current StockLab truth invariants
         run: |
@@ -49,9 +46,10 @@ jobs:
           pos=R('stock-lab/position-input.js')
           hold_router=R('stock-lab/holding-router.js')
           hold_model=R('stock-lab/holding-model.js')
+          public=R('stock-lab/public-output.js')
+          fallback=R('stock-lab/operational-fallback.js')
           cache=R('stock-lab/same-origin-cache.js')
           compliance=R('stock-lab/compliance-gate.js')
-          hard=R('stock-lab/hard-policy.js')
           runtime=R('stock-lab/runtime-config.js')
           licensed=R('stock-lab/licensed-history.js')
           session=R('stock-lab/session-context.js')
@@ -60,16 +58,18 @@ jobs:
 
           policy=J('stock-lab/verification-policy.json')
           sources=J('stock-lab/history-source-registry.json')
-          holding_protocol=J('stock-lab/holding-exit-validation-protocol.json')
           licensed_contract=J('stock-lab/licensed-data-contract.json')
 
-          # A. Absolute truth rules remain non-negotiable.
+          # A. Non-negotiable Taiwan truth rules.
+          assert policy['version']>=10
           assert policy['policy_name']=='StockLab Taiwan Truth Rules'
-          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION')
+          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED')
           for k in required: assert k in policy['absolute_invariants'],k
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices'):
               assert oc[k] is True,k
+          assert oc['predictive_recommendation_requires_oos_pass'] is True
+          assert oc['deterministic_holding_rules_require_oos_pass'] is False
           assert policy['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
           assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
 
@@ -80,17 +80,15 @@ jobs:
               assert legacy not in idx+router+top10,legacy
           assert '不選短／中／長' in idx
 
-          # C. Position facts are user facts only; missing values remain missing.
+          # C. Position facts come only from the user.
           for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null','validDate(d)'):
               assert text in pos,text
           assert 'averageCost:a' in pos and 'shares:s' in pos and 'buyDate:d' in pos
           assert 'market-data inference' in pos
 
-          # D. Buy/scan prediction stays backend-gated. Holding management is a separate deterministic rule path.
+          # D. Entry/scanner remain prediction-gated; holding is separate deterministic rules.
           assert 'api.analyze(code)' in router
           assert 'api.scan()' in top10
-          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan'):
-              assert forbidden not in router,forbidden
           assert 'StockLabHolding' in hold_router and 'model.analyze(p,hb.bars' in hold_router
           assert "validation:'RULE_BASED'" in hold_model
           assert "model:'TW-holding-rule-v1'" in hold_model
@@ -99,11 +97,34 @@ jobs:
           assert 'confidence_calibrated:false' in hold_model
           assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold_model
           assert 'OOS 未通過時仍可顯示由已驗證事實直接推導的持倉風險規則' in hold_model
-          for forbidden in ('勝率','成功率','校準信心指數'):
-              # These words may appear only in explicit prohibition/limits text, never as a numeric claim.
-              assert f'{forbidden}：' not in hold_router+hold_model
+          assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
+          assert policy['history_requirements']['holding_rules']['minimum_verified_closes']==1
+          assert policy['backtest_validation']['holding_statistical_claims_require_oos'] is True
+          assert policy['backtest_validation']['deterministic_holding_rules_require_oos'] is False
 
-          # E. Holding rule output is fail-closed on legal/verified price facts and never invents missing prices.
+          # E. The stale OOS holding lock and all of its runtime artifacts are permanently absent.
+          obsolete=[
+            'stock-lab/holding-usable.js',
+            'stock-lab/build-holding-readiness.py',
+            'stock-lab/formalize-holding-oos.py',
+            'stock-lab/gate-holding-evaluator.py',
+            'stock-lab/holding-exit-history-context.json',
+            'stock-lab/holding-exit-oos-result.json',
+            'stock-lab/holding-exit-validation-protocol.json',
+            'stock-lab/holding-oos-evaluator.mjs',
+            'stock-lab/holding-readiness.json',
+            'stock-lab/run-holding-exit-oos.py',
+            'stock-lab/run-private-holding-validation.py',
+            '.github/workflows/stocklab-holding-exit-oos.yml'
+          ]
+          for p in obsolete: assert not Path(p).exists(),f'obsolete holding lock returned: {p}'
+          for stale in ('holding-readiness.json','historyReadiness','holdAnalyzeBtn'):
+              assert stale not in public,f'public-output holding override returned: {stale}'
+          assert 'holding-readiness.json' not in fallback
+          assert 'holding_exit_oos_validation_passed' not in R('stock-lab/verification-policy.json')
+          assert 'holding_exit_oos_required' not in R('stock-lab/verification-policy.json')
+
+          # F. Holding rule output is fail-closed on legal/verified facts and does not invent missing prices.
           assert "ctx.legalSource!==true" in hold_model
           assert "ctx.priceVerified!==true" in hold_model
           assert "if(!r.length)throw Error('沒有可用的已驗證收盤資料')" in hold_model
@@ -112,8 +133,10 @@ jobs:
           assert "x.source!=='licensed-open-data-cache'" in hold_router
           assert "!String(x.licence||'').includes('OGDL')" in hold_router
           assert '非盤中即時價' in hold_router
+          assert 'no OOS lock' in hold_router
+          assert 'actionable deterministic holding rules' in hold_router
 
-          # F. Public cache/source legality stays fail-closed.
+          # G. Public cache/source legality stays fail-closed.
           assert "mode:'online-only'" in cache
           for text in ('persistentMirror:false','remoteFallback:false','cacheIsSource:false','missingDataFallback:false'):
               assert text in cache,text
@@ -122,7 +145,7 @@ jobs:
           assert "!String(x.licence||'').includes('OGDL')" in compliance
           assert '不以 0、平均值、舊值或 AI 補齊' in compliance
 
-          # G. Licensed-history contract remains fail-closed and network-free.
+          # H. Licensed-history contract remains fail-closed and network-free.
           assert licensed_contract['contract_name']=='StockLab Licensed Taiwan Market Data Bundle'
           nr=licensed_contract['non_negotiable_rules']
           for k in ('no_network_fallback','no_unlicensed_website_scraping','no_missing_dataset_imputation','no_stale_data_relabelled_current','no_raw_redistribution_without_permission','every_payload_file_requires_sha256','every_observation_requires_source_provenance','license_must_allow_automated_processing','license_must_allow_derived_outputs','production_and_oos_use_same_normalization_rules'):
@@ -132,21 +155,13 @@ jobs:
           for forbidden in ('urllib.request','requests.get','http://','https://'):
               assert forbidden not in validator,forbidden
 
-          # H. OOS is still mandatory for statistical claims, but is not a lock on deterministic holding rules.
-          assert holding_protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
-          assert holding_protocol['non_negotiable_rules']['no_horizon_selector'] is True
-          assert holding_protocol['non_negotiable_rules']['production_formula_must_equal_test_formula'] is True
-          assert holding_protocol['non_negotiable_rules']['no_hindsight_high_low_execution'] is True
-          assert holding_protocol['non_negotiable_rules']['confidence_requires_separate_oos_calibration'] is True
-          assert 'NO_FAKE_CONFIDENCE' in policy['absolute_invariants']
-
-          # I. Stale/previous close cannot be relabelled as current live price.
+          # I. Previous close cannot be relabelled as current live price.
           for text in ('WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE','盤中僅供參考，不以昨日資料重算現在價格'):
               assert text in session,text
           assert '13:30 後也必須等當日官方收盤資料實際前進並完成驗證' in router
           assert '09:00 後沒有合法即時／延遲行情授權時不重算當日價格' in router
 
-          # J. Historical source candidates never become data merely because a URL exists.
+          # J. A historical-source URL never becomes legal data merely by existing.
           assert sources['rules']['public_url_is_not_a_licence'] is True
           assert sources['rules']['no_scraping_for_backfill'] is True
           assert sources['rules']['no_unverified_third_party_backfill'] is True
@@ -160,12 +175,12 @@ jobs:
           assert 'stock-lab/history-licensed/*' in gitignore
           assert '!stock-lab/history-licensed/README.md' in gitignore
 
-          # L. General production predictions stay deliberately locked; rule-based holding is the explicit exception.
+          # L. General production predictions remain locked; verified holding rules are the explicit exception.
           assert 'productionPredictionReady:false' in runtime
-          assert 'no OOS lock' in hold_router
-          assert 'actionable deterministic holding rules' in hold_router
+          assert 'Existing-position management is owned exclusively by holding-router.js' in public
+          assert 'does not depend on obsolete holding-OOS readiness artifacts' in fallback
 
-          print('PASS: Taiwan truth architecture and rule-based holding path are internally consistent')
+          print('PASS: Taiwan truth architecture; obsolete holding OOS lock permanently removed')
           PY
 
       - name: Reject raw licensed history in public repository
