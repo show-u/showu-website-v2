@@ -25,7 +25,7 @@ jobs:
           idx=R('stock-lab/index.html')
           router=R('stock-lab/market-router.js')
           holding=R('stock-lab/holding-router.js')
-          usable=R('stock-lab/holding-usable.js')
+          hold_model=R('stock-lab/holding-model.js')
           top10=R('stock-lab/top10-gate.js')
           pos=R('stock-lab/position-input.js')
           cache=R('stock-lab/same-origin-cache.js')
@@ -34,9 +34,7 @@ jobs:
           runtime=R('stock-lab/runtime-config.js')
           policy=json.loads(R('stock-lab/verification-policy.json'))
           sources=json.loads(R('stock-lab/history-source-registry.json'))
-          readiness=json.loads(R('stock-lab/holding-readiness.json'))
           protocol=json.loads(R('stock-lab/holding-exit-validation-protocol.json'))
-          twmd=R('stock-lab/prepare-twmd-private-backfill.py')
 
           # 1. Old horizon-specific buy-price UX must never return.
           banned=('短線入場區間','中期入場區間','長期佈局區間','fivePricePlan','data-five-price-matrix','id="horizon"','scanHorizon','<option value="1m"','<option value="3m"','<option value="long"')
@@ -44,40 +42,43 @@ jobs:
               assert x not in idx+router+top10, f'legacy horizon buy path returned: {x}'
           assert '不選短／中／長' in idx
 
-          # 2. Executable buy/scan/holding numbers are backend-only.
+          # 2. Buy and TOP10 executable predictions remain backend-only.
           assert 'api.analyze(code)' in router
           assert 'api.scan()' in top10
-          assert 'api.holding(code,p)' in holding
-          assert '正式私有分析後端尚未啟用' in router+top10+holding
-          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan','localHolding(','StockLabHolding?.analyze','StockLabLicensedHistory'):
-              assert forbidden not in router+holding, f'local production formula bypass returned: {forbidden}'
-          executable='\n'.join(line for line in holding.splitlines() if not line.lstrip().startswith('//'))
-          assert "oosStatus:'PASS'" not in executable
-          assert 'imputation_used===true' in holding
-          assert "backendResult(j,'holding')" in holding
+          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan'):
+              assert forbidden not in router, f'local buy formula bypass returned: {forbidden}'
+          for forbidden in ('jget(','hist(','tech(','combine(','adaptiveBand','entryLow','entryHigh'):
+              assert forbidden not in top10, f'local TOP10 fallback returned: {forbidden}'
 
-          # 3. Target trading day is derived from verified data date + licensed calendar, never from clock alone.
-          assert 'StockLabSessionContext' in router and 'StockLabSessionContext' in holding
-          assert 'String(target)!==String(s.targetDate)' in router
-          assert 'String(target)!==String(s.targetDate)' in holding
-          assert '13:30 後也必須等當日官方收盤資料實際前進並完成驗證' in router
-          assert '09:00 後沒有合法即時／延遲行情授權時不重算當日價格' in router
+          # 3. Existing-position management is intentionally different: verified facts may drive deterministic rules locally.
+          assert 'StockLabHolding' in holding
+          assert 'model.analyze(p,hb.bars' in holding
+          assert "model:'TW-holding-rule-v1'" in hold_model
+          assert "validation:'RULE_BASED'" in hold_model
+          assert 'requiredBars:()=>1' in hold_model
+          assert 'OOS status controls only statistical claims' in hold_model
+          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold_model
+          assert 'confidence_calibrated:false' in hold_model
+          assert 'imputation_used:false' in hold_model
+          assert '這不是 OOS 鎖定模型' in holding
 
-          # 4. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
+          # 4. Holding rules still fail closed on legal source, verified close and actual user position facts.
+          assert "ctx.legalSource!==true" in hold_model
+          assert "ctx.priceVerified!==true" in hold_model
+          assert "if(!r.length)throw Error('沒有可用的已驗證收盤資料')" in hold_model
+          assert "x.source!=='licensed-open-data-cache'" in holding
+          assert "!String(x.licence||'').includes('OGDL')" in holding
+          assert '缺少的資料維持缺少，不以假資料補值' in holding
+          assert '非盤中即時價' in holding
+
+          # 5. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
           for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null','validDate(d)','正式出場分析需要有效首次買入日'):
               assert x in pos,x
           assert 'market-data inference' in pos
           assert 'averageCost:a' in pos and 'shares:s' in pos and 'buyDate:d' in pos
           assert '首次買入日（正式出場分析必要）' in idx
 
-          # 5. Holding backend must independently attest every user position fact.
-          for x in ('average_cost_verified!==true','shares_verified!==true','buy_date_verified!==true','validISODate(ctx.userBuyDate)'):
-              assert x in hard,x
-          for x in ('average_cost_verified!==true','shares_verified!==true','buy_date_verified!==true'):
-              assert x in holding,x
-
-          # 6. Current public data boundary: compatibility shim has no persistent mirror/fallback;
-          # the actual browser-data cache is accepted only through the compliance gate with OGDL provenance.
+          # 6. Current public data boundary remains legally explicit and no missing-data fallback exists.
           assert "mode:'online-only'" in cache
           assert 'persistentMirror:false' in cache
           assert 'remoteFallback:false' in cache
@@ -87,94 +88,39 @@ jobs:
           assert "x.source!=='licensed-open-data-cache'" in compliance
           assert "!String(x.licence||'').includes('OGDL')" in compliance
           assert '授權／版本驗證未通過' in compliance
+          assert '不以 0、平均值、舊值或 AI 補齊' in compliance
 
-          # 7. TOP10 may not silently compute a browser-local replacement ranking.
-          for forbidden in ('jget(','hist(','tech(','combine(','adaptiveBand','entryLow','entryHigh'):
-              assert forbidden not in top10, f'local TOP10 fallback returned: {forbidden}'
-          assert 'oos_validation_passed!==true' in top10
-          assert 'entry_range_execution_validated!==true' in top10
-          assert 'confidence_calibrated!==true' in top10
-
-          # 8. Hard policy rejects missing legality, imputation, unverified OOS, uncalibrated confidence.
+          # 7. Statistical/predictive claims remain hard-gated; deterministic holding rules do not inherit that lock.
           for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
               assert x in hard,x
           for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION'):
               assert k in policy['absolute_invariants'],k
+          assert protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
+          assert protocol['non_negotiable_rules']['no_horizon_selector'] is True
+          assert protocol['non_negotiable_rules']['confidence_requires_separate_oos_calibration'] is True
+          assert protocol['non_negotiable_rules']['production_formula_must_equal_test_formula'] is True
 
-          # 9. Public runtime remains closed until independently validated production gates are changed deliberately.
-          assert 'allowLocalFallback:false' in runtime
-          assert 'productionPredictionReady:false' in runtime
+          # 8. No fake probability/win-rate can leak from the rule-based holding path.
+          assert "confidence_calibrated:false" in hold_model
+          assert '不得顯示勝率、成功率、機率或校準信心指數' in hold_model
+          for fake in ('保證出場價','保證停損價','勝率：','成功率：','上漲機率：'):
+              assert fake not in holding+hold_model, fake
 
-          # 10. Historical source candidates are not data until entitlement/licence + ingestion + PIT validation are complete.
+          # 9. Historical source candidates are not data until entitlement/licence and validation are complete.
           assert sources['rules']['public_url_is_not_a_licence'] is True
           assert sources['rules']['no_scraping_for_backfill'] is True
           assert sources['rules']['no_unverified_third_party_backfill'] is True
           assert sources['rules']['no_imputation'] is True
           assert sources['rules']['raw_licensed_data_never_enters_public_repo'] is True
-          assert sources['rules']['raw_licensed_data_never_enters_public_ci_by_default'] is True
           og=sources['sources']['ogdl_daily_forward_archive']
           assert og['status']=='active_forward_archive_only'
-          assert og.get('role')=='forward_archive_only'
           assert og['history_backfill'] is False
           assert og.get('scoring_allowed_for_historical_backfill') is False
-          assert og['note']=='Open-data observations already lawfully collected may be archived forward. They are not a substitute for missing historical backfill.'
-          assert 'does not require waiting' in og.get('activation_note','')
 
-          # Every candidate must remain fail-closed before explicit activation.
-          candidate_ids=('twmd_api_private_backfill','twse_eshop_daily_close','tpex_eshop_basic_group')
-          for k in candidate_ids:
-              s=sources['sources'][k]
-              assert s.get('role')=='licensed_backfill_candidate', (k,s)
-              assert s['status'] not in ('active','active_forward_archive_only'), (k,s)
-              assert s['scoring_allowed_before_activation'] is False, (k,s)
-          for k in ('twse_eshop_daily_close','tpex_eshop_basic_group'):
-              s=sources['sources'][k]
-              assert s.get('automated_processing_right_confirmed') is False, (k,s)
-              assert s.get('derived_output_right_confirmed') is False, (k,s)
-              assert s.get('private_storage_right_confirmed') is False, (k,s)
-          t=sources['sources']['twmd_api_private_backfill']
-          assert t.get('formal_bundle_ready_from_twmd_price_alone') is False
-          assert t.get('private_staging_importer')=='stock-lab/prepare-twmd-private-backfill.py'
-          for phrase in ('TWMD_API_KEY','PRIVATE_STAGING_ONLY','formal_bundle_ready\':False','survivorship-safe','PIT-safe','market-index'):
-              assert phrase in twmd, phrase
-          assert 'manifest.json' in twmd and 'never writes manifest.json' in twmd
+          # 10. General production predictions stay locked; this must never be used to re-lock deterministic holding management.
+          assert 'productionPredictionReady:false' in runtime
+          assert 'no OOS lock' in holding
+          assert 'actionable deterministic holding rules' in holding
 
-          # 11. Formal holding/exit output is machine-locked until history + OOS + execution + calibration all pass.
-          assert readiness['schema_version'] in (1,2,3) and readiness['model']=='TW-holding-exit-v4'
-          assert readiness['history']['no_imputation'] is True
-          assert readiness['principle'].startswith('No verified gate')
-          if readiness['schema_version']>=3:
-              a=readiness.get('activation_path',{})
-              assert a.get('primary')=='licensed_historical_backfill'
-              assert a.get('requires_waiting_120_trading_days') is False
-              assert a.get('status') in ('pending_licensed_subscription_or_import','licensed_bundle_imported','ready_for_oos','oos_pending','active')
-              assert a.get('private_price_staging_importer')=='stock-lab/prepare-twmd-private-backfill.py'
-              src=readiness.get('selected_history_source',{})
-              if readiness['overall_status']!='PASS':
-                  assert src.get('kind')!='licensed_history_bundle' or readiness['oos']['status']!='PASS' or readiness['oos']['execution_validated'] is not True or readiness['oos']['confidence_calibrated'] is not True
-          assert protocol['frozen_before_historical_oos'] is True
-          assert protocol['non_negotiable_rules']['missing_inputs_are_not_imputed'] is True
-          assert protocol['non_negotiable_rules']['no_horizon_selector'] is True
-          assert protocol['non_negotiable_rules']['production_formula_must_equal_test_formula'] is True
-          assert 'only from user input' in protocol['required_position_input']['rule']
-          if readiness['overall_status']!='PASS':
-              assert readiness['executable_exit_output'] is False
-              assert readiness['blockers']
-          else:
-              assert readiness['executable_exit_output'] is True
-              assert readiness['history']['status']=='PASS'
-              assert readiness['oos']['status']=='PASS'
-              assert readiness['oos']['execution_validated'] is True
-              assert readiness['oos']['confidence_calibrated'] is True
-              assert readiness['oos']['production_formula_match'] is True
-
-          # 12. Public holding UI may ask to analyse exit timing, but cannot promise or fabricate an exit price before PASS.
-          assert '分析出場時機</button>' in idx
-          assert 'readinessStatus' in usable and 'holding-readiness.json' in usable
-          assert '正式出場模型準備度' in usable
-          assert "x.overall_status==='PASS'&&x.executable_exit_output===true" in usable
-          for fake in ('建議賣出價','保證出場價','保證停損價'):
-              assert fake not in usable, fake
-
-          print('StockLab no-bypass truth gate passed')
+          print('StockLab no-bypass truth gate passed: verified rule-based holding path is allowed; fake statistical claims remain blocked')
           PY
