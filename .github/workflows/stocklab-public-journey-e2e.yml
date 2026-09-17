@@ -55,11 +55,13 @@ jobs:
         env:
           BASE_URL: https://www.showujapan.com/stock-lab/
         run: |
-          node <<'NODE'
+          timeout 75s node <<'NODE'
           const { chromium } = require('playwright');
 
           (async () => {
-            const browser = await chromium.launch({ headless: true });
+            let browser;
+            try {
+            browser = await chromium.launch({ headless: true });
             const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
             const errors = [];
             page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -106,8 +108,11 @@ jobs:
 
             console.log('PASS: live mobile holding journey produced a usable result');
             console.log(result);
-            await browser.close();
-          })().catch(err => {
+            process.exitCode = 0;
+            } finally {
+              if (browser) await browser.close().catch(()=>{});
+            }
+          })().then(()=>process.exit(process.exitCode||0)).catch(async err => {
             console.error(err);
             process.exit(1);
           });
