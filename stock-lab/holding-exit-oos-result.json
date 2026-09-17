@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-09-16T13:44:03.777683+00:00",
+  "generated_at": "2026-09-17T06:29:10.593990+00:00",
   "model": "TW-holding-exit-v4",
   "status": "INSUFFICIENT",
   "pipeline_executed": true,
@@ -31,7 +31,7 @@
   "exit_execution_validated": false,
   "confidence_calibrated": false,
   "production_formula_match": false,
-  "production_formula_sha256": "0ac41f6b06a4cc0d8d3a8c4ffcab3cdcfb58f12c8012b3919debb7399d9b9184",
+  "production_formula_sha256": "51ee2507a30234e0c07393b290bb5d4d48318456a4e5b34f057d8c9273d9deca",
   "history_context": {
     "validated": false,
     "source": "holding-exit-history-context.json"
