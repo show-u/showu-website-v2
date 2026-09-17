@@ -68,25 +68,30 @@ jobs:
             });
 
             await page.goto(process.env.BASE_URL + '?e2e=' + Date.now(), {
-              waitUntil: 'networkidle',
-              timeout: 60000
+              waitUntil: 'domcontentloaded',
+              timeout: 20000
             });
 
-            await page.locator('#holdBtn').click();
+            console.log('stage: page-loaded');
+            await page.locator('#holdBtn').click({timeout:10000});
+            console.log('stage: hold-opened');
             await page.locator('#holdTicker').fill('2454');
             await page.locator('#holdAvgCost').fill('1000');
             await page.locator('#holdShares').fill('100');
             await page.locator('#holdTotalCost').fill('100000');
             await page.locator('#holdBuyTime').fill('2026-09-01T10:00');
 
-            await page.locator('#holdAnalyzeBtn').click();
+            console.log('stage: fields-filled');
+            await page.locator('#holdAnalyzeBtn').click({timeout:10000});
+            console.log('stage: analyze-clicked');
 
             await page.waitForFunction(() => {
               const box = document.querySelector('#holdResult');
               if (!box) return false;
               const t = box.innerText || '';
               return t.includes('目前持倉判斷') || t.includes('持倉分析失敗');
-            }, { timeout: 30000 });
+            }, { timeout: 15000 });
+            console.log('stage: result-rendered');
 
             const result = await page.locator('#holdResult').innerText();
 
