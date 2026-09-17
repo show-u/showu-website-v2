@@ -130,19 +130,19 @@ jobs:
           assert "if(!r.length)throw Error('沒有可用的已驗證收盤資料')" in hold_model
           assert "trigger!=null?'derived_from_verified_bars':'unavailable'" in hold_model
           assert '缺少的資料維持缺少，不以假資料補值' in hold_router
-          assert "x.source!=='licensed-open-data-cache'" in hold_router
-          assert "!String(x.licence||'').includes('OGDL')" in hold_router
+          assert 'StockLabSameOrigin' in hold_router
+          assert "row.licence!=='OGDL-1.0'" in hold_router
           assert '非盤中即時價' in hold_router
           assert 'no OOS lock' in hold_router
           assert 'actionable deterministic holding rules' in hold_router
 
-          # G. Public cache/source legality stays fail-closed.
-          assert "mode:'online-only'" in cache
-          for text in ('persistentMirror:false','remoteFallback:false','cacheIsSource:false','missingDataFallback:false'):
+          # G. Public facts source legality stays fail-closed and obsolete browser-data is forbidden.
+          assert "mode:'licensed-normalized-market-facts'" in cache
+          for text in ('persistentMirror:true','rawDatasetMirror:false','remoteFallback:false','cacheIsSource:true','missingDataFallback:false','market-facts.json'):
               assert text in cache,text
-          assert 'browser-data.json' in compliance
-          assert "x.source!=='licensed-open-data-cache'" in compliance
-          assert "!String(x.licence||'').includes('OGDL')" in compliance
+          assert 'browser-data.json' not in cache+compliance+hold_router
+          assert 'ogdl-normalized-market-facts' in compliance
+          assert "x.licence!=='OGDL-1.0'" in compliance
           assert '不以 0、平均值、舊值或 AI 補齊' in compliance
 
           # H. Licensed-history contract remains fail-closed and network-free.
