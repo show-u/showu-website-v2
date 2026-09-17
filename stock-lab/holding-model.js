@@ -15,8 +15,11 @@
     const L=r.at(-1),dataDate=barDate(L);if(!dataDate)throw Error('最新交易日缺漏');
     const cost=p.averageCost*p.shares,marketValue=L.c*p.shares,pnl=marketValue-cost,pnlPct=cost?100*pnl/cost:null;
     const usable=r.slice(-Math.min(20,r.length)),lows=usable.map(x=>x.l).filter(Number.isFinite),highs=usable.map(x=>x.h).filter(Number.isFinite),closes=usable.map(x=>x.c).filter(Number.isFinite);
-    const support=lows.length?(r.length>=20?qtile(lows,.20):Math.min(...lows)):null,resistance=highs.length?(r.length>=20?qtile(highs,.80):Math.max(...highs)):null,ma5=closes.length>=2?avg(closes.slice(-Math.min(5,closes.length))):null,ma20=closes.length>=20?avg(closes.slice(-20)):null;
-    const trendKnown=ma5!=null&&(ma20!=null||closes.length>=2),trendUp=trendKnown&&(ma20!=null?L.c>=ma5&&ma5>=ma20:L.c>=ma5),trendWeak=trendKnown&&(ma20!=null?L.c<ma5&&ma5<ma20:L.c<ma5);
+    // One verified close is sufficient for factual P/L, but never sufficient to invent price structure.
+    // Support/resistance and price triggers require a real 20-session structure; MA5/MA20 require their full windows.
+    const structureKnown=r.length>=20&&lows.length>=20&&highs.length>=20;
+    const support=structureKnown?qtile(lows,.20):null,resistance=structureKnown?qtile(highs,.80):null,ma5=closes.length>=5?avg(closes.slice(-5)):null,ma20=closes.length>=20?avg(closes.slice(-20)):null;
+    const trendKnown=ma5!=null&&ma20!=null,trendUp=trendKnown&&L.c>=ma5&&ma5>=ma20,trendWeak=trendKnown&&L.c<ma5&&ma5<ma20;
     const riskBlocked=ctx.riskBlocked===true,riskKnown=ctx.activeRiskKnown===true,corporateKnown=ctx.corporateActionKnown===true;
     let state,reason,nextAction;
     if(riskBlocked){state='風險事件優先';reason='已驗證的特殊交易／處置風險優先於一般技術條件';nextAction='下一合法交易時段先檢視減碼或退出可行性';}
@@ -26,7 +29,7 @@
     else if(pnl<0){state='虧損部位防守';reason='目前低於成本，但現有合法資料不足以宣稱完整趨勢反轉';nextAction='不因猜測價格加碼；以下一完成交易日的已驗證風險觸發條件作防守';}
     else{state='成本附近觀察';reason='目前接近成本，沒有足夠證據支持強制出場或加碼';nextAction='等待下一完成交易日確認，不用短／中／長假設硬做決策';}
     const trigger=support!=null?roundTick(support,'down'):null,pressure=resistance!=null?roundTick(resistance,'up'):null;
-    const historyLevel=r.length>=20?'20日結構':r.length>=2?`近 ${r.length} 個已驗證交易日`:'單一完成交易日';
+    const historyLevel=r.length>=20?'20日結構':r.length>=2?`近 ${r.length} 個已驗證交易日（不足20日，不產生支撐／壓力）`:'單一完成交易日（只供損益事實，不產生支撐／壓力）';
     return{
       model:'TW-holding-rule-v1',validation:'RULE_BASED',dataDate,latestClose:L.c,
       position:p,derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel,ma5,ma20,support:trigger,resistance:pressure},
