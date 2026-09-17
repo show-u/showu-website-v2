@@ -72,11 +72,11 @@ jobs:
           assert '非盤中即時價' in holding
 
           # 5. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
-          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?totalCost/totalShares:null','validDate(d)','正式出場分析需要有效首次買入日'):
+          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)','正式出場分析需要有效首次買入時間'):
               assert x in pos,x
           assert 'market-data inference' in pos
-          assert 'averageCost:a' in pos and 'shares:s' in pos and 'buyDate:d' in pos
-          assert 'id="holdBuyDate"' in idx and 'type="date" required' in idx
+          assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
+          assert 'id="holdBuyTime"' in idx and 'type="datetime-local" required' in idx and 'id="holdTotalCost"' in idx
 
           # 6. The obsolete OOS-locked holding monitor must stay deleted and must never be loaded indirectly.
           assert not Path('stock-lab/holding-usable.js').exists(), 'obsolete holding-usable.js returned'
@@ -95,7 +95,7 @@ jobs:
           # 8. Statistical/predictive claims remain hard-gated; deterministic holding rules do not inherit that lock.
           for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
               assert x in hard,x
-          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION'):
+          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','FOUR_FIELD_HOLDING_INPUT','EXECUTABLE_ENTRY_ONLY'):
               assert k in policy['absolute_invariants'],k
           assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
           assert policy['history_requirements']['holding_rules']['minimum_verified_closes'] == 1
