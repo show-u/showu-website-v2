@@ -42,13 +42,15 @@ jobs:
               assert x not in idx+router+top10, f'legacy horizon buy path returned: {x}'
           assert '不選短／中／長' in idx
 
-          # 2. Buy and TOP10 executable predictions remain backend-only.
-          assert 'api.analyze(code)' in router
-          assert 'api.scan()' in top10
-          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan'):
-              assert forbidden not in router, f'local buy formula bypass returned: {forbidden}'
-          for forbidden in ('jget(','hist(','tech(','combine(','adaptiveBand','entryLow','entryHigh'):
-              assert forbidden not in top10, f'local TOP10 fallback returned: {forbidden}'
+          # 2. Rule-based research outputs are allowed locally; predictive/live claims remain locked.
+          assert '規則式入場研究' in router
+          assert 'Math.min(cl,avg)' in router
+          assert '不是盤中即時價、不是預測保證價' in router
+          assert '各類股近期績優研究標的' in top10
+          assert 'slice(0,5)' in top10 and 'SECTORS' in top10
+          assert '這是研究候選，不是勝率排名' in top10
+          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan','勝率：','上漲機率：'):
+              assert forbidden not in router+top10, f'predictive/local fake claim returned: {forbidden}'
 
           # 3. Existing-position management is intentionally different: verified facts may drive deterministic rules locally.
           assert 'StockLabHolding' in holding
@@ -101,7 +103,7 @@ jobs:
           # 8. Statistical/predictive claims remain hard-gated; deterministic holding rules do not inherit that lock.
           for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
               assert x in hard,x
-          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY'):
+          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST'):
               assert k in policy['absolute_invariants'],k
           assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
           assert policy['history_requirements']['holding_rules']['minimum_verified_closes'] == 1
@@ -126,8 +128,10 @@ jobs:
           assert og['history_backfill'] is False
           assert og.get('scoring_allowed_for_historical_backfill') is False
 
-          # 11. General production predictions stay locked; this must never be used to re-lock deterministic holding management.
+          # 11. General production predictions stay locked while deterministic research/holding paths remain available.
           assert 'productionPredictionReady:false' in runtime
+          assert 'ruleBasedEntryReferenceEnabled:true' in runtime
+          assert 'sectorResearchEnabled:true' in runtime
           assert 'no OOS lock' in holding
           assert 'actionable deterministic holding rules' in holding
 
