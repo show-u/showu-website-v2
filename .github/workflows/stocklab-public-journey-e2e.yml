@@ -53,23 +53,23 @@ jobs:
           NODE
       - name: Wait for matching public deployment
         env:
-          ASSET_URL: https://www.showujapan.com/stock-lab/holding-router.js
+          BASE_URL: https://www.showujapan.com/stock-lab/
         run: |
           set -euo pipefail
+          expected_model=$(grep -o 'holding-model.js?v=[^"]*' stock-lab/index.html | head -1)
+          expected_position=$(grep -o 'position-input.js?v=[^"]*' stock-lab/index.html | head -1)
+          test -n "$expected_model" && test -n "$expected_position"
           ready=0
           for i in $(seq 1 24); do
-            curl -fsSL --max-time 15 "${ASSET_URL}?deploy=${RANDOM}" -o /tmp/live-holding-router.js || true
-            if grep -Fq '合法歷史資料逾時' /tmp/live-holding-router.js 2>/dev/null \
-              && grep -Fq '公司行動資料逾時' /tmp/live-holding-router.js 2>/dev/null \
-              && grep -Fq 'withTimeout' /tmp/live-holding-router.js 2>/dev/null \
-              && grep -Fq 'StockLabHoldingStage:' /tmp/live-holding-router.js 2>/dev/null \
-              && grep -Fq 'licensedHistoricalOHLC' /tmp/live-holding-router.js 2>/dev/null; then
+            curl -fsSL --max-time 15 "${BASE_URL}?deploy=${RANDOM}" -o /tmp/live-index.html || true
+            if grep -Fq "$expected_model" /tmp/live-index.html 2>/dev/null \
+              && grep -Fq "$expected_position" /tmp/live-index.html 2>/dev/null; then
               ready=1
               break
             fi
             sleep 5
           done
-          test "$ready" = 1 || { echo '::error::latest holding-router deployment not visible'; exit 1; }
+          test "$ready" = 1 || { echo "::error::matching public JS deployment not visible: $expected_model / $expected_position"; exit 1; }
       - name: Verify live StockLab holding journey
         env:
           BASE_URL: https://www.showujapan.com/stock-lab/
@@ -146,6 +146,8 @@ jobs:
               if (!result.includes(required)) throw new Error('Missing live holding output: ' + required + '\n' + result);
             }
             if (!result.includes('100,000')) throw new Error('User total cost was not preserved in output:\n' + result);
+            if (!result.includes('獲利中但結構資料不足')) throw new Error('Profitable one-close holding state is inconsistent:\n' + result);
+            if (result.includes('成本附近觀察')) throw new Error('Profitable holding was mislabeled as near-cost:\n' + result);
             if (errors.length) throw new Error('Browser runtime errors:\n' + errors.join('\n'));
 
             console.log('PASS: live mobile holding journey produced a usable result');
