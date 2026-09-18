@@ -13,7 +13,7 @@ from pathlib import Path
 
 NETWORK_HISTORY_COLLECTION_DISABLED = True
 LEGACY_HORIZON_ENTRY_RESULTS_PRODUCTION_VALID = False
-ARCHITECTURE = 'unified-entry-rule-holding-v10'
+ARCHITECTURE = 'free-official-first-executable-entry-three-input-actionable-holding-v14'
 PREDICTIVE_KEYS = {'entry_decision_9plus3','entry_scanner_9plus3'}
 MODEL_KEYS = PREDICTIVE_KEYS | {'holding_rules'}
 VALID_PREDICTIVE_NONPASS = {'FAIL','INSUFFICIENT','BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER'}
@@ -24,7 +24,7 @@ def load_json(path):
 
 
 def validate_status_manifest(x):
-    assert x.get('schema_version') == 5, 'model-validation-status schema mismatch'
+    assert x.get('schema_version') == 9, 'model-validation-status schema mismatch'
     assert x.get('architecture') == ARCHITECTURE, 'architecture mismatch'
     assert x.get('legacy_horizon_entry_results_are_production_valid') is False
     models=x.get('models') or {}
