@@ -38,7 +38,7 @@ def validate_status_manifest(x):
         assert item.get('required_before_pass'),(name,'missing required_before_pass')
     holding=models['holding_rules']
     assert holding.get('status')=='AVAILABLE_RULE_BASED'
-    assert holding.get('formula')=='TW-holding-rule-v1'
+    assert holding.get('formula')=='TW-holding-rule-v3'
     assert holding.get('oos_required_for_rule_output') is False
     assert holding.get('oos_required_for_statistical_claims') is True
     assert holding.get('confidence_calibrated') is False
