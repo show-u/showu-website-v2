@@ -18,7 +18,8 @@
     // One verified close is sufficient for factual P/L, but never sufficient to invent price structure.
     // Support/resistance and price triggers require a real 20-session structure; MA5/MA20 require their full windows.
     const structureKnown=r.length>=20&&lows.length>=20&&highs.length>=20;
-    const support=structureKnown?qtile(lows,.20):null,resistance=structureKnown?qtile(highs,.80):null,ma5=closes.length>=5?avg(closes.slice(-5)):null,ma20=closes.length>=20?avg(closes.slice(-20)):null;
+    const latestLow=Number.isFinite(L.l)?L.l:null,latestHigh=Number.isFinite(L.h)?L.h:null;
+    const support=structureKnown?qtile(lows,.20):latestLow,resistance=structureKnown?qtile(highs,.80):latestHigh,ma5=closes.length>=5?avg(closes.slice(-5)):null,ma20=closes.length>=20?avg(closes.slice(-20)):null;
     const trendKnown=ma5!=null&&ma20!=null,trendUp=trendKnown&&L.c>=ma5&&ma5>=ma20,trendWeak=trendKnown&&L.c<ma5&&ma5<ma20;
     const riskBlocked=ctx.riskBlocked===true,riskKnown=ctx.activeRiskKnown===true,corporateKnown=ctx.corporateActionKnown===true;
     let state,reason,nextAction;
@@ -30,11 +31,13 @@
     else if(pnl>0){state='獲利中但結構資料不足';reason='目前高於部位總成本，但已驗證歷史價格結構不足，不能據此產生減碼／出場價位';nextAction='先保留部位事實判斷；等待更多已驗證完成交易日資料後，再判斷持有／減碼／出場條件';}
     else{state='損益持平';reason='目前市值等於部位總成本，且沒有足夠已驗證價格結構支持進一步方向判斷';nextAction='等待下一完成交易日確認，不用短／中／長假設硬做決策';}
     const trigger=support!=null?roundTick(support,'down'):null,pressure=resistance!=null?roundTick(resistance,'up'):null;
-    const historyLevel=r.length>=20?'20日結構':r.length>=2?`近 ${r.length} 個已驗證交易日（不足20日，不產生支撐／壓力）`:'單一完成交易日（只供損益事實，不產生支撐／壓力）';
+    const triggerBasis=structureKnown?'最近20個已驗證交易日低價分布第20百分位':'上一完成交易日低點';
+    const pressureBasis=structureKnown?'最近20個已驗證交易日高價分布第80百分位':'上一完成交易日高點';
+    const historyLevel=r.length>=20?'20日結構':r.length>=2?`近 ${r.length} 個已驗證交易日；結構不足20日，價格觸發先採上一完成交易日高低點`:'單一完成交易日；價格觸發採上一完成交易日高低點';
     return{
-      model:'TW-holding-rule-v2',validation:'RULE_BASED',dataDate,latestClose:L.c,
+      model:'TW-holding-rule-v3',validation:'RULE_BASED',dataDate,latestClose:L.c,
       position:p,derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel,ma5,ma20,support:trigger,resistance:pressure},
-      decision:{state,reason,nextAction,riskTrigger:trigger,pressureReference:pressure,riskTriggerMeaning:trigger!=null?'最近已驗證價格結構的防守參考；不是預測賣價':'目前資料不足以產生價格型防守線',pressureMeaning:pressure!=null?'最近已驗證價格結構的壓力參考；不是保證成交價':'目前資料不足以產生壓力價'},
+      decision:{state,reason,nextAction,riskTrigger:trigger,pressureReference:pressure,riskTriggerBasis:triggerBasis,pressureBasis,exitAction:trigger!=null?`下一合法交易時段若有效跌破 ${trigger}，進入減碼／出場執行檢視`:'目前無法形成價格型出場觸發',riskTriggerMeaning:trigger!=null?`${triggerBasis}；作為規則式出場觸發，不是保證成交價`:'目前資料不足以產生價格型防守線',pressureMeaning:pressure!=null?`${pressureBasis}；作為停利／壓力參考，不是保證成交價`:'目前資料不足以產生壓力價'},
       audit:{legal_source_verified:true,price_verified:true,active_risk_known:riskKnown,corporate_action_known:corporateKnown,oos_status:ctx.oosStatus||'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT',confidence_calibrated:false,imputation_used:false},
       limits:{statement:'OOS 未通過時仍可顯示由已驗證事實直接推導的持倉風險規則；不得顯示勝率、成功率、機率或校準信心指數。'},
       provenance:{position:p.provenance,latestClose:'observed',pnl:'derived',support:trigger!=null?'derived_from_verified_bars':'unavailable',resistance:pressure!=null?'derived_from_verified_bars':'unavailable',decision:'deterministic_rule'}
