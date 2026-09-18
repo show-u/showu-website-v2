@@ -67,7 +67,9 @@ jobs:
           for i in $(seq 1 24); do
             curl -fsSL --max-time 15 "${BASE_URL}?deploy=${RANDOM}" -o /tmp/live-index.html || true
             if grep -Fq "$expected_model" /tmp/live-index.html 2>/dev/null \
-              && grep -Fq "$expected_position" /tmp/live-index.html 2>/dev/null; then
+              && grep -Fq "$expected_position" /tmp/live-index.html 2>/dev/null \
+              && grep -Fq "$expected_entry" /tmp/live-index.html 2>/dev/null \
+              && grep -Fq "$expected_sector" /tmp/live-index.html 2>/dev/null; then
               ready=1
               break
             fi
