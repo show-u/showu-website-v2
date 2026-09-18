@@ -1,6 +1,6 @@
 {
   "schema_version": 9,
-  "architecture": "free-official-first-executable-entry-three-input-actionable-holding-v14",
+  "architecture": "free-official-first-rule-research-plus-predictive-gates-v15",
   "generated_rule": "New-position analysis remains fail-closed. Existing-position management uses three user position facts: buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares; it is not a redundant required user field.",
   "legacy_horizon_entry_results_are_production_valid": false,
   "models": {
@@ -64,6 +64,21 @@
       "oos_required_for_statistical_claims": true,
       "confidence_calibrated": false,
       "imputation_allowed": false
+    },
+    "entry_reference_rules": {
+      "status": "AVAILABLE_RULE_BASED",
+      "formula": "TW-entry-reference-v1",
+      "reason": "Uses latest verified completed-session OHLC plus trade value/volume to form a deterministic non-live, non-predictive entry reference. No win rate or probability is claimed.",
+      "oos_required": false,
+      "predictive_executable_price": false
+    },
+    "sector_research_rules": {
+      "status": "AVAILABLE_RULE_BASED",
+      "formula": "TW-sector-five-v1",
+      "reason": "Groups verified common stocks by official industry and shows up to five positive completed-session research candidates per industry using deterministic sort keys and known risk flags.",
+      "oos_required": false,
+      "max_per_industry": 5,
+      "predictive_ranking": false
     }
   },
   "data_layer_progress": {
