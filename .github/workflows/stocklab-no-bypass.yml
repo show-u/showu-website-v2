@@ -53,7 +53,7 @@ jobs:
           # 3. Existing-position management is intentionally different: verified facts may drive deterministic rules locally.
           assert 'StockLabHolding' in holding
           assert 'model.analyze(p,hb.bars' in holding
-          assert "model:'TW-holding-rule-v2'" in hold_model
+          assert "model:'TW-holding-rule-v3'" in hold_model
           assert "validation:'RULE_BASED'" in hold_model
           assert 'requiredBars:()=>1' in hold_model
           assert 'OOS status controls only statistical claims' in hold_model
@@ -61,6 +61,8 @@ jobs:
           assert 'confidence_calibrated:false' in hold_model
           assert 'imputation_used:false' in hold_model
           assert '這不是 OOS 鎖定模型' in holding
+          assert '建議出場觸發價' in holding
+          assert 'riskTriggerBasis' in hold_model and '上一完成交易日低點' in hold_model
 
           # 4. Holding rules still fail closed on legal source, verified close and actual user position facts.
           assert "ctx.legalSource!==true" in hold_model
