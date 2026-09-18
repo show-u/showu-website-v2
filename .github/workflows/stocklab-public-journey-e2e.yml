@@ -145,8 +145,12 @@ jobs:
               if (!result.includes(required)) throw new Error('Missing live holding output: ' + required + '\n' + result);
             }
             if (!result.includes('100,000')) throw new Error('Derived total cost was not shown correctly:\n' + result);
-            if (!result.includes('獲利中但結構資料不足')) throw new Error('Profitable one-close holding state is inconsistent:\n' + result);
+            if (!result.includes('獲利中；多日結構不足')) throw new Error('Profitable one-close holding state is inconsistent:\n' + result);
             if (result.includes('成本附近觀察')) throw new Error('Profitable holding was mislabeled as near-cost:\n' + result);
+            for (const required of ['建議出場觸發價','出場條件','判斷依據','上一完成交易日低點','停利／壓力參考']) {
+              if (!result.includes(required)) throw new Error('Missing actionable exit output: ' + required + '\n' + result);
+            }
+            if (/建議出場觸發價\s*—/.test(result)) throw new Error('Exit trigger price is still unavailable despite verified OHLC:\n' + result);
             if (errors.length) throw new Error('Browser runtime errors:\n' + errors.join('\n'));
 
             console.log('PASS: live mobile holding journey produced a usable result');
