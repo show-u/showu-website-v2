@@ -9,6 +9,8 @@ window.STOCKLAB_RUNTIME={
   allowLocalFallback:false,
   productionPredictionReady:false,
   holdingRulePathEnabled:true,
+  ruleBasedEntryReferenceEnabled:true,
+  sectorResearchEnabled:true,
   freeOfficialHistoryPriority:true,
   gates:{
     licensedHistoricalOHLC:false,
@@ -39,7 +41,7 @@ window.STOCKLAB_RUNTIME={
     '美股背景只接受通過來源、日期與內容驗證的資料；缺必要項目就標示未知，不補值。',
     '台指期 TX 必須通過合法來源與交叉驗證；未通過就不能形成完整預測型入場結論。',
     '國際時事資料未知不得寫成「沒有重大事件」。',
-    'TOP10 與單股入場使用同一套完整模型；正式預測輸出仍須通過 OOS、可達性與校準 Gate。',
+    '各類股 5 檔研究候選與單股規則式入場參考可在不宣稱預測勝率的前提下使用已驗證完成交易日官方資料；正式預測型可執行買價仍須通過 OOS、可達性與校準 Gate。',
     '進場區間必須驗證觸價／成交可達性；不能用買不到的深層支撐價製造漂亮回測。',
     '沒有 calibration PASS 時不得用正向因子數、主觀權重或 heuristic 冒充勝率／信心指數。',
     '已持有股票不受 OOS 總開關限制；只要使用者部位資料與合法已驗證收盤可用，就可輸出確定性持倉規則。缺少歷史結構時，支撐／壓力／價格型觸發線維持 unavailable，不得捏造。',
