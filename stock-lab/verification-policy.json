@@ -1,5 +1,5 @@
 {
-  "version": 13,
+  "version": 14,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -23,7 +23,7 @@
     "RAW_REDISTRIBUTION": "Raw official datasets may be mirrored publicly only when the specific dataset licence/authorisation permits redistribution and attribution obligations are satisfied.",
     "AUDITABILITY": "Model version, source status, data date and blockers/warnings must be visible or recoverable for every generated result.",
     "ENTRY_DECISION_CONTRACT": "Single-stock entry analysis uses one contract only: nine core entry factors plus verified US-market context, TAIFEX TX context and international-event context. No investment-horizon label may create a different buy model or replace a missing factor.",
-    "ENTRY_NINE_FACTORS": "The nine required entry factors are price trend/support/resistance, volume, moving averages, institutional/chip data, MACD, RSI, KD/KDJ, MA crossovers and candlestick structure. Each factor must independently pass its own source/data gate.",
+    "ENTRY_NINE_FACTORS": "The nine visible analyst sections are: price/volume; Taiwan broad market; technical analysis (including MA/MACD/RSI/KD/candlestick/support-resistance as sub-evidence); chips/institution/margin-short; valuation; monthly revenue; quarterly earnings; financial quality; and industry/product/company momentum. Technical indicators must not be inflated into separate top-level factors.",
     "ENTRY_EXTERNAL_CONTEXT": "A complete entry conclusion requires verified US-market context, verified TAIFEX TX context and verified international-event context. Missing event data is unknown, never 'no event'.",
     "UNIFIED_ENTRY_SCANNER": "TOP10 uses the same 9+3 entry contract as single-stock analysis. It may not create separate rankings by investment horizon or silently use a different factor set.",
     "BUY_HOLDING_SEPARATION": "A buy-entry model and existing-position management are different decisions. A deep support level may not be presented as a currently executable buy price merely because it is below market.",
@@ -39,7 +39,11 @@
     "EXECUTABLE_ENTRY_ONLY": "A predictive or current-session executable entry output may show only a legally verified Taiwan-market executable price after all required predictive/session gates pass. A separately labelled deterministic completed-session research reference is permitted under RULE_BASED_ENTRY_REFERENCE and must not be described as live or guaranteed executable.",
     "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires user-observed first buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares and must not be requested as a redundant mandatory field.",
     "RULE_BASED_ENTRY_REFERENCE": "A completed-session-derived entry reference may be shown without predictive OOS only when it is explicitly labelled as a deterministic research reference, not a live price, not a guaranteed executable price, and not a probability claim. It must use verified official facts and disclose its formula.",
-    "SECTOR_RESEARCH_SHORTLIST": "The 'don't know what to buy' path may show up to five research candidates per verified industry using deterministic completed-session facts and known risk flags. This shortlist is not a predictive ranking and may not display uncalibrated win rates."
+    "SECTOR_RESEARCH_SHORTLIST": "The 'don't know what to buy' path may show up to five research candidates per verified industry using deterministic completed-session facts and known risk flags. This shortlist is not a predictive ranking and may not display uncalibrated win rates.",
+    "ANALYST_9PLUS3_STRUCTURE": "Every new-position result page must use the same 9+3 analyst structure. The visible nine sections are the company/stock analysis body; +1 US market/SOX, +2 TAIFEX TX, +3 international events are external context. Data legality, schema, freshness, security type, risk status, accounting class and corporate actions are prerequisite gates outside the visible nine.",
+    "CONDITIONAL_ENTRY_ZONES": "A/B/C entry prices are conditional scenarios, not promises. Numeric A/B zones require legally usable verified history plus structure and empirical reachability; C is a breakout-then-retest condition. If history or reachability is unavailable, suppress the number and explain the missing condition.",
+    "NO_SINGLE_PRICE_SHORTCUT": "A current entry recommendation must never be created from min(close, session-average), a fixed percentage discount, or any one-bar shortcut. Completed-session OHLC may be shown as facts, but a buy zone must come from the 9+3 decision structure and, where numeric, validated market structure/reachability.",
+    "MISSING_SECTION_TRANSPARENCY": "Every unavailable 9+3 section must be visibly marked unavailable. Missing is not neutral, zero, negative or positive, and may not be filled from an unregistered website, stale snapshot, heuristic, AI text or another data field."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
@@ -230,17 +234,17 @@
   },
   "workflow_contract": {
     "buy": {
-      "purpose": "Provide a deterministic completed-session entry reference and reasons from verified official facts for immediate research use. A separate predictive executable plan remains gated behind the full 9+3/OOS/session contract.",
+      "purpose": "Provide an analyst-style Taiwan-stock 9+3 research report from legally usable verified facts. Conditional entry scenarios may be shown only when their data and reachability conditions are verified. A separate predictive executable plan remains gated behind the full OOS/session contract.",
       "nine_factors": [
-        "price_trend_support_resistance",
-        "volume",
-        "moving_averages",
-        "institution_chips",
-        "macd",
-        "rsi",
-        "kd_kdj",
-        "ma_crossovers",
-        "candlestick"
+        "price_volume",
+        "taiwan_market_environment",
+        "technical_analysis",
+        "chips_institution_margin_short",
+        "valuation",
+        "monthly_revenue",
+        "quarterly_earnings",
+        "financial_quality",
+        "industry_product_company_momentum"
       ],
       "market_context": [
         "us_market",
@@ -253,7 +257,10 @@
         "real-time wording without a licensed live feed",
         "automatic switch to tomorrow solely because clock passed 09:00 or 13:30",
         "same-day repricing after 09:00 without a licensed live/delayed feed",
-        "filling a missing factor with guessed or stale data"
+        "filling a missing factor with guessed or stale data",
+        "treating MA/MACD/RSI/KD/candlestick as separate top-level analyst sections",
+        "single-price shortcut based on min(close, session average) or fixed discount",
+        "numeric A/B/C entry zones without legal history and reachability/structure support"
       ],
       "time_rule": "08:30-09:00 controls whether a pre-open limit ROD plan is in its execution window. After 09:00 the same plan may remain visible only as a labelled reference/audit record; without a licensed live/delayed feed StockLab must not create a revised same-day executable price. A new next-session plan is generated only after the official latest completed-session date has advanced AND every model-required target-session input has passed its legal-source, schema, freshness and integrity gates."
     },
@@ -382,7 +389,11 @@
     "scanner_must_not_emit_buy_price": true,
     "rule_based_entry_reference_requires_oos_pass": false,
     "sector_research_requires_oos_pass": false,
-    "sector_research_max_per_industry": 5
+    "sector_research_max_per_industry": 5,
+    "visible_entry_structure": "analyst_9plus3",
+    "entry_zone_policy": "conditional_reachable_structure_only",
+    "forbid_single_price_shortcut": true,
+    "forbid_technical_indicator_factor_inflation": true
   },
   "backtest_validation": {
     "requested_universe": 160,
