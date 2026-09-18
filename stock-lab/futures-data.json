@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-17T14:58:18.658331+00:00",
+  "generated_at": "2026-09-18T12:55:41.375458+00:00",
   "status": "ok",
   "source": "TAIFEX",
   "contract": "TX",
@@ -21,8 +21,8 @@
     "ohlc_consistency_ok"
   ],
   "raw_sha256": {
-    "report": "b677dae722fb7735f00e861eea21a035e740ed0ac29df40f27a3a3ba7aaf2368",
-    "excel": "1f12e8305e8052d9ce6576423ab12564fb023e81ce388f5c309e43a28c960de7"
+    "report": "4302031212e38c7acc4ca26d200c182a925cf28039fa6cee25c173d969d7ad48",
+    "excel": "c7ad1648a9e8854129844a084479d834292ea0fafed0b81271f960b3d5e6bd0d"
   },
   "content_type": {
     "report": "text/html;charset=utf-8",
@@ -34,16 +34,16 @@
     "excel": 1
   },
   "source_dates": {
-    "report": "2026/09/17",
-    "excel": "2026/09/17"
+    "report": "2026/09/18",
+    "excel": "2026/09/18"
   },
-  "trade_date": "2026/09/17",
+  "trade_date": "2026/09/18",
   "contract_month": "202610",
-  "last_price": 46445.0,
-  "change": 385.0,
-  "change_pct": 0.84,
-  "total_volume": 82385.0,
-  "open_interest": 99476.0,
+  "last_price": 47418.0,
+  "change": 959.0,
+  "change_pct": 2.06,
+  "total_volume": 65824.0,
+  "open_interest": 101893.0,
   "selection_rule": "highest_total_volume_common_monthly_TX",
   "cross_check": "matched"
 }
