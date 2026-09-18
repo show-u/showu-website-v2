@@ -1,6 +1,6 @@
 {
   "schema_version": 10,
-  "architecture": "unified-entry-rule-holding-v10",
+  "architecture": "free-official-first-executable-entry-three-input-actionable-holding-v14",
   "formal_prediction_validation_status": "BLOCKED_DATA_LAYER",
   "network_history_collection_performed": false,
   "network_history_collection_disabled": true,
@@ -19,5 +19,5 @@
     "deterministic_holding_rules_oos_required": false,
     "holding_statistical_claims_oos_required": true
   },
-  "reason": "Entry and scanner predictions remain blocked until their formal legal-data/OOS/execution/calibration gates pass. Existing-position management is a separate deterministic rule path and is available from user position facts plus legally verified completed-session market facts; missing enhancements remain unavailable and are never imputed."
+  "reason": "Entry and scanner predictions remain blocked until their formal legal-data/OOS/execution/calibration gates pass. Existing-position management is a separate deterministic rule path using three user position facts plus legally verified completed-session OHLC; verified prior-session low/high may provide a single-session exit trigger and pressure reference when multi-day structure is unavailable."
 }
