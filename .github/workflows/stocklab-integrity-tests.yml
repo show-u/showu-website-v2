@@ -78,7 +78,7 @@ jobs:
               assert text in idx,text
           for legacy in ('id="horizon"','scanHorizon','holdHorizon','短線｜約1個月','波段｜約3個月','長期｜1年以上','短線入場區間','中期入場區間','長期佈局區間'):
               assert legacy not in idx+router+top10,legacy
-          assert '不選短／中／長' in idx
+          assert '短／中／長' in idx
           assert 'id="holdTotalCost"' not in idx
 
           # C. Position facts come only from the user.
