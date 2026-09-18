@@ -93,7 +93,7 @@ jobs:
           need 'window.StockLabEntryDecision' /tmp/entry-decision.js 'entry decision module unavailable'
           need 'window.StockLabPositionInput' /tmp/position-input.js 'position input module unavailable'
           need 'window.StockLabHolding' /tmp/holding-model.js 'holding model module unavailable'
-          need "model:'TW-holding-rule-v1'" /tmp/holding-model.js 'rule-based holding model unavailable'
+          need "model:'TW-holding-rule-v3'" /tmp/holding-model.js 'rule-based holding model unavailable'
           need 'requiredBars:()=>1' /tmp/holding-model.js 'holding rules must work from one verified completed-session close'
           need 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' /tmp/holding-model.js 'holding rules were re-locked behind OOS'
           need 'StockLabPositionInput?.collect' /tmp/holding-router.js 'holding router not using user position collector'
@@ -124,7 +124,7 @@ jobs:
             'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION',
             'TRACEABILITY','FAIL_CLOSED','NO_FAKE_CONFIDENCE','NO_HORIZON_BUY_MODEL',
             'NO_UNBUYABLE_ENTRY_BANDS','TARGET_SESSION_BY_DATA_DATE',
-            'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','FOUR_FIELD_HOLDING_INPUT','EXECUTABLE_ENTRY_ONLY'
+            'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY'
           )
           missing=[x for x in required if x not in inv]
           assert not missing, missing
