@@ -13,9 +13,10 @@ from pathlib import Path
 
 NETWORK_HISTORY_COLLECTION_DISABLED = True
 LEGACY_HORIZON_ENTRY_RESULTS_PRODUCTION_VALID = False
-ARCHITECTURE = 'free-official-first-executable-entry-three-input-actionable-holding-v14'
+ARCHITECTURE = 'free-official-first-rule-research-plus-predictive-gates-v15'
 PREDICTIVE_KEYS = {'entry_decision_9plus3','entry_scanner_9plus3'}
-MODEL_KEYS = PREDICTIVE_KEYS | {'holding_rules'}
+RULE_KEYS = {'holding_rules','entry_reference_rules','sector_research_rules'}
+MODEL_KEYS = PREDICTIVE_KEYS | RULE_KEYS
 VALID_PREDICTIVE_NONPASS = {'FAIL','INSUFFICIENT','BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER'}
 
 
@@ -43,6 +44,19 @@ def validate_status_manifest(x):
     assert holding.get('oos_required_for_statistical_claims') is True
     assert holding.get('confidence_calibrated') is False
     assert holding.get('imputation_allowed') is False
+
+    entry_ref=models['entry_reference_rules']
+    assert entry_ref.get('status')=='AVAILABLE_RULE_BASED'
+    assert entry_ref.get('formula')=='TW-entry-reference-v1'
+    assert entry_ref.get('oos_required') is False
+    assert entry_ref.get('predictive_executable_price') is False
+
+    sector=models['sector_research_rules']
+    assert sector.get('status')=='AVAILABLE_RULE_BASED'
+    assert sector.get('formula')=='TW-sector-five-v1'
+    assert sector.get('oos_required') is False
+    assert sector.get('max_per_industry')==5
+    assert sector.get('predictive_ranking') is False
     return models
 
 
@@ -66,9 +80,11 @@ def blocked_payload(status_path):
             'legacy_horizon_buy_model_used':False,
             'predictive_oos_required':True,
             'deterministic_holding_rules_oos_required':False,
-            'holding_statistical_claims_oos_required':True
+            'holding_statistical_claims_oos_required':True,
+            'rule_based_entry_reference_oos_required':False,
+            'sector_research_oos_required':False
         },
-        'reason':'Entry and scanner predictions remain fail-closed. Existing-position holding rules are available only from user position facts and legally verified completed-session market facts; missing enhancements stay unavailable and no statistical confidence is fabricated.'
+        'reason':'Predictive entry and predictive scanner remain fail-closed. Deterministic completed-session entry-reference, sector-research and holding rules remain available without statistical confidence claims.'
     }
 
 
