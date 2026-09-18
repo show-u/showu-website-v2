@@ -131,6 +131,12 @@ jobs:
               assert stale not in public,f'public-output holding override returned: {stale}'
           assert "document.querySelector('#holdAnalyzeBtn')" not in public
           assert "const hold=document.querySelector('#holdAnalyzeBtn')" not in public
+          # compliance-gate must never regain ownership of existing-position analysis.
+          assert "const hold=document.querySelector('#holdAnalyzeBtn')" not in compliance
+          assert "renderHoldingFacts" not in compliance
+          assert "hold.onclick" not in compliance
+          assert "正式出場建議仍被阻擋" not in compliance
+          assert "holdingExitValidation" not in compliance
           assert 'holding-readiness.json' not in fallback
           assert 'holding_exit_oos_validation_passed' not in R('stock-lab/verification-policy.json')
           assert 'holding_exit_oos_required' not in R('stock-lab/verification-policy.json')
