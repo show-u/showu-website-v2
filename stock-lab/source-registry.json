@@ -20,7 +20,12 @@
       "license": "OGDL-1.0",
       "license_evidence": "data.gov.tw dataset 11549",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "trade_date", "ohlc_numeric", "close_cross_check"]
+      "validation": [
+        "stock_code",
+        "trade_date",
+        "ohlc_numeric",
+        "close_cross_check"
+      ]
     },
     "twse_valuation": {
       "purpose": "上市個股本益比/股價淨值比/殖利率",
@@ -29,7 +34,12 @@
       "url": "https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "data_date", "numeric_fields", "date_gap_limit"]
+      "validation": [
+        "stock_code",
+        "data_date",
+        "numeric_fields",
+        "date_gap_limit"
+      ]
     },
     "twse_company_profile": {
       "purpose": "上市公司產業別與基本識別",
@@ -38,7 +48,10 @@
       "url": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "industry"]
+      "validation": [
+        "company_code",
+        "industry"
+      ]
     },
     "twse_monthly_revenue": {
       "purpose": "上市公司月營收",
@@ -47,7 +60,11 @@
       "url": "https://openapi.twse.com.tw/v1/opendata/t187ap05_L",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "period", "freshness"]
+      "validation": [
+        "company_code",
+        "period",
+        "freshness"
+      ]
     },
     "twse_income_statement": {
       "purpose": "上市公司季損益表",
@@ -56,7 +73,12 @@
       "url": "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_ci",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "year", "quarter", "report_date"]
+      "validation": [
+        "company_code",
+        "year",
+        "quarter",
+        "report_date"
+      ]
     },
     "twse_balance_sheet": {
       "purpose": "上市公司季資產負債表",
@@ -65,7 +87,12 @@
       "url": "https://openapi.twse.com.tw/v1/opendata/t187ap07_L_ci",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "year", "quarter", "report_date"]
+      "validation": [
+        "company_code",
+        "year",
+        "quarter",
+        "report_date"
+      ]
     },
     "twse_margin_short": {
       "purpose": "上市融資融券餘額",
@@ -74,7 +101,12 @@
       "url": "https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "exact_field_names", "previous_balance", "current_balance"]
+      "validation": [
+        "stock_code",
+        "exact_field_names",
+        "previous_balance",
+        "current_balance"
+      ]
     },
     "twse_disposition": {
       "purpose": "上市處置股票",
@@ -83,7 +115,11 @@
       "url": "https://www.twse.com.tw/announcement/punish?response=open_data",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "disposition_period", "active_period_parse"]
+      "validation": [
+        "stock_code",
+        "disposition_period",
+        "active_period_parse"
+      ]
     },
     "tpex_company_profile": {
       "purpose": "上櫃公司產業別與基本識別",
@@ -92,7 +128,10 @@
       "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "industry"]
+      "validation": [
+        "company_code",
+        "industry"
+      ]
     },
     "tpex_daily_snapshot": {
       "purpose": "上櫃個股最新日成交資訊",
@@ -101,7 +140,11 @@
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "trade_date", "ohlc_numeric"]
+      "validation": [
+        "stock_code",
+        "trade_date",
+        "ohlc_numeric"
+      ]
     },
     "tpex_valuation": {
       "purpose": "上櫃估值資料",
@@ -110,7 +153,11 @@
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "data_date", "numeric_fields"]
+      "validation": [
+        "stock_code",
+        "data_date",
+        "numeric_fields"
+      ]
     },
     "tpex_institution": {
       "purpose": "上櫃三大法人交易",
@@ -119,7 +166,13 @@
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "trade_date", "foreign", "trust", "dealer"]
+      "validation": [
+        "stock_code",
+        "trade_date",
+        "foreign",
+        "trust",
+        "dealer"
+      ]
     },
     "tpex_monthly_revenue": {
       "purpose": "上櫃公司月營收",
@@ -128,7 +181,11 @@
       "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "period", "freshness"]
+      "validation": [
+        "company_code",
+        "period",
+        "freshness"
+      ]
     },
     "tpex_income_statement": {
       "purpose": "上櫃公司季損益表",
@@ -137,7 +194,12 @@
       "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "year", "quarter", "report_date"]
+      "validation": [
+        "company_code",
+        "year",
+        "quarter",
+        "report_date"
+      ]
     },
     "tpex_balance_sheet": {
       "purpose": "上櫃公司季資產負債表",
@@ -146,7 +208,12 @@
       "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap07_O_ci",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["company_code", "year", "quarter", "report_date"]
+      "validation": [
+        "company_code",
+        "year",
+        "quarter",
+        "report_date"
+      ]
     },
     "tpex_margin_short": {
       "purpose": "上櫃融資融券餘額",
@@ -155,7 +222,12 @@
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_margin_balance",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "exact_field_names", "previous_balance", "current_balance"]
+      "validation": [
+        "stock_code",
+        "exact_field_names",
+        "previous_balance",
+        "current_balance"
+      ]
     },
     "tpex_index": {
       "purpose": "上櫃市場環境",
@@ -164,7 +236,11 @@
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_daily_trading_index",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["trade_date", "index_close", "change_points_recalculation"]
+      "validation": [
+        "trade_date",
+        "index_close",
+        "change_points_recalculation"
+      ]
     },
     "tpex_attention": {
       "purpose": "上櫃注意股票",
@@ -173,7 +249,11 @@
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_trading_warning_information",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "announcement_date", "same_session_required"]
+      "validation": [
+        "stock_code",
+        "announcement_date",
+        "same_session_required"
+      ]
     },
     "tpex_disposition": {
       "purpose": "上櫃處置股票",
@@ -182,7 +262,11 @@
       "url": "https://www.tpex.org.tw/openapi/v1/tpex_disposal_information",
       "license": "OGDL-1.0",
       "legal_status": "approved_open_data",
-      "validation": ["stock_code", "disposition_period", "active_period_parse"]
+      "validation": [
+        "stock_code",
+        "disposition_period",
+        "active_period_parse"
+      ]
     },
     "twse_historical_monthly_query": {
       "purpose": "上市個股歷史日K（目前回測/技術模型所需）",
@@ -191,7 +275,12 @@
       "url_template": "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?date={YYYYMM01}&stockNo={CODE}&response=json",
       "license": "not_confirmed_for_automated_commercial_reuse",
       "legal_status": "blocked_pending_license_review",
-      "validation": ["stock_code", "requested_month", "trade_dates", "ohlc_numeric"],
+      "validation": [
+        "stock_code",
+        "requested_month",
+        "trade_dates",
+        "ohlc_numeric"
+      ],
       "note": "Do not enable in production until automated/commercial-use rights are confirmed or replaced by an explicitly licensed historical source."
     },
     "tpex_historical_monthly_query": {
@@ -201,8 +290,43 @@
       "url_template": "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code={CODE}&date={YYYY/MM/01}&response=json",
       "license": "not_confirmed_for_automated_commercial_reuse",
       "legal_status": "blocked_pending_license_review",
-      "validation": ["stock_code", "requested_month", "trade_dates", "ohlc_numeric"],
+      "validation": [
+        "stock_code",
+        "requested_month",
+        "trade_dates",
+        "ohlc_numeric"
+      ],
       "note": "Do not enable in production until automated/commercial-use rights are confirmed or replaced by an explicitly licensed historical source."
+    },
+    "twse_market_daily": {
+      "purpose": "上市市場大盤成交資訊／TAIEX",
+      "provider": "TWSE",
+      "dataset": "FMTQIK",
+      "url": "https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK",
+      "license": "OGDL-1.0",
+      "license_evidence": "data.gov.tw dataset 11672",
+      "legal_status": "approved_open_data",
+      "validation": [
+        "trade_date",
+        "taiex_numeric",
+        "change_points_numeric",
+        "latest_session"
+      ]
+    },
+    "twse_breadth": {
+      "purpose": "上市股票上漲／下跌家數市場廣度",
+      "provider": "TWSE",
+      "dataset": "twtazu_od",
+      "url": "https://openapi.twse.com.tw/v1/opendata/twtazu_od",
+      "license": "OGDL-1.0",
+      "license_evidence": "data.gov.tw dataset 18409",
+      "legal_status": "approved_open_data",
+      "validation": [
+        "trade_date",
+        "type_stock",
+        "up_down_numeric",
+        "same_session_as_taiex"
+      ]
     }
   }
 }
