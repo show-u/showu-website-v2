@@ -2,15 +2,19 @@
 // Predictive entry remains fail-closed. Existing-position management is a separate verified rule path.
 window.STOCKLAB_RUNTIME={
   apiBase:'',
-  architecture:'backend-first-online-only',
+  architecture:'free-official-first-backend-online',
   hardPolicyVersion:10,
-  dataMode:'online-only',
+  dataMode:'free-official-first',
   persistentMarketData:false,
   allowLocalFallback:false,
   productionPredictionReady:false,
   holdingRulePathEnabled:true,
+  freeOfficialHistoryPriority:true,
   gates:{
     licensedHistoricalOHLC:false,
+    twseFreeOfficialHistoryTechnical:true,
+    twseFreeOfficialHistoryProductionActive:false,
+    tpexFreeLongHistoryConfirmed:false,
     securityMaster:false,
     tradingCalendar:false,
     corporateActions:false,
@@ -27,7 +31,7 @@ window.STOCKLAB_RUNTIME={
     scannerConfidenceCalibration:false
   },
   blockers:[
-    '歷史 OHLC 必須來自明確合法、允許自動處理的來源；來源無法提供足夠歷史深度時，預測型入場模型維持 INSUFFICIENT，不得補值。',
+    'TWSE 免費官方歷史已完成 2454／2330 各 1,386 個交易日技術驗證，但歷史端點自動化使用條款與 PIT／公司行動語意尚未完成 production activation；TPEx 完整免費長歷史 OHLCV 仍待確認。預測型入場模型因此維持 INSUFFICIENT，不得補值。',
     '普通股／ETF／ETN／TDR／特殊商品分類 Gate 尚未完成時，未知商品不得硬套普通股模型。',
     '交易日曆未驗證時不得把「明天」直接等同「下一交易日」。',
     '除權息、減資、首五日無漲跌幅、暫停／恢復交易等參考價事件缺漏時不得推測。',
@@ -48,4 +52,4 @@ window.STOCKLAB_RUNTIME={
 window.STOCKLAB_HARD_READY=import('./hard-policy.js')
   .then(()=>window.StockLabHardPolicy.ready())
   .catch(e=>{console.error('StockLab hard policy unavailable',e);return null});
-import('./data-status.js').catch(e=>console.error('StockLab data status unavailable',e));
+import('./data-status.js?v=20260918-freehist-v12').catch(e=>console.error('StockLab data status unavailable',e));
