@@ -44,8 +44,8 @@ jobs:
           expected={'entry_decision_9plus3','entry_scanner_9plus3','holding_rules'}
           allowed_nonpass={'FAIL','INSUFFICIENT','BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER'}
 
-          assert x['schema_version']==10 and x['architecture']=='unified-entry-rule-holding-v10'
-          assert manifest['schema_version']==5 and manifest['architecture']==x['architecture']
+          assert x['schema_version']==10 and x['architecture']=='free-official-first-executable-entry-three-input-actionable-holding-v14'
+          assert manifest['schema_version']==9 and manifest['architecture']==x['architecture']
           assert x['formal_prediction_validation_status'] in allowed_nonpass
           assert x['network_history_collection_performed'] is False
           assert x['network_history_collection_disabled'] is True
@@ -69,7 +69,7 @@ jobs:
               'holding_statistical_claims_oos_required':True}
 
           src=Path('stock-lab/backtest-taiwan-v3.py').read_text(encoding='utf-8')
-          assert "ARCHITECTURE = 'unified-entry-rule-holding-v10'" in src
+          assert "ARCHITECTURE = 'free-official-first-executable-entry-three-input-actionable-holding-v14'" in src
           assert 'NETWORK_HISTORY_COLLECTION_DISABLED = True' in src
           for forbidden in ('holding-exit-validation-protocol.json','minimum_oos_episodes_total','minimum_oos_securities','TW-holding-exit-v4','urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
               assert forbidden not in src,forbidden
