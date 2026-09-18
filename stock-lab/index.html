@@ -15,7 +15,7 @@
   <section class="card"><div class="tabs"><button id="findBtn" class="ghost">不知道買什麼</button><button id="singleBtn">想買這檔</button><button id="holdBtn" class="ghost">已持有</button></div></section>
   <section id="singlePanel" class="card">
     <label>股票代號／股票名稱<input id="ticker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <p class="simple-rule">未持有股票只回答「當日／次一合法交易日是否有可執行入場價格」。不選短／中／長；只有合法、已驗證且符合台灣市場交易規則的必要資料完整時才顯示數字，否則明確顯示無法判定。</p>
+    <p class="simple-rule">想買這檔會先用最新完成交易日的官方資料給出「規則式建議入場參考價＋理由」。這不是盤中即時價，也不是勝率預測；正式預測型可執行買價仍須通過更高層 Gate。</p>
     <button id="analyzeBtn">分析進場價格</button><div id="singleLoad" class="loader hidden">正在驗證資料並建立入場判斷…</div>
   </section>
   <section id="result" class="card hidden"></section>
@@ -27,7 +27,7 @@
     <p class="simple-rule">已持有股票不再套用短／中／長買入價。直接輸入模式只需要買入時間、目前股數與目前成本均價；部位總成本由系統以「均價 × 股數」確定性計算，再配合法且已驗證行情做持有／減碼／出場分析。必要欄位未取得時顯示無法判定；不以假資料補缺漏。</p>
     <button id="holdAnalyzeBtn">分析出場時機</button><div id="holdLoad" class="loader hidden">正在驗證持股資料與市場事實…</div><div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">均價、股數與首次買入時間採你的輸入；總成本由系統計算。</div></div>
   </section>
-  <section id="findPanel" class="card hidden"><h2 style="margin-top:0">目前值得研究的入場候選</h2><p class="muted">使用與「想買這檔」相同的完整模型。合格不足 10 檔就不補滿。</p><button id="scanBtn">找出 TOP 10</button><div id="scanLoad" class="loader hidden">正在驗證候選股票…</div></section>
+  <section id="findPanel" class="card hidden"><h2 style="margin-top:0">各類股近期績優研究標的</h2><p class="muted">依官方產業分類分組，每類最多 5 檔；只用最新完成交易日已驗證資料與已知風險旗標。</p><button id="scanBtn">查看各類股 5 檔候選</button><div id="scanLoad" class="loader hidden">正在整理各類股候選…</div></section>
   <section id="top10" class="card hidden"></section>
   <section id="marketCard" class="internal-only"><div id="marketScore">—</div><div id="marketBody"></div></section>
   <details id="marketDetails" class="internal-only"><summary><span>內部資料狀態</span><span id="dataHealthSummary">—</span></summary><div id="marketDetailsBody"></div></details>
@@ -35,5 +35,5 @@
   <details class="source-note"><summary><b>資料規則</b></summary><div class="mini" style="margin-top:8px">只使用明確合法、可追溯且驗證通過的資料。未取得、過期、授權不明、欄位不符或交叉驗證失敗，一律維持未知；不得以 0、舊值、平均值、其他網站或 AI 推估補成已取得資料。未經正式樣本外校準，不顯示勝率、成功率或信心百分比。</div></details>
   <div class="disclaimer"><b>投資風險聲明</b>本工具僅供研究參考，不構成投資建議或收益保證。持倉規則只使用已驗證事實與確定性衍生值；未知資料不補值。</div>
 </main>
-<script src="./runtime-config.js?v=20260918-freehist-v12"></script><script src="./api-client.js"></script><script src="./app.js"></script><script src="./tpex.js"></script><script src="./same-origin-cache.js?v=20260918-truthfix1"></script><script src="./licensed-history.js?v=20260918-v11-noprobe404"></script><script src="./session-context.js"></script><script src="./taiwan-model-v2.js"></script><script src="./markets.js"></script><script src="./futures.js"></script><script src="./event-risk.js"></script><script src="./entry-decision.js"></script><script src="./hard-policy.js"></script><script src="./top10-gate.js"></script><script src="./market-router.js"></script><script src="./position-input.js?v=20260918-v14-derivedcost"></script><script src="./holding-model.js?v=20260918-v14-exitbasis"></script><script src="./ui-patch.js?v=20260918-truthfix1"></script><script src="./health.js"></script><script src="./operational-fallback.js?v=20260918-truthfix1"></script><script src="./compliance-gate.js?v=20260918-truthfix1"></script><script src="./public-output.js?v=20260918-truthfix1"></script><script src="./holding-router.js?v=20260918-v14-exitbasis"></script>
+<script src="./runtime-config.js?v=20260918-freehist-v12"></script><script src="./api-client.js"></script><script src="./app.js"></script><script src="./tpex.js"></script><script src="./same-origin-cache.js?v=20260918-truthfix1"></script><script src="./licensed-history.js?v=20260918-v11-noprobe404"></script><script src="./session-context.js"></script><script src="./taiwan-model-v2.js"></script><script src="./markets.js"></script><script src="./futures.js"></script><script src="./event-risk.js"></script><script src="./entry-decision.js"></script><script src="./hard-policy.js"></script><script src="./top10-gate.js?v=20260918-v15-sector5"></script><script src="./market-router.js?v=20260918-v15-entryref"></script><script src="./position-input.js?v=20260918-v14-derivedcost"></script><script src="./holding-model.js?v=20260918-v14-exitbasis"></script><script src="./ui-patch.js?v=20260918-truthfix1"></script><script src="./health.js"></script><script src="./operational-fallback.js?v=20260918-truthfix1"></script><script src="./compliance-gate.js?v=20260918-truthfix1"></script><script src="./public-output.js?v=20260918-truthfix1"></script><script src="./holding-router.js?v=20260918-v14-exitbasis"></script>
 </body></html>
