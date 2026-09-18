@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 12,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -31,13 +31,13 @@
     "NEXT_SESSION_INPUT_COMPLETENESS": "A new next-session plan may be generated only after the latest completed official session has advanced and every input required by that model for the target session has independently passed legal-source, schema, date and integrity checks. A scheduled refresh time is never proof that data is ready.",
     "NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED": "Without a legally licensed real-time or delayed market-data feed, StockLab must not create a revised same-day executable price after 09:00 or describe any stale/daily-close value as the current market price. The original plan may remain visible only as a labelled reference/audit record.",
     "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a wait/re-entry condition. It must not be labelled as a current buy recommendation unless the model can establish that the price is actionable for the target session.",
-    "POSITION_INPUT_PROVENANCE": "Holding cost, shares and buy date are user-supplied facts. They must be labelled as user input and never inferred from market data.",
+    "POSITION_INPUT_PROVENANCE": "Holding average cost, shares and buy date are user-supplied facts. Total cost may be deterministically derived from average cost × shares. None may be inferred from market data.",
     "EXIT_MODEL_SEPARATION": "Holding management must use the holder's cost basis, position size, verified market facts and active risk state. A former buy-entry band may not be renamed into an exit recommendation. A separate predictive exit model, if introduced later, requires its own validation and must not override the deterministic rule path.",
     "TOP10_REASON_REQUIRED": "Every TOP10 candidate must disclose at least two source-traceable inclusion reasons and at least one material risk. A naked rank or score is insufficient.",
     "NO_HORIZON_BUY_MODEL": "StockLab must not ask the user to choose short/mid/long as a condition for entry analysis or generate multiple buy prices by investment horizon.",
     "DIVIDEND_TRUTH": "Cash dividends, stock dividends, dividend yield, distribution year and ex-right/ex-dividend dates must come from licensed verified datasets. Missing or not-yet-announced dividend fields remain unavailable and must never be converted to zero or guessed dates.",
-    "FOUR_FIELD_HOLDING_INPUT": "Existing-position analysis requires user-observed first buy time, current shares, current total cost and current average cost; missing or materially inconsistent values fail closed.",
-    "EXECUTABLE_ENTRY_ONLY": "New-position output may show only a legally verified Taiwan-market executable current/next-session entry price; if required data or validation is missing, output must be unable to determine."
+    "EXECUTABLE_ENTRY_ONLY": "New-position output may show only a legally verified Taiwan-market executable current/next-session entry price; if required data or validation is missing, output must be unable to determine.",
+    "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires user-observed first buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares and must not be requested as a redundant mandatory field."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
@@ -318,6 +318,7 @@
         "user_average_cost",
         "user_shares",
         "user_first_buy_date",
+        "derived_total_cost",
         "legal_source",
         "supported_security",
         "verified_latest_close"
