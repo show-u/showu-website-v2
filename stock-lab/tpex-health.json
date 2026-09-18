@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-17T12:33:21.716442+00:00",
+  "generated_at": "2026-09-18T12:11:26.892270+00:00",
   "status": "ok",
   "verified": true,
   "source": "TPEx",
@@ -8,32 +8,32 @@
     "snapshot": {
       "verified": true,
       "endpoint": "tpex_mainboard_daily_close_quotes",
-      "count": 11479,
-      "raw_sha256": "a91e26e1e4cf1215cfa0184effd41414c7f757ba4479b6709ad433d363c1cdfe",
+      "count": 11481,
+      "raw_sha256": "5290a10bd305702dd78d07748e629f95439e6cb3c970ebd261ec515a3fe6857d",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
-      "bytes": 4487643,
-      "download_attempt": 2,
-      "latest_date": "2026-09-17"
+      "bytes": 4490821,
+      "download_attempt": 1,
+      "latest_date": "2026-09-18"
     },
     "valuation": {
       "verified": true,
       "endpoint": "tpex_mainboard_peratio_analysis",
       "count": 887,
-      "raw_sha256": "91ea8e1a84456eaad9963eb8bd3ddcbd3b96e84afc70c4201a47cc08b8adf5cd",
+      "raw_sha256": "e27f2dd08899d36a3f222cd1c19bb779f8dd5ecfd55542e8ab41d69862feb087",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis",
-      "bytes": 156295,
+      "bytes": 156299,
       "download_attempt": 1
     },
     "institution": {
       "verified": true,
       "endpoint": "tpex_3insti_daily_trading",
-      "count": 901,
-      "raw_sha256": "5c1282791589077a35a0f8ee294031210989e2a8cdae2730a68a2eb1bb4d4b1d",
+      "count": 921,
+      "raw_sha256": "e2b108776b02ec79ed0a4524c1fe00b593363a64090d25c1771c7616427e9c16",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading",
-      "bytes": 852434,
+      "bytes": 872950,
       "download_attempt": 1
     },
     "revenue": {
@@ -50,7 +50,7 @@
       "verified": true,
       "endpoint": "mopsfin_t187ap06_O_ci",
       "count": 884,
-      "raw_sha256": "8702b64f2ddc36868d20aa310d62b2459a274bd60bdcda1121d70a4fc8bbbb33",
+      "raw_sha256": "b3f60a222b524c3199802e746aaf95279c68f1462dc52970342af3818141654a",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap06_O_ci",
       "bytes": 1182017,
@@ -60,7 +60,7 @@
       "verified": true,
       "endpoint": "mopsfin_t187ap07_O_ci",
       "count": 884,
-      "raw_sha256": "076f6cb7a4b3fffda59f889ba6547869a5048d39e5f7cce2c4b3dca5f46391d0",
+      "raw_sha256": "95e9840c4668b12ca1a135d6a2740ceb5df5c93f95fa37e7a81ff1fb690f814d",
       "content_type": "application/json",
       "final_url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap07_O_ci",
       "bytes": 759708,
