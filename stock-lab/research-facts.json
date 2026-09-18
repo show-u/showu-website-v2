@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "source": "ogdl-normalized-research-facts",
+  "licence": "OGDL-1.0",
+  "no_imputation": true,
+  "status": "unavailable",
+  "generated_at": null,
+  "source_status": {},
+  "market": {},
+  "stocks": {}
+}
