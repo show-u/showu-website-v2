@@ -27,9 +27,9 @@
     else if(pnl<0&&trendWeak){state='虧損且結構轉弱';reason='目前低於成本，且可用的已驗證價格結構偏弱';nextAction='不加碼；下一完成交易日若再跌破風險觸發線，進入減碼／出場檢視';}
     else if(pnl>0&&trendWeak){state='獲利保護';reason='仍有未實現獲利，但可用價格結構轉弱';nextAction='保護既有獲利；下一完成交易日若跌破風險觸發線，檢視分批減碼';}
     else if(pnl>0&&trendUp){state='續抱條件仍成立';reason='目前有未實現獲利，且可用價格結構尚未轉弱';nextAction='續抱觀察；接近壓力參考時再檢視分批停利';}
-    else if(pnl<0){state='虧損部位防守';reason='目前低於成本，但現有合法資料不足以宣稱完整趨勢反轉';nextAction='不因猜測價格加碼；以下一完成交易日的已驗證風險觸發條件作防守';}
-    else if(pnl>0){state='獲利中但結構資料不足';reason='目前高於部位總成本，但已驗證歷史價格結構不足，不能據此產生減碼／出場價位';nextAction='先保留部位事實判斷；等待更多已驗證完成交易日資料後，再判斷持有／減碼／出場條件';}
-    else{state='損益持平';reason='目前市值等於部位總成本，且沒有足夠已驗證價格結構支持進一步方向判斷';nextAction='等待下一完成交易日確認，不用短／中／長假設硬做決策';}
+    else if(pnl<0){state='虧損部位防守';reason='目前低於成本；若多日結構不足，先使用上一完成交易日低點作最低限度的已驗證防守觸發';nextAction='不因猜測價格加碼；若下一合法交易時段有效跌破出場觸發價，進入減碼／出場檢視';}
+    else if(pnl>0){state='獲利中；多日結構不足';reason='目前高於部位總成本；多日結構不足時，不虛構支撐，而以上一完成交易日低點作最小可用的獲利保護觸發';nextAction='續抱但設定防守；若下一合法交易時段有效跌破出場觸發價，檢視分批減碼／出場';}
+    else{state='損益持平';reason='目前市值接近部位總成本；多日結構不足時，以上一完成交易日低點作最小可用防守觸發';nextAction='不預測方向；若下一合法交易時段有效跌破出場觸發價，進入減碼／出場檢視';}
     const trigger=support!=null?roundTick(support,'down'):null,pressure=resistance!=null?roundTick(resistance,'up'):null;
     const triggerBasis=structureKnown?'最近20個已驗證交易日低價分布第20百分位':'上一完成交易日低點';
     const pressureBasis=structureKnown?'最近20個已驗證交易日高價分布第80百分位':'上一完成交易日高點';
