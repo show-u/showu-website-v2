@@ -1,17 +1,18 @@
 {
-  "schema_version": 6,
-  "architecture": "unified-executable-entry-four-field-holding-v11",
+  "schema_version": 7,
+  "architecture": "free-official-first-executable-entry-four-field-holding-v12",
   "generated_rule": "New-position analysis may output only a legally verified Taiwan-market executable price for the current or next legal trading session; otherwise it must say unable to determine. Existing-position management uses four user position facts: buy time, current shares, current total cost and current average cost. Missing, unverified or materially inconsistent inputs are never imputed.",
   "legacy_horizon_entry_results_are_production_valid": false,
   "models": {
     "entry_decision_9plus3": {
       "status": "BLOCKED_DATA_LAYER",
       "validation_protocol": "stock-lab/entry-validation-protocol.json",
-      "reason": "The production entry contract requires nine verified entry factors plus verified US-market, TAIFEX TX and international-event contexts. Legal historical OHLC, all required contexts, production-equivalent OOS validation, entry-range execution/reachability validation and confidence calibration are not all complete.",
+      "reason": "TWSE free official historical OHLCV has passed a 1,386-session technical probe on 2454 and 2330, but that source is not yet production-activated because endpoint automated-use terms and PIT/corporate-action semantics remain unresolved. TPEx complete free long-history OHLCV is also not yet confirmed. Other 9+3 contexts, chronological OOS, execution/reachability validation and confidence calibration remain incomplete.",
       "required_before_pass": [
-        "licensed historical OHLC",
-        "supported security master",
-        "trading calendar",
+        "TWSE free official history production activation",
+        "TPEx complete lawful long-history OHLCV",
+        "supported PIT-safe security master",
+        "verified trading calendar",
         "corporate-action adjustments",
         "Taiwan active risk states",
         "all nine entry factors verified",
@@ -63,6 +64,33 @@
       "oos_required_for_statistical_claims": true,
       "confidence_calibrated": false,
       "imputation_allowed": false
+    }
+  },
+  "data_layer_progress": {
+    "strategy": "free_official_first",
+    "twse_free_official_history": {
+      "status": "TECHNICALLY_VALIDATED_NOT_PRODUCTION_ACTIVATED",
+      "tested_tickers": [
+        "2454",
+        "2330"
+      ],
+      "tested_range": "2021-01 through 2026-09",
+      "rows_per_ticker": 1386,
+      "first_date": "2021-01-04",
+      "last_date": "2026-09-17",
+      "empty_months": 0,
+      "duplicate_dates": 0,
+      "ohlc_validation": "PASS",
+      "provenance_and_sha256": "PASS",
+      "workflow_run_id": 35301231872,
+      "activation_blockers": [
+        "historical endpoint automated-use terms still require explicit validation",
+        "corporate-action treatment and PIT semantics not yet fully validated"
+      ]
+    },
+    "tpex_free_long_history": {
+      "status": "NOT_YET_CONFIRMED",
+      "note": "Free official current/forward OHLCV and context data are available, but complete long-history daily OHLCV has not yet been verified."
     }
   }
 }
