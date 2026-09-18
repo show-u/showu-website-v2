@@ -1,7 +1,7 @@
 {
-  "schema_version": 7,
-  "architecture": "free-official-first-executable-entry-four-field-holding-v12",
-  "generated_rule": "New-position analysis may output only a legally verified Taiwan-market executable price for the current or next legal trading session; otherwise it must say unable to determine. Existing-position management uses four user position facts: buy time, current shares, current total cost and current average cost. Missing, unverified or materially inconsistent inputs are never imputed.",
+  "schema_version": 8,
+  "architecture": "free-official-first-executable-entry-three-input-holding-v13",
+  "generated_rule": "New-position analysis remains fail-closed. Existing-position management uses three user position facts: buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares; it is not a redundant required user field.",
   "legacy_horizon_entry_results_are_production_valid": false,
   "models": {
     "entry_decision_9plus3": {
@@ -45,14 +45,14 @@
     },
     "holding_rules": {
       "status": "AVAILABLE_RULE_BASED",
-      "formula": "TW-holding-rule-v1",
-      "position_input_contract": "User-supplied first buy time + current shares + current total cost + current average cost, or user-entered remaining lots from which those fields are deterministically derived. No position field may be inferred from market data or AI.",
+      "formula": "TW-holding-rule-v2",
+      "position_input_contract": "User-supplied first buy time + current shares + current average cost, or user-entered remaining lots. Current total cost is deterministically derived from those user inputs; no position field is inferred from market data or AI.",
       "reason": "Deterministic holding management is available from user position facts plus legally verified completed-session market facts. Missing price history, corporate-action state or active risk state stays unknown and only suppresses the affected enhancement; it does not recreate an OOS lock. No win rate, probability or calibrated confidence is claimed.",
       "minimum_required": [
         "user first buy time",
         "user current shares",
-        "user current total cost",
         "user current average cost",
+        "derived current total cost",
         "legally usable verified latest completed-session close"
       ],
       "optional_enhancements": [
