@@ -2,7 +2,7 @@
 // When prediction gates are not ready, the app remains usable in VERIFIED FACTS ONLY mode.
 (function(){
   const rt=window.STOCKLAB_RUNTIME||{};
-  const analyze=document.querySelector('#analyzeBtn'),scan=document.querySelector('#scanBtn'),hold=document.querySelector('#holdAnalyzeBtn');
+  const analyze=document.querySelector('#analyzeBtn'),scan=document.querySelector('#scanBtn');
   const blockedReasons=()=>Array.isArray(rt.blockers)&&rt.blockers.length?rt.blockers:['預測必要 Gate 尚未全部通過'];
   const gateList=()=>Object.entries(rt.gates||{}).filter(([,v])=>v!==true).map(([k])=>k);
   const missing='資料未取得／未通過驗證';
@@ -65,19 +65,14 @@
     box.innerHTML=researchBrief(x,c,f)+nineFactorBlocked()+marketContextFacts(f,x)+`<div class=source-note><b>所以現在能回答什麼？</b><div class=mini>可以回答：最新合法收盤、單日價格結構、流動性、最新營收、同產業估值、已取得的融資融券與風險狀態。<br><b>現在不能回答：</b>「是否適合入場」「精確買入價」「上漲機率」。因為完整判斷指定的九項因子＋美股＋台指期＋國際時事尚未全部驗證。</div></div><div class=source-note><b>資料時間規則</b><div class=mini>目前只確認資料日 ${esc(x.date||'—')} 的官方收盤事實。08:30–09:00 是盤前限價 ROD 的執行窗口；09:00 後若沒有合法即時／延遲行情，StockLab 不重算假裝是「現在可買」的盤中價格。收盤後也不以時鐘直接切換；只有官方資料日期真的前進且必要 Gate 全部通過，才建立新的下一交易時段計畫。</div></div>`+predictionBlockedHtml(kind);box.classList.remove('hidden')
   }
   async function renderMarketFacts(){const box=document.querySelector('#top10');if(!box)return;box.innerHTML=`<h2>入場 TOP 10 尚未完成正式驗證</h2><p class=muted>現在只保留一套「目前是否適合入場」排行榜，判斷標準固定為九項入場因子＋美股＋台指期 TX＋國際時事。成交金額前 10、漲幅前 10、熱門股或舊的期間分類都不能冒充這個答案。</p>${predictionBlockedHtml('入場 TOP10',['entryScannerOosValidation 必須 PASS'])}`;box.classList.remove('hidden')}
-  async function renderHoldingFacts(){
-    const box=document.querySelector('#holdResult');if(!box)return;
-    const q=document.querySelector('#holdTicker')?.value||'',avg=num(document.querySelector('#holdAvgCost')?.value),shares=num(document.querySelector('#holdShares')?.value),buyDate=document.querySelector('#holdBuyDate')?.value||null;
-    if(!(avg>0)||!(shares>0))throw Error('請輸入有效的總量成本均價與持有股數');
-    const [c,f]=await Promise.all([licensedCache(),factorData()]),x=resolveObs(c,q),cost=avg*shares,value=x.close*shares,pnl=value-cost,pctPnl=cost?100*pnl/cost:null,days=daysBetween(buyDate,x.date),p=priceResearch(x),r=revenueResearch(findRevenue(c,x)),v=valuationResearch(c,x,f),risk=riskResearch(x,f);
-    box.innerHTML=`<div class=toprow><div><h2>${esc(x.name)}／${esc(x.code)}</h2><div class=muted>${x.market}｜持股分析｜資料日 ${esc(x.date||'—')}</div></div></div><h3>你的部位現在處於什麼位置</h3><div class=sourcegrid><div class=sourceitem><b>成本均價 → 最新收盤</b>${money(avg)} → ${money(x.close)}<br><span class=mini>${pctPnl!=null?(pctPnl>=0?'高於成本 ':'低於成本 ')+Math.abs(pctPnl).toFixed(2)+'%':'—'}</span></div><div class=sourceitem><b>未實現損益</b>${pnl>=0?'+':''}${money(pnl)}｜${pctPnl!=null?pct(pctPnl):'—'}<br><span class=mini>依收盤估算；未自行猜測手續費、稅與股利</span></div><div class=sourceitem><b>部位規模</b>${money(shares)} 股｜市值約 ${money(value)}</div><div class=sourceitem><b>首次買入日</b>${buyDate?esc(buyDate):'未填'}${days!=null?`｜至資料日約 ${days} 個日曆日`:''}</div></div><h3>與出場判斷相關的已知事實</h3><div class=sourcegrid><div class=sourceitem><b>價格結構</b>${esc(p.text)}</div><div class=sourceitem><b>營收動能</b>${esc(r.text)}</div><div class=sourceitem><b>估值位置</b>${esc(v.text)}</div><div class=sourceitem><b>風險狀態</b>${esc(risk.text)}</div></div>${marketContextFacts(f,x)}<div class=source-note><b>正式出場建議仍被阻擋</b><div class=mini>續抱／減碼／停利／出場必須由獨立持股模型根據你的成本與部位、已驗證市場資料及正式 OOS 結果決定。現階段不捏造賣出價或賣出日期。</div></div>${rawFacts(x,c)}${predictionBlockedHtml('持股出場時機／賣出條件',['holdingExitValidation 必須獨立 PASS'])}`;box.classList.remove('hidden')
-  }
+
 
   if(window.StockLabAPI){const api=window.StockLabAPI,origAnalyze=api.analyze?.bind(api),origScan=api.scan?.bind(api);api.config.allowLocalFallback=false;if(origAnalyze)api.analyze=async function(code,h){const j=await origAnalyze(code,h),hp=await hardReady(),v=hp.backendResult(j,h==='holding'?'holding':'analysis');if(!v.ok)throw Error(`後端稽核未通過：${v.blockers.join('；')}`);return j};if(origScan)api.scan=async function(h){const j=await origScan(h),hp=await hardReady(),v=hp.backendResult(j,'scanner');if(!v.ok)throw Error(`TOP10 後端稽核未通過：${v.blockers.join('；')}`);return j}}
 
   if(analyze){const original=analyze.onclick;analyze.onclick=async function(ev){try{await hardReady();const apiReady=window.StockLabAPI?.config?.enabled===true;if(apiReady||rt.productionPredictionReady===true)return original?.call(this,ev);await renderFacts('#result',document.querySelector('#ticker')?.value,'入場判斷')}catch(e){const box=document.querySelector('#result');box.innerHTML=`<h3 class=bad>查詢失敗</h3><p>${esc(e.message)}</p>`;box.classList.remove('hidden')}}}
   if(scan){const original=scan.onclick;scan.onclick=async function(ev){try{await hardReady();const apiReady=window.StockLabAPI?.config?.enabled===true;if(apiReady||rt.productionPredictionReady===true)return original?.call(this,ev);await renderMarketFacts()}catch(e){const box=document.querySelector('#top10');box.innerHTML=`<h3 class=bad>查詢失敗</h3><p>${esc(e.message)}</p>`;box.classList.remove('hidden')}}}
-  if(hold){hold.disabled=false;hold.textContent='查看持股狀態與出場條件';hold.onclick=async function(){try{await hardReady();await renderHoldingFacts()}catch(e){const box=document.querySelector('#holdResult');box.innerHTML=`<h3 class=bad>查詢失敗</h3><p>${esc(e.message)}</p>`;box.classList.remove('hidden')}}}
+  // Existing-position management is exclusively owned by holding-router.js. This gate must never intercept it.
+
 
   const marketScore=document.querySelector('#marketScore');if(marketScore){marketScore.textContent='—';marketScore.style.display='none'}
   const marketHead=document.querySelector('#marketCard .toprow');if(marketHead&&!marketHead.querySelector('[data-market-score-note]'))marketHead.insertAdjacentHTML('beforeend','<div data-market-score-note class="mini">未顯示未驗證分數</div>');
