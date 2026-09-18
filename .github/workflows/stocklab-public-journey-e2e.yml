@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/stocklab-public-journey-e2e.yml'
       - 'stock-lab/index.html'
+      - 'stock-lab/market-router.js'
+      - 'stock-lab/top10-gate.js'
       - 'stock-lab/position-input.js'
       - 'stock-lab/holding-model.js'
       - 'stock-lab/holding-router.js'
