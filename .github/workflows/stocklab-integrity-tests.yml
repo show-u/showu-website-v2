@@ -63,7 +63,7 @@ jobs:
           # A. Non-negotiable Taiwan truth rules.
           assert policy['version']>=10
           assert policy['policy_name']=='StockLab Taiwan Truth Rules'
-          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','FOUR_FIELD_HOLDING_INPUT','EXECUTABLE_ENTRY_ONLY')
+          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY')
           for k in required: assert k in policy['absolute_invariants'],k
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices'):
@@ -91,7 +91,9 @@ jobs:
           assert 'api.scan()' in top10
           assert 'StockLabHolding' in hold_router and 'model.analyze(p,hb.bars' in hold_router
           assert "validation:'RULE_BASED'" in hold_model
-          assert "model:'TW-holding-rule-v1'" in hold_model
+          assert "model:'TW-holding-rule-v3'" in hold_model
+          assert '建議出場觸發價' in hold_router
+          assert '上一完成交易日低點' in hold_model
           assert 'requiredBars:()=>1' in hold_model
           assert 'imputation_used:false' in hold_model
           assert 'confidence_calibrated:false' in hold_model
