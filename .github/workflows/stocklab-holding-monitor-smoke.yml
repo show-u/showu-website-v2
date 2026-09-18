@@ -38,10 +38,13 @@ jobs:
           health=Path('stock-lab/health.js').read_text(encoding='utf-8')
           assert not Path('stock-lab/holding-usable.js').exists(), 'obsolete holding-usable.js returned'
           assert 'holding-usable.js' not in idx+health, 'obsolete holding override still loaded'
-          for s in ('已持有','分析出場時機','目前成本均價','目前持有股數','目前部位總成本','首次買入時間'):
+          for s in ('已持有','分析出場時機','目前成本均價','目前持有股數','首次買入時間'):
               assert s in idx,s
+          assert 'id="holdTotalCost"' not in idx
+          assert '建議出場觸發價' in router
+          assert '上一完成交易日低點' in model
           assert 'model.analyze(p,hb.bars' in router
-          assert "model:'TW-holding-rule-v1'" in model
+          assert "model:'TW-holding-rule-v3'" in model
           assert "validation:'RULE_BASED'" in model
           assert '這不是 OOS 鎖定模型' in router
           assert '不得顯示勝率、成功率、機率或校準信心指數' in model
