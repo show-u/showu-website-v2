@@ -58,7 +58,9 @@ jobs:
           set -euo pipefail
           expected_model=$(grep -o 'holding-model.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_position=$(grep -o 'position-input.js?v=[^"]*' stock-lab/index.html | head -1)
-          test -n "$expected_model" && test -n "$expected_position"
+          expected_entry=$(grep -o 'market-router.js?v=[^"]*' stock-lab/index.html | head -1)
+          expected_sector=$(grep -o 'top10-gate.js?v=[^"]*' stock-lab/index.html | head -1)
+          test -n "$expected_model" && test -n "$expected_position" && test -n "$expected_entry" && test -n "$expected_sector"
           ready=0
           for i in $(seq 1 24); do
             curl -fsSL --max-time 15 "${BASE_URL}?deploy=${RANDOM}" -o /tmp/live-index.html || true
@@ -69,7 +71,7 @@ jobs:
             fi
             sleep 5
           done
-          test "$ready" = 1 || { echo "::error::matching public JS deployment not visible: $expected_model / $expected_position"; exit 1; }
+          test "$ready" = 1 || { echo "::error::matching public JS deployment not visible"; exit 1; }
       - name: Verify live StockLab holding journey
         env:
           BASE_URL: https://www.showujapan.com/stock-lab/
@@ -95,6 +97,35 @@ jobs:
             });
 
             console.log('stage: page-loaded');
+
+            // Single-stock entry reference journey.
+            await page.locator('#singleBtn').click({timeout:10000});
+            await page.locator('#ticker').fill('2454');
+            await page.locator('#analyzeBtn').click({timeout:10000});
+            await page.waitForFunction(() => {
+              const t=document.querySelector('#result')?.innerText||'';
+              return t.includes('建議入場參考價') || t.includes('無法產生入場參考價');
+            }, null, {timeout:15000});
+            const entryText=await page.locator('#result').innerText();
+            if(entryText.includes('無法產生入場參考價')) throw new Error('Entry reference journey failed:\n'+entryText);
+            for(const required of ['建議入場參考價','判斷理由','完成交易日成交均價','不是盤中即時價']) {
+              if(!entryText.includes(required)) throw new Error('Missing entry output: '+required+'\n'+entryText);
+            }
+            console.log('PASS: single-stock rule-based entry reference produced price and reasons');
+
+            // Sector five-per-industry research journey.
+            await page.locator('#findBtn').click({timeout:10000});
+            await page.locator('#scanBtn').click({timeout:10000});
+            await page.waitForFunction(() => {
+              const t=document.querySelector('#top10')?.innerText||'';
+              return t.includes('各類股近期績優研究標的') || t.includes('目前無法形成類股候選');
+            }, null, {timeout:15000});
+            const sectorText=await page.locator('#top10').innerText();
+            if(sectorText.includes('目前無法形成類股候選')) throw new Error('Sector research journey failed:\n'+sectorText);
+            if(!sectorText.includes('每一類股最多 5 檔')) throw new Error('Missing sector cap statement:\n'+sectorText);
+            const sectorCounts=await page.locator('#top10 details.source-note').evaluateAll(ds=>ds.map(d=>d.querySelectorAll('.item').length));
+            if(!sectorCounts.length || sectorCounts.some(n=>n<1||n>5)) throw new Error('Invalid per-sector candidate counts: '+JSON.stringify(sectorCounts));
+            console.log('PASS: sector research returned 1-5 candidates per visible industry');
             const layerDiag = await page.evaluate(async () => {
               const race = async (label, p, ms=3000) => {
                 const t0 = Date.now();
