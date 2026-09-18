@@ -275,7 +275,24 @@
         "cross-check recent overlapping rows against official open-data observations",
         "do not infer missing months or missing rows"
       ],
-      "scoring_allowed_before_activation": false
+      "scoring_allowed_before_activation": false,
+      "probe_evidence_2026_09_18": {
+        "workflow_run_id": 35301231872,
+        "commit": "08e9ae87f0aff69bd48b8a2af3b05b34b5ac1345",
+        "tickers": [
+          "2454",
+          "2330"
+        ],
+        "requested_range": "2021-01 through 2026-09",
+        "rows_per_ticker": 1386,
+        "first_date": "2021-01-04",
+        "last_date": "2026-09-17",
+        "empty_months": [],
+        "duplicate_dates": false,
+        "ohlc_validation": "passed",
+        "provenance_and_sha256": "passed",
+        "conclusion": "Free official TWSE monthly history is technically sufficient for >1000-session OOS history on tested long-listed equities. Endpoint-use/legal automation terms remain a separate activation gate."
+      }
     },
     "tpex_official_openapi_forward": {
       "status": "active_forward_archive_and_context_only",
