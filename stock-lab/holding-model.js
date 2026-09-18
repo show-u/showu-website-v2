@@ -32,7 +32,7 @@
     const trigger=support!=null?roundTick(support,'down'):null,pressure=resistance!=null?roundTick(resistance,'up'):null;
     const historyLevel=r.length>=20?'20日結構':r.length>=2?`近 ${r.length} 個已驗證交易日（不足20日，不產生支撐／壓力）`:'單一完成交易日（只供損益事實，不產生支撐／壓力）';
     return{
-      model:'TW-holding-rule-v1',validation:'RULE_BASED',dataDate,latestClose:L.c,
+      model:'TW-holding-rule-v2',validation:'RULE_BASED',dataDate,latestClose:L.c,
       position:p,derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel,ma5,ma20,support:trigger,resistance:pressure},
       decision:{state,reason,nextAction,riskTrigger:trigger,pressureReference:pressure,riskTriggerMeaning:trigger!=null?'最近已驗證價格結構的防守參考；不是預測賣價':'目前資料不足以產生價格型防守線',pressureMeaning:pressure!=null?'最近已驗證價格結構的壓力參考；不是保證成交價':'目前資料不足以產生壓力價'},
       audit:{legal_source_verified:true,price_verified:true,active_risk_known:riskKnown,corporate_action_known:corporateKnown,oos_status:ctx.oosStatus||'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT',confidence_calibrated:false,imputation_used:false},
