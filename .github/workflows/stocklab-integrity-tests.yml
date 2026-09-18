@@ -74,11 +74,12 @@ jobs:
           assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
 
           # B. Old short/mid/long buy-price UX must never return.
-          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','分析出場時機','目前成本均價','目前持有股數','目前部位總成本','首次買入時間'):
+          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','分析出場時機','目前成本均價','目前持有股數','首次買入時間'):
               assert text in idx,text
           for legacy in ('id="horizon"','scanHorizon','holdHorizon','短線｜約1個月','波段｜約3個月','長期｜1年以上','短線入場區間','中期入場區間','長期佈局區間'):
               assert legacy not in idx+router+top10,legacy
           assert '不選短／中／長' in idx
+          assert 'id="holdTotalCost"' not in idx
 
           # C. Position facts come only from the user.
           for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)'):
