@@ -27,7 +27,8 @@
     else if(pnl>0&&trendWeak){state='獲利保護';reason='仍有未實現獲利，但可用價格結構轉弱';nextAction='保護既有獲利；下一完成交易日若跌破風險觸發線，檢視分批減碼';}
     else if(pnl>0&&trendUp){state='續抱條件仍成立';reason='目前有未實現獲利，且可用價格結構尚未轉弱';nextAction='續抱觀察；接近壓力參考時再檢視分批停利';}
     else if(pnl<0){state='虧損部位防守';reason='目前低於成本，但現有合法資料不足以宣稱完整趨勢反轉';nextAction='不因猜測價格加碼；以下一完成交易日的已驗證風險觸發條件作防守';}
-    else{state='成本附近觀察';reason='目前接近成本，沒有足夠證據支持強制出場或加碼';nextAction='等待下一完成交易日確認，不用短／中／長假設硬做決策';}
+    else if(pnl>0){state='獲利中但結構資料不足';reason='目前高於部位總成本，但已驗證歷史價格結構不足，不能據此產生減碼／出場價位';nextAction='先保留部位事實判斷；等待更多已驗證完成交易日資料後，再判斷持有／減碼／出場條件';}
+    else{state='損益持平';reason='目前市值等於部位總成本，且沒有足夠已驗證價格結構支持進一步方向判斷';nextAction='等待下一完成交易日確認，不用短／中／長假設硬做決策';}
     const trigger=support!=null?roundTick(support,'down'):null,pressure=resistance!=null?roundTick(resistance,'up'):null;
     const historyLevel=r.length>=20?'20日結構':r.length>=2?`近 ${r.length} 個已驗證交易日（不足20日，不產生支撐／壓力）`:'單一完成交易日（只供損益事實，不產生支撐／壓力）';
     return{
