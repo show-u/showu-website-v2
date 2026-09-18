@@ -1,5 +1,5 @@
 {
-  "version": 12,
+  "version": 13,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -222,7 +222,7 @@
       "minimum_verified_closes": 1,
       "enhanced_structure_bars": 20,
       "max_latest_age_calendar_days": 4,
-      "missing_structure_behavior": "leave derived trigger/pressure unavailable; do not lock the verified position facts"
+      "missing_structure_behavior": "Do not invent multi-day support/resistance. If the latest completed session has verified high/low/close, use that session low as a single-session defensive exit trigger and high as a pressure reference, clearly labelled as such."
     },
     "max_unexplained_calendar_gap_days": 15
   },
@@ -262,7 +262,7 @@
         "shares",
         "first_buy_date"
       ],
-      "purpose": "Manage an existing position using the holder's own cost basis and verified completed-session market facts. Deterministic hold/reduce/take-profit/exit-review conditions are available without an OOS lock. More verified history may enrich structure references but may not be fabricated when unavailable.",
+      "purpose": "Manage an existing position using the holder's own cost basis and verified completed-session market facts. A verified prior-session low may serve as the minimum deterministic exit trigger when multi-day structure is unavailable; 20+ verified bars may replace it with multi-day structure references.",
       "forbidden": [
         "asking for a short/mid/long horizon to select a different exit model",
         "renaming buy-entry bands as exit advice",
