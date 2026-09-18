@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify backend-only executable entry boundary
+      - name: Verify predictive boundary and deterministic research paths
         run: |
           node --check stock-lab/api-client.js
           node --check stock-lab/market-router.js
@@ -23,9 +23,13 @@ jobs:
           node --check stock-lab/hard-policy.js
           grep -q './api-client.js' stock-lab/index.html
           grep -q './hard-policy.js' stock-lab/index.html
-          grep -q "api.analyze" stock-lab/market-router.js
-          grep -q "backendResult(j,'analysis')" stock-lab/market-router.js
-          grep -q "api.scan" stock-lab/top10-gate.js
+          grep -q "規則式入場研究" stock-lab/market-router.js
+          grep -q "Math.min(cl,avg)" stock-lab/market-router.js
+          grep -q "不是盤中即時價、不是預測保證價" stock-lab/market-router.js
+          grep -q "各類股近期績優研究標的" stock-lab/top10-gate.js
+          grep -q "slice(0,5)" stock-lab/top10-gate.js
+          grep -q "ruleBasedEntryReferenceEnabled:true" stock-lab/runtime-config.js
+          grep -q "sectorResearchEnabled:true" stock-lab/runtime-config.js
           grep -q "allowLocalFallback:false" stock-lab/runtime-config.js
           grep -q "credentials:'omit'" stock-lab/api-client.js
           grep -q "cache:'no-store'" stock-lab/api-client.js
@@ -34,6 +38,8 @@ jobs:
           ! grep -q 'buildBuyPlan' stock-lab/market-router.js
           ! grep -q 'StockLabLicensedHistory' stock-lab/market-router.js
           ! grep -q 'StockLabEntryDecision.evaluate' stock-lab/market-router.js
+          ! grep -q '勝率：' stock-lab/market-router.js
+          ! grep -q '上漲機率：' stock-lab/top10-gate.js
       - name: Reject obvious client-side secrets
         run: |
           python - <<'PY'
