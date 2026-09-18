@@ -46,7 +46,10 @@
   }
   function card(x,i){
     const r=x.row,m=x.m,known=x.risk?.verified===true?'風險狀態已完整驗證':'部分風險狀態仍未知';
-    return `<div class=item><div class=rank>#${i+1${</div><div><b>${esc(r.name)${／${esc(x.code)${</b><div class=mini>${esc(r.market)${｜資料日 ${esc(r.date)${</div><div style="margin-top:5px">完成交易日表現 <b>${m.move>=0?'+':''${${m.move.toFixed(2)${%</b>｜收盤位置 ${Math.round(m.loc*100)${%</div><div class=mini style="margin-top:4px">成交金額 ${money(m.tradeValue)${｜${esc(known)${</div></div></div>`;
+    return '<div class="item"><div class="rank">#'+(i+1)+'</div><div><b>'+esc(r.name)+'／'+esc(x.code)+'</b>'+
+      '<div class="mini">'+esc(r.market)+'｜資料日 '+esc(r.date)+'</div>'+
+      '<div style="margin-top:5px">完成交易日表現 <b>'+(m.move>=0?'+':'')+m.move.toFixed(2)+'%</b>｜收盤位置 '+Math.round(m.loc*100)+'%</div>'+
+      '<div class="mini" style="margin-top:4px">成交金額 '+money(m.tradeValue)+'｜'+esc(known)+'</div></div></div>';
   }
   btn.onclick=async()=>{
     load.classList.remove('hidden');box.classList.remove('hidden');
@@ -55,13 +58,16 @@
       if(!keys.length)throw Error('目前沒有股票符合「完成交易日上漲＋普通股＋無已知處置／注意旗標」條件');
       const html=keys.map((k,idx)=>{
         const items=groups[k].slice(0,5);
-        return `<details class=source-note ${idx<3?'open':''${><summary><b>${esc(SECTORS[k]||k)${</b><span class=status-pill>${items.length${ 檔</span></summary><div class=list style="margin-top:10px">${items.map(card).join('')${</div></details>`;
+        return '<details class="source-note" '+(idx<3?'open':'')+'><summary><b>'+esc(SECTORS[k]||k)+'</b><span class="status-pill">'+items.length+' 檔</span></summary>'+
+          '<div class="list" style="margin-top:10px">'+items.map(card).join('')+'</div></details>';
       }).join('');
-      box.innerHTML=`<div class=toprow><div><h2>各類股近期績優研究標的</h2><div class=muted>每一類股最多 5 檔｜免費官方資料版</div></div></div>
-        <div class=source-note><b>目前「近期績優」定義</b><div class=mini>以最新完成交易日為基準：普通股、當日收盤高於開盤，依「漲幅 → 收盤位於日內高低區間的位置 → 成交金額」排序；已知處置／注意股票排除。這是研究候選，不是勝率排名。隨免費官方 archive 累積到 5／10 個交易日後，會升級為多日相對強弱。</div></div>
-        ${html${
-        <div class=disclaimer><b>篩選限制</b>每類股不足 5 檔就只顯示實際合格數。未知風險狀態不會被寫成「沒有風險」；本頁不顯示未校準勝率或預測報酬。</div>`;
-    }catch(e){box.innerHTML=`<h3 class=bad>目前無法形成類股候選</h3><p>${esc(e.message||e)${</p><div class=mini>缺少資料不補值。</div>`}
-    finally{load.classList.add('hidden')}
+      box.innerHTML=
+        '<div class="toprow"><div><h2>各類股近期績優研究標的</h2><div class="muted">每一類股最多 5 檔｜免費官方資料版</div></div></div>'+
+        '<div class="source-note"><b>目前「近期績優」定義</b><div class="mini">以最新完成交易日為基準：普通股、當日收盤高於開盤，依「漲幅 → 收盤位於日內高低區間的位置 → 成交金額」排序；已知處置／注意股票排除。這是研究候選，不是勝率排名。隨免費官方 archive 累積到 5／10 個交易日後，會升級為多日相對強弱。</div></div>'+
+        html+
+        '<div class="disclaimer"><b>篩選限制</b>每類股不足 5 檔就只顯示實際合格數。未知風險狀態不會被寫成「沒有風險」；本頁不顯示未校準勝率或預測報酬。</div>';
+    }catch(e){
+      box.innerHTML='<h3 class="bad">目前無法形成類股候選</h3><p>'+esc(e.message||e)+'</p><div class="mini">缺少資料不補值。</div>';
+    }finally{load.classList.add('hidden')}
   };
 })();
