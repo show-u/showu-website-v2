@@ -65,7 +65,7 @@ jobs:
           need '首次買入時間' /tmp/index.html 'missing holding buy-time input'
           forbid 'id="holdTotalCost"' /tmp/index.html 'redundant holding total-cost input returned'
           need '資料不完整就不預測；不以假資料補值' /tmp/index.html 'missing no-imputation statement'
-          need '合格不足 10 檔就不補滿' /tmp/index.html 'missing TOP10 no-fill statement'
+          need '每類最多 5 檔' /tmp/index.html 'missing five-per-sector statement'
           forbid 'id="horizon"' /tmp/index.html 'legacy horizon selector returned'
           forbid 'id="scanObjective"' /tmp/index.html 'legacy scan objective returned'
           forbid '<option value="1m"' /tmp/index.html 'legacy 1m buy model returned'
@@ -88,6 +88,8 @@ jobs:
 
           # Fail closed until licensed historical bundle + OOS + calibration are actually ready.
           need 'productionPredictionReady:false' /tmp/runtime-config.js 'production prediction gate unexpectedly open'
+          need 'ruleBasedEntryReferenceEnabled:true' /tmp/runtime-config.js 'rule-based entry reference unexpectedly disabled'
+          need 'sectorResearchEnabled:true' /tmp/runtime-config.js 'sector research unexpectedly disabled'
           need 'allowLocalFallback:false' /tmp/runtime-config.js 'local executable fallback unexpectedly enabled'
           need 'entryRangeExecutionValidation:false' /tmp/runtime-config.js 'entry execution validation unexpectedly enabled'
           need 'window.StockLabEntryDecision' /tmp/entry-decision.js 'entry decision module unavailable'
@@ -118,13 +120,13 @@ jobs:
           hits=[r for r in mf['rows'] if r.get('ticker')=='2454' and r.get('market')=='TWSE']
           assert hits and hits[-1].get('name')=='聯發科' and float(hits[-1].get('close',0))>0
           p=json.load(open('/tmp/verification-policy.json',encoding='utf-8'))
-          assert p['version'] >= 11
+          assert p['version'] >= 13
           inv=p['absolute_invariants']
           required=(
             'TW_MARKET_SCOPE','LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION',
             'TRACEABILITY','FAIL_CLOSED','NO_FAKE_CONFIDENCE','NO_HORIZON_BUY_MODEL',
             'NO_UNBUYABLE_ENTRY_BANDS','TARGET_SESSION_BY_DATA_DATE',
-            'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY'
+            'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED','POSITION_INPUT_PROVENANCE','EXIT_MODEL_SEPARATION','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST'
           )
           missing=[x for x in required if x not in inv]
           assert not missing, missing
@@ -133,5 +135,8 @@ jobs:
           assert p['output_contract']['deterministic_holding_rules_require_oos_pass'] is False
           assert p['legal_use']['official_website_only']['allowed_for_automated_collection'] is False
           assert p['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
+          assert p['output_contract']['rule_based_entry_reference_requires_oos_pass'] is False
+          assert p['output_contract']['sector_research_requires_oos_pass'] is False
+          assert int(p['output_contract']['sector_research_max_per_industry']) == 5
           print('PASS: public StockLab truth-first three-mode deployment is live')
           PY
