@@ -48,13 +48,15 @@ jobs:
           assert 'StockLabSessionContext.resolve' in public
 
           # Holding is NOT the old predictive/OOS-locked exit engine.
-          assert "model:'TW-holding-rule-v2'" in hold
+          assert "model:'TW-holding-rule-v3'" in hold
           assert "validation:'RULE_BASED'" in hold
           assert 'requiredBars:()=>1' in hold
           assert 'OOS status controls only statistical claims' in hold
           assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold
           assert 'model.analyze(p,hb.bars' in router
           assert '這不是 OOS 鎖定模型' in router
+          assert '建議出場觸發價' in router
+          assert '上一完成交易日低點' in hold
           assert 'api.holding(' not in router
           assert '正式出場時機／觸發價格尚未解鎖' not in router
           assert '不以本地公式假造續抱／減碼／賣出價格' not in router
