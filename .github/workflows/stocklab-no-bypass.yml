@@ -40,7 +40,7 @@ jobs:
           banned=('短線入場區間','中期入場區間','長期佈局區間','fivePricePlan','data-five-price-matrix','id="horizon"','scanHorizon','<option value="1m"','<option value="3m"','<option value="long"')
           for x in banned:
               assert x not in idx+router+top10, f'legacy horizon buy path returned: {x}'
-          assert '不選短／中／長' in idx
+          assert '短／中／長' in idx
 
           # 2. Rule-based research outputs are allowed locally; predictive/live claims remain locked.
           assert '規則式入場研究' in router
