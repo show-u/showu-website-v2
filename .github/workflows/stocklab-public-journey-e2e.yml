@@ -106,6 +106,26 @@ jobs:
 
             console.log('stage: page-loaded');
 
+            // Existing-position analysis is a first-class independent path.
+            // It must work even when predictive/OOS entry gates are not ready.
+            await page.locator('#holdBtn').click({timeout:10000});
+            await page.locator('#holdTicker').fill('2454');
+            await page.locator('#holdAvgCost').fill('1000');
+            await page.locator('#holdShares').fill('100');
+            await page.locator('#holdBuyTime').fill('2026-09-01T10:00');
+            await page.locator('#holdAnalyzeBtn').click({timeout:10000});
+            await page.waitForFunction(() => {
+              const t=document.querySelector('#holdResult')?.innerText||'';
+              return t.includes('目前持倉判斷') || t.includes('持倉分析失敗');
+            }, null, {timeout:15000});
+            const holdFirst=await page.locator('#holdResult').innerText();
+            if(holdFirst.includes('持倉分析失敗')) throw new Error('Holding path failed before any entry/scanner flow:\n'+holdFirst);
+            for(const required of ['聯發科／2454','目前持倉判斷','建議出場觸發價','出場條件','最新已驗證收盤']) {
+              if(!holdFirst.includes(required)) throw new Error('Missing independent holding output: '+required+'\n'+holdFirst);
+            }
+            if(/建議出場觸發價\s*—/.test(holdFirst)) throw new Error('Independent holding exit trigger unavailable despite verified OHLC:\n'+holdFirst);
+            console.log('PASS: independent holding path works without predictive OOS gate');
+
             // Single-stock entry reference journey.
             await page.locator('#singleBtn').click({timeout:10000});
             await page.locator('#ticker').fill('2454');
