@@ -34,12 +34,12 @@
 
   const analyze=document.querySelector('#analyzeBtn');
   if(analyze){const original=analyze.onclick;analyze.onclick=async function(ev){
-    if(ready())return original?.call(this,ev);
+    if(ready()||rt.ruleBasedEntryReferenceEnabled===true)return original?.call(this,ev);
     const box=document.querySelector('#result');try{const x=await observation(document.querySelector('#ticker')?.value);box.innerHTML=`<div class=toprow><div><h2>${esc(x.name)}／${esc(x.code)}</h2><div class=muted>${esc(x.market)}｜想買這檔</div><div class=mini>最新已驗證收盤 ${esc(x.date)}｜${money(x.close)}｜非盤中即時價</div></div></div>${sessionHtml(x.session)}<div class=source-note><b class=bad>暫不提供進場區間與信心指數</b><div class=mini>完整入場模型仍有必要資料／OOS／信心校準 Gate 未通過。若今日已收盤但官方資料日尚未前進，系統會等待今日收盤資料，不會用昨日資料建立明日價格。</div></div>`}catch(e){box.innerHTML=conciseBlock('想買這檔','資料驗證未完成',e.message||String(e))}box.classList.remove('hidden')
   }}
 
   const scan=document.querySelector('#scanBtn');
-  if(scan){const original=scan.onclick;scan.onclick=async function(ev){if(ready())return original?.call(this,ev);const box=document.querySelector('#top10');box.innerHTML=conciseBlock('入場候選 TOP 10','正式排名尚未開放','每一檔候選都必須先通過相同的完整入場模型、正式 OOS 與信心校準；合格不足 10 檔也不補滿。');box.classList.remove('hidden')}}
+  if(scan){const original=scan.onclick;scan.onclick=async function(ev){if(ready()||rt.sectorResearchEnabled===true)return original?.call(this,ev);const box=document.querySelector('#top10');box.innerHTML=conciseBlock('入場候選 TOP 10','正式排名尚未開放','每一檔候選都必須先通過相同的完整入場模型、正式 OOS 與信心校準；合格不足 10 檔也不補滿。');box.classList.remove('hidden')}}
 
   // IMPORTANT: no holdAnalyzeBtn override here. holding-router.js owns existing-position analysis.
   window.StockLabPublicOutput={productionReady:ready,observation,normalizeTradeDate,dateAgeDays,sessionHtml};
