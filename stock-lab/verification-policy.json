@@ -36,8 +36,10 @@
     "TOP10_REASON_REQUIRED": "Every TOP10 candidate must disclose at least two source-traceable inclusion reasons and at least one material risk. A naked rank or score is insufficient.",
     "NO_HORIZON_BUY_MODEL": "StockLab must not ask the user to choose short/mid/long as a condition for entry analysis or generate multiple buy prices by investment horizon.",
     "DIVIDEND_TRUTH": "Cash dividends, stock dividends, dividend yield, distribution year and ex-right/ex-dividend dates must come from licensed verified datasets. Missing or not-yet-announced dividend fields remain unavailable and must never be converted to zero or guessed dates.",
-    "EXECUTABLE_ENTRY_ONLY": "New-position output may show only a legally verified Taiwan-market executable current/next-session entry price; if required data or validation is missing, output must be unable to determine.",
-    "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires user-observed first buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares and must not be requested as a redundant mandatory field."
+    "EXECUTABLE_ENTRY_ONLY": "A predictive or current-session executable entry output may show only a legally verified Taiwan-market executable price after all required predictive/session gates pass. A separately labelled deterministic completed-session research reference is permitted under RULE_BASED_ENTRY_REFERENCE and must not be described as live or guaranteed executable.",
+    "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires user-observed first buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares and must not be requested as a redundant mandatory field.",
+    "RULE_BASED_ENTRY_REFERENCE": "A completed-session-derived entry reference may be shown without predictive OOS only when it is explicitly labelled as a deterministic research reference, not a live price, not a guaranteed executable price, and not a probability claim. It must use verified official facts and disclose its formula.",
+    "SECTOR_RESEARCH_SHORTLIST": "The 'don't know what to buy' path may show up to five research candidates per verified industry using deterministic completed-session facts and known risk flags. This shortlist is not a predictive ranking and may not display uncalibrated win rates."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
@@ -228,7 +230,7 @@
   },
   "workflow_contract": {
     "buy": {
-      "purpose": "Decide whether a stock is suitable to enter using the unified 9+3 contract, and only after that expose a next-session execution plan if all execution gates pass.",
+      "purpose": "Provide a deterministic completed-session entry reference and reasons from verified official facts for immediate research use. A separate predictive executable plan remains gated behind the full 9+3/OOS/session contract.",
       "nine_factors": [
         "price_trend_support_resistance",
         "volume",
@@ -273,24 +275,20 @@
       ]
     },
     "scanner": {
-      "strategy": "entry",
-      "purpose": "Find research candidates with the exact same unified 9+3 entry contract used by single-stock analysis.",
+      "strategy": "sector_research",
+      "purpose": "Show up to five recent research candidates per verified industry using completed-session official price facts, liquidity and known Taiwan risk flags. This is not a predictive TOP10 model.",
       "required_output": [
-        "strategy_entry",
-        "nine_verified_entry_factors",
-        "verified_us_market_context",
-        "verified_taifex_tx_context",
-        "verified_international_event_context",
-        "at_least_two_reasons_per_candidate",
-        "at_least_one_risk_per_candidate",
-        "data_date",
-        "model_version"
+        "verified_industry",
+        "verified_completed_session_price",
+        "deterministic_sort_basis",
+        "known_risk_flags",
+        "data_date"
       ],
       "forbidden": [
-        "separate short/mid/long rankings",
-        "different factor sets between scanner and single-stock entry",
-        "scanner buy-price bands",
-        "filling fewer than ten qualified candidates with failed candidates"
+        "uncalibrated win rate",
+        "fake probability",
+        "filling a sector to five with ineligible stocks",
+        "calling completed-session facts live prices"
       ]
     }
   },
@@ -343,6 +341,25 @@
         "active_disposition_state_known",
         "entry_scanner_oos_validation_passed"
       ]
+    },
+    "rule_based_entry_reference": {
+      "required": [
+        "legal_source",
+        "supported_common_stock",
+        "verified_latest_completed_session_ohlc",
+        "verified_trade_value_and_volume"
+      ],
+      "oos_required": false,
+      "statistical_claims_allowed": false
+    },
+    "sector_research": {
+      "required": [
+        "legal_source",
+        "verified_industry",
+        "verified_latest_completed_session_ohlc"
+      ],
+      "oos_required": false,
+      "statistical_claims_allowed": false
     }
   },
   "output_contract": {
@@ -362,7 +379,10 @@
     "scanner_must_use_same_entry_contract": true,
     "scanner_must_explain_reasons": true,
     "scanner_must_explain_risks": true,
-    "scanner_must_not_emit_buy_price": true
+    "scanner_must_not_emit_buy_price": true,
+    "rule_based_entry_reference_requires_oos_pass": false,
+    "sector_research_requires_oos_pass": false,
+    "sector_research_max_per_industry": 5
   },
   "backtest_validation": {
     "requested_universe": 160,
