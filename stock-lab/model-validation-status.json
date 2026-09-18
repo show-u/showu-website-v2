@@ -1,6 +1,6 @@
 {
-  "schema_version": 8,
-  "architecture": "free-official-first-executable-entry-three-input-holding-v13",
+  "schema_version": 9,
+  "architecture": "free-official-first-executable-entry-three-input-actionable-holding-v14",
   "generated_rule": "New-position analysis remains fail-closed. Existing-position management uses three user position facts: buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares; it is not a redundant required user field.",
   "legacy_horizon_entry_results_are_production_valid": false,
   "models": {
@@ -45,9 +45,9 @@
     },
     "holding_rules": {
       "status": "AVAILABLE_RULE_BASED",
-      "formula": "TW-holding-rule-v2",
+      "formula": "TW-holding-rule-v3",
       "position_input_contract": "User-supplied first buy time + current shares + current average cost, or user-entered remaining lots. Current total cost is deterministically derived from those user inputs; no position field is inferred from market data or AI.",
-      "reason": "Deterministic holding management is available from user position facts plus legally verified completed-session market facts. Missing price history, corporate-action state or active risk state stays unknown and only suppresses the affected enhancement; it does not recreate an OOS lock. No win rate, probability or calibrated confidence is claimed.",
+      "reason": "Deterministic holding management uses user position facts plus legally verified completed-session OHLC. With 20 verified sessions it may derive multi-day structure; with less history, the latest verified session low/high provide a clearly labelled single-session exit trigger and pressure reference. No win rate, probability or calibrated confidence is claimed.",
       "minimum_required": [
         "user first buy time",
         "user current shares",
@@ -56,7 +56,7 @@
         "legally usable verified latest completed-session close"
       ],
       "optional_enhancements": [
-        "additional verified OHLC bars for support/resistance",
+        "20+ verified OHLC bars for multi-day support/resistance",
         "verified active Taiwan risk state",
         "verified corporate-action context"
       ],
