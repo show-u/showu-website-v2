@@ -31,6 +31,8 @@
     else if(pnl>0){state='獲利中；多日結構不足';reason='目前高於部位總成本；多日結構不足時，不虛構支撐，而以上一完成交易日低點作最小可用的獲利保護觸發';nextAction='續抱但設定防守；若下一合法交易時段有效跌破出場觸發價，檢視分批減碼／出場';}
     else{state='損益持平';reason='目前市值接近部位總成本；多日結構不足時，以上一完成交易日低點作最小可用防守觸發';nextAction='不預測方向；若下一合法交易時段有效跌破出場觸發價，進入減碼／出場檢視';}
     const trigger=support!=null?roundTick(support,'down'):null,pressure=resistance!=null?roundTick(resistance,'up'):null;
+    const exitCondition=trigger!=null?`下一完成交易日若收盤跌破 ${trigger}，進入減碼／出場檢視`:trendWeak?'已驗證趨勢轉弱，但缺少完整20日結構，暫無可驗證數字出場價':'尚無足夠已驗證20日價格結構，不能產生數字出場價';
+    const reduceCondition=pressure!=null&&pnl>0?`接近 ${pressure} 且無法有效突破時，可檢視分批減碼／停利`:pnl>0?'目前有獲利，但壓力結構資料不足，暫無可驗證數字減碼價':'目前未形成可驗證的獲利減碼價格條件';
     const triggerBasis=structureKnown?'最近20個已驗證交易日低價分布第20百分位':'上一完成交易日低點';
     const pressureBasis=structureKnown?'最近20個已驗證交易日高價分布第80百分位':'上一完成交易日高點';
     const historyLevel=r.length>=20?'20日結構':r.length>=2?`近 ${r.length} 個已驗證交易日；結構不足20日，價格觸發先採上一完成交易日高低點`:'單一完成交易日；價格觸發採上一完成交易日高低點';
