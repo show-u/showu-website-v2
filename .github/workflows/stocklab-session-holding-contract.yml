@@ -48,7 +48,7 @@ jobs:
           assert 'StockLabSessionContext.resolve' in public
 
           # Holding is NOT the old predictive/OOS-locked exit engine.
-          assert "model:'TW-holding-rule-v1'" in hold
+          assert "model:'TW-holding-rule-v2'" in hold
           assert "validation:'RULE_BASED'" in hold
           assert 'requiredBars:()=>1' in hold
           assert 'OOS status controls only statistical claims' in hold
@@ -66,9 +66,11 @@ jobs:
           assert 'browser-data.json' not in router+cache
 
           # User position provenance only.
-          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','holdTotalCost','holdBuyTime','validDateTime(bt)'):
+          for text in ('user_observed','derived_from_user_lots','derived_from_user_position','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','holdBuyTime','validDateTime(bt)'):
               assert text in pos+idx,text
-          for k in ('FOUR_FIELD_HOLDING_INPUT','EXECUTABLE_ENTRY_ONLY'):
+          assert 'holdTotalCost' not in idx
+          assert 'const tc=a*sh' in pos
+          for k in ('THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY'):
               assert k in policy['absolute_invariants'],k
 
           # OOS applies to statistical/predictive claims, not deterministic holding rules.
