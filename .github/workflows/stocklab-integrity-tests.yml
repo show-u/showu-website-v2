@@ -63,7 +63,7 @@ jobs:
           # A. Non-negotiable Taiwan truth rules.
           assert policy['version']>=10
           assert policy['policy_name']=='StockLab Taiwan Truth Rules'
-          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY')
+          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST')
           for k in required: assert k in policy['absolute_invariants'],k
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices'):
@@ -87,9 +87,15 @@ jobs:
           assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
           assert 'market-data inference' in pos
 
-          # D. Entry/scanner remain prediction-gated; holding is separate deterministic rules.
-          assert 'api.analyze(code)' in router
-          assert 'api.scan()' in top10
+          # D. Deterministic entry reference and sector research are available without predictive claims; holding remains separate deterministic rules.
+          assert '規則式入場研究' in router
+          assert 'Math.min(cl,avg)' in router
+          assert '不是盤中即時價、不是預測保證價' in router
+          assert '各類股近期績優研究標的' in top10
+          assert 'slice(0,5)' in top10 and '這是研究候選，不是勝率排名' in top10
+          assert policy['prediction_requirements']['rule_based_entry_reference']['oos_required'] is False
+          assert policy['prediction_requirements']['sector_research']['oos_required'] is False
+          assert policy['output_contract']['sector_research_max_per_industry']==5
           assert 'StockLabHolding' in hold_router and 'model.analyze(p,hb.bars' in hold_router
           assert "validation:'RULE_BASED'" in hold_model
           assert "model:'TW-holding-rule-v3'" in hold_model
@@ -163,8 +169,8 @@ jobs:
           # I. Previous close cannot be relabelled as current live price.
           for text in ('WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE','盤中僅供參考，不以昨日資料重算現在價格'):
               assert text in session,text
-          assert '13:30 後也必須等當日官方收盤資料實際前進並完成驗證' in router
-          assert '09:00 後沒有合法即時／延遲行情授權時不重算當日價格' in router
+          assert '不是盤中即時價、不是預測保證價' in router
+          assert '沒有合法即時／延遲行情時，盤中不會用舊收盤冒充現在價格' in router
 
           # J. A historical-source URL never becomes legal data merely by existing.
           assert sources['rules']['public_url_is_not_a_licence'] is True
@@ -180,8 +186,10 @@ jobs:
           assert 'stock-lab/history-licensed/*' in gitignore
           assert '!stock-lab/history-licensed/README.md' in gitignore
 
-          # L. General production predictions remain locked; verified holding rules are the explicit exception.
+          # L. General production predictions remain locked; deterministic research and holding rules are explicit non-predictive paths.
           assert 'productionPredictionReady:false' in runtime
+          assert 'ruleBasedEntryReferenceEnabled:true' in runtime
+          assert 'sectorResearchEnabled:true' in runtime
           assert 'Existing-position management is owned exclusively by holding-router.js' in public
           assert 'does not depend on obsolete holding-OOS readiness artifacts' in fallback
 
