@@ -109,7 +109,7 @@ for k,i in income.items():
     q['operating_margin']=i['operating_income']/rev*100 if rev not in (None,0) and i['operating_income'] is not None else None
     q['net_margin']=i['net_income']/rev*100 if rev not in (None,0) and i['net_income'] is not None else None
     rec(market_name,c)['quarterly']=q
-    if b and (b['year'],b['quarterW])==(i['year'],i['quarter']):
+    if b and (b['year'],b['quarter])==(i['year'],i['quarter']):
         ta,tl,ca,cl=b['total_assets'],b['total_liabilities'],b['current_assets'],b['current_liabilities']
         rec(market_name,c)['financial_quality']={'verified':True,'year':b['year'],'quarter':b['quarter'],'report_date':b['report_date'],'total_assets':ta,'total_liabilities':tl,'total_equity':b['total_equity'],'current_assets':ca,'current_liabilities':cl,'debt_ratio':tl/ta*100 if ta not in (None,0) and tl is not None else None,'current_ratio':ca/cl if cl not in (None,0) and ca is not None else None,'source_id':b['source_id'],'raw_sha256':b['raw_sha256'],'provenance':'observed+derived'}
 
