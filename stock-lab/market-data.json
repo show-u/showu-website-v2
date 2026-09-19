@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-18T01:18:59.360897+00:00",
+  "generated_at": "2026-09-19T01:15:32.280871+00:00",
   "status": "partial",
   "policy": "official-primary; Nasdaq current close cross-checked to FRED/Nasdaq prior close; invalid data display-blocked and never scored",
   "sources": {
@@ -8,7 +8,7 @@
       "verified": true,
       "source": "CBOE",
       "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
-      "fetched_at": "2026-09-18T01:18:59.360897+00:00",
+      "fetched_at": "2026-09-19T01:15:32.280871+00:00",
       "validation": [
         "official_host",
         "date_parsed",
@@ -19,23 +19,23 @@
         "previous_snapshot_chronology_ok"
       ],
       "anomalies": [],
-      "date": "09/17/2026",
-      "value": 15.44,
-      "previous_close": 17.71,
-      "change": -2.2700000000000014,
-      "change_pct": -12.817617165443263,
-      "raw_sha256": "7779c99be9796b0f13bf520c42d6e3bf075bb886352233d896897f70629adb14",
+      "date": "09/18/2026",
+      "value": 14.81,
+      "previous_close": 15.44,
+      "change": -0.629999999999999,
+      "change_pct": -4.080310880829008,
+      "raw_sha256": "d385cf23df800eb39bba2f68a0f5ee7a1d6cbcb87234b7b3aab48a1b0b8455ad",
       "content_type": "text/csv",
       "final_url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
       "download_attempt": 1,
-      "previous_verified_date": "09/16/2026",
-      "previous_verified_value": 17.71
+      "previous_verified_date": "09/17/2026",
+      "previous_verified_value": 15.44
     },
     "sox": {
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/SOX",
-      "fetched_at": "2026-09-18T01:18:59.360897+00:00",
+      "fetched_at": "2026-09-19T01:15:32.280871+00:00",
       "validation": [],
       "anomalies": [],
       "error": "The read operation timed out"
@@ -44,7 +44,7 @@
       "verified": false,
       "source": "Nasdaq",
       "url": "https://indexes.nasdaq.com/Index/Overview/COMP",
-      "fetched_at": "2026-09-18T01:18:59.360897+00:00",
+      "fetched_at": "2026-09-19T01:15:32.280871+00:00",
       "validation": [],
       "anomalies": [],
       "error": "The read operation timed out"
