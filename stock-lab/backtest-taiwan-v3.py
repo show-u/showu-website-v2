@@ -13,7 +13,7 @@ from pathlib import Path
 
 NETWORK_HISTORY_COLLECTION_DISABLED = True
 LEGACY_HORIZON_ENTRY_RESULTS_PRODUCTION_VALID = False
-ARCHITECTURE = 'free-official-first-rule-research-plus-predictive-gates-v15'
+ARCHITECTURE = 'free-official-first-price-structure-plus-9plus3-decision-v16'
 PREDICTIVE_KEYS = {'entry_decision_9plus3','entry_scanner_9plus3'}
 RULE_KEYS = {'holding_rules','entry_reference_rules','sector_research_rules'}
 MODEL_KEYS = PREDICTIVE_KEYS | RULE_KEYS
@@ -25,7 +25,7 @@ def load_json(path):
 
 
 def validate_status_manifest(x):
-    assert x.get('schema_version') == 9, 'model-validation-status schema mismatch'
+    assert x.get('schema_version') == 10, 'model-validation-status schema mismatch'
     assert x.get('architecture') == ARCHITECTURE, 'architecture mismatch'
     assert x.get('legacy_horizon_entry_results_are_production_valid') is False
     models=x.get('models') or {}
@@ -82,9 +82,11 @@ def blocked_payload(status_path):
             'deterministic_holding_rules_oos_required':False,
             'holding_statistical_claims_oos_required':True,
             'rule_based_entry_reference_oos_required':False,
+            'entry_zone_requires_complete_9plus3':False,
+            'entry_zone_minimum_verified_bars':60,
             'sector_research_oos_required':False
         },
-        'reason':'Predictive entry and predictive scanner remain fail-closed. Deterministic completed-session entry-reference, sector-research and holding rules remain available without statistical confidence claims.'
+        'reason':'Predictive entry and predictive scanner remain fail-closed. Deterministic Entry Zone is governed by verified price structure, while 9+3 separately governs action. Sector-research and holding rules remain available without statistical confidence claims.'
     }
 
 
