@@ -158,11 +158,6 @@
     box.classList.remove('hidden');
   }
   window.StockLabNinePlusThreeResearch={research,history,factors,makeSections,contexts,technical};
-  scenarioHtml(s)+
-      '<details class=source-note><summary><b>資料來源／完整性</b></summary><div class=mini style="margin-top:8px">價格：OGDL 1.0 已驗證完成交易日 '+esc(r.date)+'。研究資料：'+esc(R.source||'unavailable')+'。歷史技術：'+(H.bars?H.bars.length+' 根合法已驗證 OHLC':'未使用（'+esc(H.reason||MISSING)+'）')+'。上市個股三大法人若授權未確認就維持未取得。任何缺漏都不以第三方網站、0、平均值、舊值或 AI 補齊。</div></details>'+
-      '<div class=disclaimer><b>使用方式</b>這一頁用分析師 9+3 把理由攤開，不製造漂亮分數。A／B／C 只有在合法歷史與可達性條件成立時才顯示；未觸價就不交易。沒有合法即時／延遲行情時，也不把完成交易日資料冒充盤中現在價格。</div>';
-    box.classList.remove('hidden');
-  }
   btn.onclick=async()=>{
     load.classList.remove('hidden');box.classList.remove('hidden');box.innerHTML='';
     try{
