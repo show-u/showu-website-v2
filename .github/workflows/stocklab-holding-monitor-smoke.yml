@@ -42,12 +42,12 @@ jobs:
               assert s in idx,s
           assert 'id="holdTotalCost"' not in idx
           assert '建議出場觸發價' in router
-          assert '上一完成交易日低點' in model
-          assert 'model.analyze(p,hb.bars' in router
-          assert "model:'TW-holding-rule-v3'" in model
-          assert "validation:'RULE_BASED'" in model
-          assert '這不是 OOS 鎖定模型' in router
-          assert '不得顯示勝率、成功率、機率或校準信心指數' in model
+          assert 'decisionConfidenceIndex' in model and 'StockLabEntryDecision?.exitPlan' in model
+          assert 'model.analyze(p,modelBars' in router
+          assert "model:'TW-holding-9plus3-v4'" in model
+          assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in model
+          assert '信心指數不是勝率' in router
+          assert '決策信心指數' in model and '不是勝率' in model
           assert '缺少的資料維持缺少，不以假資料補值' in router
           assert '非盤中即時價' in router
           assert 'StockLabSameOrigin' in router
