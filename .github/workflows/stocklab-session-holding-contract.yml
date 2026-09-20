@@ -52,7 +52,7 @@ jobs:
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold
           assert 'requiredBars:()=>1' in hold
           assert 'Numeric exit prices are NEVER replaced by the previous-session low' in hold
-          assert 'UNVALIDATED' in hold
+          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold
           assert 'model.analyze(p,modelBars' in router
           assert '信心指數不是勝率' in router
           assert '建議出場觸發價' in router
