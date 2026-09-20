@@ -47,9 +47,11 @@ def validate_status_manifest(x):
 
     entry_ref=models['entry_reference_rules']
     assert entry_ref.get('status')=='AVAILABLE_RULE_BASED'
-    assert entry_ref.get('formula')=='TW-9plus3-entry-price-v1'
+    assert entry_ref.get('formula')=='TW-price-structure-entry-zone-v2'
     assert entry_ref.get('oos_required') is False
     assert entry_ref.get('predictive_executable_price') is False
+    assert entry_ref.get('minimum_price_structure_bars')==60
+    assert entry_ref.get('requires_complete_9plus3') is False
 
     sector=models['sector_research_rules']
     assert sector.get('status')=='AVAILABLE_RULE_BASED'
