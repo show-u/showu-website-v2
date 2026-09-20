@@ -1,5 +1,5 @@
 {
-  "version": 17,
+  "version": 18,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -30,22 +30,22 @@
     "TARGET_SESSION_BY_DATA_DATE": "The model's target trading session is determined from the latest verified completed official session, not from the user's clock alone. Clock time only controls whether an order type is currently executable.",
     "NEXT_SESSION_INPUT_COMPLETENESS": "A new next-session plan may be generated only after the latest completed official session has advanced and every input required by that model for the target session has independently passed legal-source, schema, date and integrity checks. A scheduled refresh time is never proof that data is ready.",
     "NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED": "Without a legally licensed real-time or delayed market-data feed, StockLab must not create a revised same-day executable price after 09:00 or describe any stale/daily-close value as the current market price. The original plan may remain visible only as a labelled reference/audit record.",
-    "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a wait/re-entry condition. It must not be labelled as a current buy recommendation unless the model can establish that the price is actionable for the target session.",
+    "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a pullback condition. It must never be the sole current buy answer. If price does not pull back, the only alternative entry path is a separately validated breakout trigger; otherwise the output is wait/no entry.",
     "POSITION_INPUT_PROVENANCE": "Holding average cost, shares and buy date are user-supplied facts. Total cost may be deterministically derived from average cost × shares. None may be inferred from market data.",
-    "EXIT_MODEL_SEPARATION": "Holding management must use the holder's user-supplied cost basis, position size and buy time plus verified 9+3 market/company evidence. A former buy band or the previous completed-session low may not be renamed or used as the numeric exit recommendation. A numeric exit trigger requires the verified 9+3 weighted decision plus sufficient legal price structure; otherwise it remains unavailable.",
+    "EXIT_MODEL_SEPARATION": "Holding management uses the holder's user-supplied cost basis, position size and buy time plus verified 9+3 evidence. A structural risk line may be derived from sufficient legal verified OHLC even when 9+3 is incomplete; missing 9+3 evidence remains unknown and may not be used to fake a full hold/reduce/exit conclusion. A former buy band or previous-session low may never be renamed as the exit recommendation.",
     "TOP10_REASON_REQUIRED": "Every TOP10 candidate must disclose at least two source-traceable inclusion reasons and at least one material risk. A naked rank or score is insufficient.",
     "NO_HORIZON_BUY_MODEL": "StockLab must not ask the user to choose short/mid/long as a condition for entry analysis or generate multiple buy prices by investment horizon.",
     "DIVIDEND_TRUTH": "Cash dividends, stock dividends, dividend yield, distribution year and ex-right/ex-dividend dates must come from licensed verified datasets. Missing or not-yet-announced dividend fields remain unavailable and must never be converted to zero or guessed dates.",
     "EXECUTABLE_ENTRY_ONLY": "A predictive or current-session executable entry output may show only a legally verified Taiwan-market executable price after all required predictive/session gates pass. A separately labelled deterministic completed-session research reference is permitted under RULE_BASED_ENTRY_REFERENCE and must not be described as live or guaranteed executable.",
-    "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires user-observed first buy time, current shares and current average cost. Current total cost is deterministically derived as average cost × shares and must not be requested as a redundant mandatory field.",
-    "RULE_BASED_ENTRY_REFERENCE": "A completed-session-derived numeric entry reference is permitted only after the verified 9+3 weighted decision is complete and sufficient legal price structure/reachability exists. It is not a live price, guaranteed executable price or probability claim. Missing 9+3/history keeps the numeric recommendation unavailable.",
+    "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires user-observed first buy time and current shares, plus either current average cost or current total cost. The missing cost field may be deterministically derived from the other and shares; if both are supplied they must agree within the declared tolerance.",
+    "RULE_BASED_ENTRY_REFERENCE": "A completed-session-derived pullback zone and breakout trigger may be displayed only after the legal price-structure gate passes. These are conditional price routes, not live prices or guarantees. The 9+3 layer decides whether either route may be acted on; missing 9+3 evidence stays visible and never becomes a neutral substitute.",
     "SECTOR_RESEARCH_SHORTLIST": "The 'don't know what to buy' path may show up to five research candidates per verified industry using deterministic completed-session facts and known risk flags. This shortlist is not a predictive ranking and may not display uncalibrated win rates.",
     "ANALYST_9PLUS3_STRUCTURE": "Every new-position result page must use the same 9+3 analyst structure. The visible nine sections are the company/stock analysis body; +1 US market/SOX, +2 TAIFEX TX, +3 international events are external context. Data legality, schema, freshness, security type, risk status, accounting class and corporate actions are prerequisite gates outside the visible nine.",
     "NO_SINGLE_PRICE_SHORTCUT": "A current entry recommendation must never be created from min(close, session-average), a fixed percentage discount, or any one-bar shortcut. Completed-session OHLC may be shown as facts, but a buy zone must come from the 9+3 decision structure and, where numeric, validated market structure/reachability.",
     "MISSING_SECTION_TRANSPARENCY": "Every unavailable 9+3 section must be visibly marked unavailable. Missing is not neutral, zero, negative or positive, and may not be filled from an unregistered website, stale snapshot, heuristic, AI text or another data field.",
     "NINE_PLUS3_WEIGHTED_ENTRY_EXIT": "Any numeric new-entry recommendation or numeric holding exit trigger must pass through the same verified 9+3 evidence contract. Entry and exit may use different disclosed governance weights, but neither may substitute a previous-session low, a former short/mid/long band, a fixed price percentage or an AI guess for the 9+3 decision layer.",
     "EVIDENCE_CONFIDENCE_INDEX": "Entry and exit may show a 0-100 decision-confidence index only as verified-data coverage multiplied by directional consistency under the published 9+3 weights. It is not a win rate, probability or return forecast. Missing/unverified factors reduce coverage and receive no neutral/zero imputation.",
-    "UNIFIED_WEIGHTED_ENTRY_PRICE": "StockLab has one numeric new-position entry recommendation path only: the complete verified 9+3 weighted decision followed by legally usable Taiwan price structure and empirical reachability. Legacy A/B/C scenario prices, investment-horizon price bands, fixed discounts and one-bar shortcuts are forbidden.",
+    "UNIFIED_WEIGHTED_ENTRY_PRICE": "StockLab has one new-position decision path only: verified 9+3 decides whether to act, and the legal Taiwan price layer exposes at most two conditional execution routes—pullback demand zone or breakout trigger. Legacy A/B/C scenarios, investment-horizon price bands, fixed discounts and one-bar shortcuts are forbidden.",
     "ENTRY_PRICE_DECISION_SEPARATION": "Entry Zone price geometry is a deterministic price-structure layer and must not be erased merely because a non-price 9+3 factor is unavailable. The 9+3 layer determines whether/how to act on the zone; missing 9+3 evidence must remain visible and must not be imputed.",
     "PRICE_STRUCTURE_GATE": "A numeric Entry Zone requires at least 60 legally usable verified OHLC bars plus valid Taiwan tick handling. It may not fall back to the previous close, previous low, a fixed percentage, or a one-bar heuristic."
   },
@@ -232,14 +232,14 @@
       "minimum_verified_closes": 1,
       "enhanced_structure_bars": 60,
       "max_latest_age_calendar_days": 4,
-      "missing_structure_behavior": "Holding facts and verified-close P/L may still be shown, but no numeric 9+3 exit trigger is generated. Never fall back to the previous-session low/high, fixed percentages, stale values or synthetic structure.",
+      "missing_structure_behavior": "Holding facts and verified-close P/L may still be shown. A numeric structural risk line requires the declared legal-history minimum; missing structure remains unavailable and never falls back to previous-session low/high, fixed percentages, stale values or synthetic structure.",
       "numeric_9plus3_exit_minimum_bars": 60
     },
     "max_unexplained_calendar_gap_days": 15
   },
   "workflow_contract": {
     "buy": {
-      "purpose": "Provide one analyst-style Taiwan-stock 9+3 weighted entry decision from legally usable verified facts. A numeric entry interval is shown only when all 9+3 inputs pass and at least 60 legal verified OHLC bars support Taiwan-market structure/reachability. Missing evidence leaves the numeric recommendation unavailable.",
+      "purpose": "Provide one Taiwan-stock 9+3 entry decision for the target trading session. The price layer may expose only two conditional routes after the legal price-structure gate passes: pullback demand zone or breakout trigger. The 9+3 layer decides whether to act; without a licensed live/delayed feed no same-day intraday repricing is allowed.",
       "nine_factors": [
         "price_volume",
         "taiwan_market_environment",
@@ -265,18 +265,19 @@
         "filling a missing factor with guessed or stale data",
         "treating MA/MACD/RSI/KD/candlestick as separate top-level analyst sections",
         "single-price shortcut based on min(close, session average) or fixed discount",
-        "legacy A/B/C entry scenarios or any second/third fallback buy price"
+        "a deep pullback level as the only buy answer when a validated breakout route is available",
+        "calling a conditional pullback/breakout route a live price without a licensed live feed"
       ],
       "time_rule": "08:30-09:00 controls whether a pre-open limit ROD plan is in its execution window. After 09:00 the same plan may remain visible only as a labelled reference/audit record; without a licensed live/delayed feed StockLab must not create a revised same-day executable price. A new next-session plan is generated only after the official latest completed-session date has advanced AND every model-required target-session input has passed its legal-source, schema, freshness and integrity gates."
     },
     "holding": {
       "required_user_inputs": [
         "ticker",
-        "average_cost",
         "shares",
-        "first_buy_date"
+        "first_buy_date",
+        "average_cost_or_total_cost"
       ],
-      "purpose": "Manage an existing position from user-supplied cost/share/buy-time facts plus the same verified 9+3 evidence contract. Factual P/L may be shown from the latest verified completed-session close. A numeric exit trigger is shown only when 9+3 is complete and at least 60 legal verified OHLC bars support the weighted MA/ATR/structure model; the prior-session low/high is never a fallback recommendation.",
+      "purpose": "Manage an existing position from user-supplied shares, buy time and either average cost or total cost, plus the same verified 9+3 evidence contract. Verified completed-session P/L and a structural risk line may be shown from legal price history. Full hold/reduce/exit direction requires the available 9+3 evidence to be disclosed; incomplete 9+3 never gets imputed.",
       "forbidden": [
         "asking for a short/mid/long horizon to select a different exit model",
         "renaming buy-entry bands as exit advice",
@@ -326,10 +327,10 @@
     },
     "holding_rules": {
       "required": [
-        "user_average_cost",
         "user_shares",
         "user_first_buy_date",
-        "derived_total_cost",
+        "user_average_cost_or_total_cost",
+        "derived_other_cost_field",
         "legal_source",
         "supported_security",
         "verified_latest_close"
@@ -342,12 +343,14 @@
       "oos_required": false,
       "statistical_claims_allowed": false,
       "numeric_exit_required": [
+        "minimum_60_legal_verified_ohlc",
+        "taiwan_tick_rule"
+      ],
+      "full_hold_reduce_exit_direction_required": [
         "nine_core_factors_verified",
         "us_market_context_verified",
         "taifex_tx_context_verified",
-        "international_events_verified",
-        "minimum_60_legal_verified_ohlc",
-        "taiwan_tick_rule"
+        "international_events_verified"
       ]
     },
     "scanner_entry": {
@@ -418,16 +421,18 @@
     "evidence_confidence_is_probability": false,
     "evidence_confidence_formula": "verified_weight_coverage * (0.65 + 0.35 * absolute_directional_agreement)",
     "numeric_entry_requires_complete_9plus3": false,
-    "numeric_exit_requires_complete_9plus3": true,
+    "numeric_exit_requires_complete_9plus3": false,
     "forbid_previous_session_low_as_9plus3_exit": true,
     "legacy_abc_entry_scenarios_forbidden": true,
     "numeric_entry_requires_price_structure_gate": true,
     "entry_zone_outputs": [
-      "first_entry_zone",
-      "second_entry_zone_when_valid",
+      "pullback_entry_zone",
+      "breakout_entry_trigger_and_band",
       "no_chase_ceiling",
       "structure_invalidation_price"
-    ]
+    ],
+    "full_holding_direction_requires_complete_9plus3": true,
+    "entry_action_requires_complete_9plus3": true
   },
   "backtest_validation": {
     "requested_universe": 160,
