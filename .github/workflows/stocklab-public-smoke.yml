@@ -40,11 +40,11 @@ jobs:
           need() { grep -Fq "$1" "$2" || { echo "::error::$3"; exit 1; }; }
           forbid() { if grep -Fq "$1" "$2"; then echo "::error::$3"; exit 1; fi; }
           ready=0
-          for i in 1 2 3 4 5 6 7 8 9 10; do
+          for i in $(seq 1 30); do
             curl -fsSL --max-time 20 "$base/?smoke=$RANDOM" -o /tmp/index.html || true
             if grep -q './session-context.js' /tmp/index.html 2>/dev/null \
               && grep -q './holding-router.js' /tmp/index.html 2>/dev/null \
-              && grep -q '分析進場價格' /tmp/index.html 2>/dev/null \
+              && grep -q '9+3 入場分析' /tmp/index.html 2>/dev/null \
               && grep -q '分析出場時機' /tmp/index.html 2>/dev/null \
               && ! grep -q 'id="horizon"' /tmp/index.html 2>/dev/null; then
               ready=1; break
@@ -58,7 +58,7 @@ jobs:
           need '不知道買什麼' /tmp/index.html 'missing scanner workflow'
           need '想買這檔' /tmp/index.html 'missing entry workflow'
           need '已持有' /tmp/index.html 'missing holding workflow'
-          need '分析進場價格' /tmp/index.html 'missing entry action'
+          need '9+3 入場分析' /tmp/index.html 'missing entry action'
           need '分析出場時機' /tmp/index.html 'missing holding action'
           need '目前成本均價' /tmp/index.html 'missing holding average-cost input'
           need '目前持有股數' /tmp/index.html 'missing holding shares input'
