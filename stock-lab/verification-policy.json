@@ -1,5 +1,5 @@
 {
-  "version": 15,
+  "version": 16,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -41,11 +41,11 @@
     "RULE_BASED_ENTRY_REFERENCE": "A completed-session-derived numeric entry reference is permitted only after the verified 9+3 weighted decision is complete and sufficient legal price structure/reachability exists. It is not a live price, guaranteed executable price or probability claim. Missing 9+3/history keeps the numeric recommendation unavailable.",
     "SECTOR_RESEARCH_SHORTLIST": "The 'don't know what to buy' path may show up to five research candidates per verified industry using deterministic completed-session facts and known risk flags. This shortlist is not a predictive ranking and may not display uncalibrated win rates.",
     "ANALYST_9PLUS3_STRUCTURE": "Every new-position result page must use the same 9+3 analyst structure. The visible nine sections are the company/stock analysis body; +1 US market/SOX, +2 TAIFEX TX, +3 international events are external context. Data legality, schema, freshness, security type, risk status, accounting class and corporate actions are prerequisite gates outside the visible nine.",
-    "CONDITIONAL_ENTRY_ZONES": "A/B/C entry prices are conditional scenarios, not promises. Numeric A/B zones require legally usable verified history plus structure and empirical reachability; C is a breakout-then-retest condition. If history or reachability is unavailable, suppress the number and explain the missing condition.",
     "NO_SINGLE_PRICE_SHORTCUT": "A current entry recommendation must never be created from min(close, session-average), a fixed percentage discount, or any one-bar shortcut. Completed-session OHLC may be shown as facts, but a buy zone must come from the 9+3 decision structure and, where numeric, validated market structure/reachability.",
     "MISSING_SECTION_TRANSPARENCY": "Every unavailable 9+3 section must be visibly marked unavailable. Missing is not neutral, zero, negative or positive, and may not be filled from an unregistered website, stale snapshot, heuristic, AI text or another data field.",
     "NINE_PLUS3_WEIGHTED_ENTRY_EXIT": "Any numeric new-entry recommendation or numeric holding exit trigger must pass through the same verified 9+3 evidence contract. Entry and exit may use different disclosed governance weights, but neither may substitute a previous-session low, a former short/mid/long band, a fixed price percentage or an AI guess for the 9+3 decision layer.",
-    "EVIDENCE_CONFIDENCE_INDEX": "Entry and exit may show a 0-100 decision-confidence index only as verified-data coverage multiplied by directional consistency under the published 9+3 weights. It is not a win rate, probability or return forecast. Missing/unverified factors reduce coverage and receive no neutral/zero imputation."
+    "EVIDENCE_CONFIDENCE_INDEX": "Entry and exit may show a 0-100 decision-confidence index only as verified-data coverage multiplied by directional consistency under the published 9+3 weights. It is not a win rate, probability or return forecast. Missing/unverified factors reduce coverage and receive no neutral/zero imputation.",
+    "UNIFIED_WEIGHTED_ENTRY_PRICE": "StockLab has one numeric new-position entry recommendation path only: the complete verified 9+3 weighted decision followed by legally usable Taiwan price structure and empirical reachability. Legacy A/B/C scenario prices, investment-horizon price bands, fixed discounts and one-bar shortcuts are forbidden."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
@@ -237,7 +237,7 @@
   },
   "workflow_contract": {
     "buy": {
-      "purpose": "Provide an analyst-style Taiwan-stock 9+3 research report from legally usable verified facts. Conditional entry scenarios may be shown only when their data and reachability conditions are verified. A separate predictive executable plan remains gated behind the full OOS/session contract.",
+      "purpose": "Provide one analyst-style Taiwan-stock 9+3 weighted entry decision from legally usable verified facts. A numeric entry interval is shown only when all 9+3 inputs pass and at least 60 legal verified OHLC bars support Taiwan-market structure/reachability. Missing evidence leaves the numeric recommendation unavailable.",
       "nine_factors": [
         "price_volume",
         "taiwan_market_environment",
@@ -263,7 +263,7 @@
         "filling a missing factor with guessed or stale data",
         "treating MA/MACD/RSI/KD/candlestick as separate top-level analyst sections",
         "single-price shortcut based on min(close, session average) or fixed discount",
-        "numeric A/B/C entry zones without legal history and reachability/structure support"
+        "legacy A/B/C entry scenarios or any second/third fallback buy price"
       ],
       "time_rule": "08:30-09:00 controls whether a pre-open limit ROD plan is in its execution window. After 09:00 the same plan may remain visible only as a labelled reference/audit record; without a licensed live/delayed feed StockLab must not create a revised same-day executable price. A new next-session plan is generated only after the official latest completed-session date has advanced AND every model-required target-session input has passed its legal-source, schema, freshness and integrity gates."
     },
@@ -274,14 +274,15 @@
         "shares",
         "first_buy_date"
       ],
-      "purpose": "Manage an existing position using the holder's own cost basis and verified completed-session market facts. A verified prior-session low may serve as the minimum deterministic exit trigger when multi-day structure is unavailable; 20+ verified bars may replace it with multi-day structure references.",
+      "purpose": "Manage an existing position from user-supplied cost/share/buy-time facts plus the same verified 9+3 evidence contract. Factual P/L may be shown from the latest verified completed-session close. A numeric exit trigger is shown only when 9+3 is complete and at least 60 legal verified OHLC bars support the weighted MA/ATR/structure model; the prior-session low/high is never a fallback recommendation.",
       "forbidden": [
         "asking for a short/mid/long horizon to select a different exit model",
         "renaming buy-entry bands as exit advice",
         "inferring user cost, shares or buy date",
         "claiming current unrealized P/L from stale or unverified price as if live",
         "blocking deterministic holding management solely because OOS is FAIL or INSUFFICIENT",
-        "inventing a sell price when verified structure is unavailable"
+        "inventing a sell price when verified structure is unavailable",
+        "using the prior-session low/high as a fallback numeric exit/pressure recommendation"
       ]
     },
     "scanner": {
@@ -415,7 +416,8 @@
     "evidence_confidence_formula": "verified_weight_coverage * (0.65 + 0.35 * absolute_directional_agreement)",
     "numeric_entry_requires_complete_9plus3": true,
     "numeric_exit_requires_complete_9plus3": true,
-    "forbid_previous_session_low_as_9plus3_exit": true
+    "forbid_previous_session_low_as_9plus3_exit": true,
+    "legacy_abc_entry_scenarios_forbidden": true
   },
   "backtest_validation": {
     "requested_universe": 160,
