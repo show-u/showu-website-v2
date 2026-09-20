@@ -96,16 +96,16 @@ jobs:
           assert policy['prediction_requirements']['rule_based_entry_reference']['oos_required'] is False
           assert policy['prediction_requirements']['sector_research']['oos_required'] is False
           assert policy['output_contract']['sector_research_max_per_industry']==5
-          assert 'StockLabHolding' in hold_router and 'model.analyze(p,hb.bars' in hold_router
-          assert "validation:'RULE_BASED'" in hold_model
-          assert "model:'TW-holding-rule-v3'" in hold_model
+          assert 'StockLabHolding' in hold_router and 'model.analyze(p,modelBars' in hold_router
+          assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold_model
+          assert "model:'TW-holding-9plus3-v4'" in hold_model
           assert '建議出場觸發價' in hold_router
-          assert '上一完成交易日低點' in hold_model
+          assert 'decisionConfidenceIndex' in hold_model and 'StockLabEntryDecision?.exitPlan' in hold_model
           assert 'requiredBars:()=>1' in hold_model
           assert 'imputation_used:false' in hold_model
-          assert 'confidence_calibrated:false' in hold_model
-          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold_model
-          assert 'OOS 未通過時仍可顯示由已驗證事實直接推導的持倉風險規則' in hold_model
+          assert 'probability_calibrated:false' in hold_model
+          assert 'UNVALIDATED' in hold_model
+          assert '任何統計機率仍須正式 OOS 校準' in hold_model
           assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
           assert policy['history_requirements']['holding_rules']['minimum_verified_closes']==1
           assert policy['backtest_validation']['holding_statistical_claims_require_oos'] is True
