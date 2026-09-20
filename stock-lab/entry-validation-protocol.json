@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "protocol_name": "StockLab TW-entry-9plus3-v1 OOS Protocol",
+  "schema_version": 2,
+  "protocol_name": "StockLab TW-9plus3-weighted-entry-v2 OOS Protocol",
   "frozen_before_historical_oos": true,
   "purpose": "Evaluate whether one unified new-position entry model produces Taiwan-market entry ranges that are both reachable/executable and useful after costs, without horizon labels, future information or fabricated inputs.",
   "non_negotiable_rules": {
@@ -17,7 +17,8 @@
     "chronological_oos_required": true,
     "unfilled_signals_must_remain_in_denominator": true,
     "oos_parameters_may_not_be_tuned_after_viewing_results": true,
-    "confidence_requires_separate_oos_calibration": true
+    "evidence_confidence_is_not_probability": true,
+    "statistical_probability_confidence_requires_separate_oos_calibration": true
   },
   "required_data": {
     "daily_ohlc": "legally reusable, provenance-identified TWSE/TPEx daily OHLC with sufficient history for all frozen factors",
@@ -33,20 +34,48 @@
     "target": "the next legally tradable Taiwan session after the latest fully verified input set",
     "entry_range": "one model-estimated price interval rounded to the applicable Taiwan tick size; no short/mid/long alternatives",
     "deep_support_rule": "a distant support level is not an actionable entry range merely because it has attractive forward returns when touched",
-    "unknown_context_rule": "if any required 9+3 input is unavailable or unverified, no numeric entry recommendation is generated"
+    "unknown_context_rule": "if any required 9+3 input is unavailable or unverified, no numeric entry recommendation is generated",
+    "decision_confidence_index": "deterministic verified-weight coverage multiplied by directional consistency; permitted as an evidence-quality indicator only, never a win rate/probability"
   },
   "execution": {
     "reachability_definition": "a signal is counted as reached only when the target-session or frozen execution-window market range actually intersects the precomputed entry interval under information available at signal time",
     "fill_rule": "use a conservative deterministic execution rule frozen before OOS; daily bars may not assume a favorable intraday path that cannot be proven",
     "unfilled_signal": "record as unfilled and keep it in reachability/fill-rate statistics; never delete it from the denominator",
     "price_limits_and_ticks": "apply Taiwan tick size, reference price, applicable price limits and known special trading restrictions",
-    "costs": ["broker commission on executed sides", "applicable Taiwan stock transaction tax", "slippage assumption frozen before OOS"]
+    "costs": [
+      "broker commission on executed sides",
+      "applicable Taiwan stock transaction tax",
+      "slippage assumption frozen before OOS"
+    ]
   },
   "evaluation": {
-    "primary_execution_metrics": ["signals", "reached signals", "filled signals", "reachability rate", "fill rate", "unfilled rate", "time-to-fill distribution"],
-    "post_fill_metrics": ["net return after costs", "profit factor", "max drawdown", "MAE", "MFE", "worst-tail outcomes"],
-    "decision_metrics": ["net outcome per signal including unfilled signals", "opportunity cost of unfilled signals", "benchmark-relative outcome"],
-    "comparators": ["no-trade baseline", "simple next-session reference-price entry baseline", "simple moving-average pullback baseline"]
+    "primary_execution_metrics": [
+      "signals",
+      "reached signals",
+      "filled signals",
+      "reachability rate",
+      "fill rate",
+      "unfilled rate",
+      "time-to-fill distribution"
+    ],
+    "post_fill_metrics": [
+      "net return after costs",
+      "profit factor",
+      "max drawdown",
+      "MAE",
+      "MFE",
+      "worst-tail outcomes"
+    ],
+    "decision_metrics": [
+      "net outcome per signal including unfilled signals",
+      "opportunity cost of unfilled signals",
+      "benchmark-relative outcome"
+    ],
+    "comparators": [
+      "no-trade baseline",
+      "simple next-session reference-price entry baseline",
+      "simple moving-average pullback baseline"
+    ]
   },
   "split_and_statistics": {
     "split": "chronological development period followed by untouched OOS period",
@@ -54,7 +83,11 @@
     "universe": "survivorship-safe TWSE+TPEx supported common-stock universe with industry and liquidity coverage",
     "minimum_oos_signals_total": 500,
     "minimum_oos_securities": 100,
-    "minimum_regime_coverage": ["bull", "bear", "sideways"],
+    "minimum_regime_coverage": [
+      "bull",
+      "bear",
+      "sideways"
+    ],
     "confidence_intervals": "bootstrap or another documented clustered resampling method",
     "report_all_results": true
   },
@@ -69,7 +102,7 @@
       "entry range reachability/fill performance meets the pre-frozen operational threshold",
       "net-of-cost outcome per signal is not materially worse than frozen baselines",
       "no catastrophic tail-risk deterioration relative to baselines",
-      "confidence index calibration passes on untouched OOS data"
+      "any probability/win-rate/statistical-confidence claim is separately calibrated on untouched OOS data; the deterministic evidence-confidence index is not relabelled as probability"
     ],
     "prohibited": [
       "declaring PASS from post-fill win rate alone",
