@@ -22,7 +22,7 @@ jobs:
 
       - name: Syntax checks
         run: |
-          for f in app tpex same-origin-cache licensed-history session-context taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config operational-fallback; do
+          for f in app tpex same-origin-cache licensed-history verified-history session-context taiwan-model-v2 markets futures event-risk entry-decision top10-gate market-router position-input holding-model ui-patch holding-router health hard-policy compliance-gate public-output api-client runtime-config operational-fallback; do
             test -f "stock-lab/$f.js"
             node --check "stock-lab/$f.js"
           done
@@ -52,6 +52,7 @@ jobs:
           compliance=R('stock-lab/compliance-gate.js')
           runtime=R('stock-lab/runtime-config.js')
           licensed=R('stock-lab/licensed-history.js')
+          verified_history=R('stock-lab/verified-history.js')
           session=R('stock-lab/session-context.js')
           validator=R('stock-lab/validate-licensed-bundle.py')
           gitignore=R('.gitignore')
@@ -63,7 +64,7 @@ jobs:
           # A. Non-negotiable Taiwan truth rules.
           assert policy['version']>=10
           assert policy['policy_name']=='StockLab Taiwan Truth Rules'
-          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST')
+          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST','ENTRY_PRICE_DECISION_SEPARATION','PRICE_STRUCTURE_GATE')
           for k in required: assert k in policy['absolute_invariants'],k
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices'):
@@ -87,10 +88,15 @@ jobs:
           assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
           assert 'market-data inference' in pos
 
-          # D. Entry and exit both use the same verified 9+3 contract; prices remain fail-closed.
-          assert '9+3 加權入場決策' in router
+          # D. Entry price geometry is separate from 9+3 action; prices remain fail-closed on verified price structure.
+          assert '價格結構 Entry Zone' in router
+          assert '9+3 決策層' in router
           assert 'StockLabEntryDecision?.entryPlan' in router
           assert '決策信心指數' in router
+          assert "model:'TW-price-structure-entry-zone-v2'" in R('stock-lab/entry-decision.js')
+          assert 'if(!d?.complete)' not in R('stock-lab/entry-decision.js')
+          assert policy['output_contract']['numeric_entry_requires_complete_9plus3'] is False
+          assert policy['output_contract']['numeric_entry_requires_price_structure_gate'] is True
           assert '各類股近期績優研究標的' in top10
           assert 'slice(0,5)' in top10 and '這是研究候選，不是勝率排名' in top10
           assert policy['prediction_requirements']['rule_based_entry_reference']['oos_required'] is False
@@ -162,7 +168,13 @@ jobs:
           assert "x.licence!=='OGDL-1.0'" in compliance
           assert '不以 0、平均值、舊值或 AI 補齊' in compliance
 
-          # H. Licensed-history contract remains fail-closed and network-free.
+          # H. Verified OGDL archive and licensed-history contract both remain fail-closed and network-free.
+          for text in ("MANIFEST='./history-ogdl/manifest.json'","licence!=='OGDL-1.0'","source_class!=='ogdl_daily_archive'","networkFallback:false","imputation:false","StockLabVerifiedHistory"):
+              assert text in verified_history,text
+          for forbidden in ('http://','https://'):
+              assert forbidden not in verified_history,forbidden
+
+          # Licensed-history contract remains fail-closed and network-free.
           assert licensed_contract['contract_name']=='StockLab Licensed Taiwan Market Data Bundle'
           nr=licensed_contract['non_negotiable_rules']
           for k in ('no_network_fallback','no_unlicensed_website_scraping','no_missing_dataset_imputation','no_stale_data_relabelled_current','no_raw_redistribution_without_permission','every_payload_file_requires_sha256','every_observation_requires_source_provenance','license_must_allow_automated_processing','license_must_allow_derived_outputs','production_and_oos_use_same_normalization_rules'):
