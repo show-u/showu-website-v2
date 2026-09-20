@@ -40,10 +40,18 @@
     return researchPromise;
   }
   async function history(code,market,minimumBars=60){
+    const reasons=[];
+    const og=window.StockLabVerifiedHistory;
+    if(og?.load){
+      try{return{bars:await og.load({code,market,minimumBars}),reason:null,source:'same-origin OGDL archive'}}
+      catch(e){reasons.push('OGDL archive：'+String(e.message||e))}
+    }else reasons.push('OGDL archive loader 尚未接入');
     const h=window.StockLabLicensedHistory;
-    if(!h?.load)return{bars:null,reason:'合法歷史資料層尚未接入'};
-    try{return{bars:await h.load({code,market,minimumBars}),reason:null}}
-    catch(e){return{bars:null,reason:String(e.message||e)}}
+    if(h?.load){
+      try{return{bars:await h.load({code,market,minimumBars}),reason:null,source:'licensed bundle'}}
+      catch(e){reasons.push('licensed bundle：'+String(e.message||e))}
+    }
+    return{bars:null,reason:reasons.join('；')||'合法歷史資料層尚未接入',source:'unavailable'};
   }
   const common=(code,f)=>/^\d{4}$/.test(String(code))&&!String(code).startsWith('00')&&!!String(f?.industry||'').trim();
   const row=(x,label,evidence,detail,state='neutral')=>({key:x,label,verified:true,state,evidence,detail,provenance:'observed+derived'});
@@ -129,11 +137,17 @@
   function weightedHtml(d,plan){
     const score=d?.score==null?'—':d.score,conf=d?.confidenceIndex==null?'—':d.confidenceIndex;
     const missing=(d?.missing||[]).map(x=>x.label).join('、');
-    const price=plan?.available?(money(plan.low)+'–'+money(plan.high)):'—';
-    return '<h3>9+3 加權入場決策</h3><div class=sourcegrid>'+
+    const zone=plan?.available
+      ? '<div class=sourceitem><b>第一入場區</b>'+money(plan.first.low)+'–'+money(plan.first.high)+'<br><span class=mini>主要價格需求區</span></div>'+
+        '<div class=sourceitem><b>第二入場區</b>'+(plan.second?money(plan.second.low)+'–'+money(plan.second.high):'—')+'<br><span class=mini>較深回檔價格區；不存在就不硬造</span></div>'+
+        '<div class=sourceitem><b>不追價上限</b>'+money(plan.noChase)+'<br><span class=mini>高於此區風險報酬開始惡化，不代表一定下跌</span></div>'+
+        '<div class=sourceitem><b>結構失效價</b>'+money(plan.invalid)+'<br><span class=mini>跌破後原本價格結構需重新分析</span></div>'
+      : '<div class=sourceitem><b>Entry Zone</b>—<br><span class=mini>'+esc(plan?.reason||'價格結構資料不足')+'</span></div>';
+    return '<h3>價格結構 Entry Zone</h3><div class=sourcegrid>'+zone+'</div>'+
+      '<div class=source-note><b>目前操作判斷</b><div>'+(plan?.available?esc(plan.action):'等待價格結構資料完成')+'</div><div class=mini style="margin-top:5px">'+(plan?.available?esc(plan.basis):'Entry Zone 不再被 9+3 單一缺項鎖死；現在只看價格結構 Gate。')+'</div></div>'+
+      '<h3>9+3 決策層</h3><div class=sourcegrid>'+
       '<div class=sourceitem><b>'+(d?.complete?'9+3 完整加權分數':'已驗證部分方向分數')+'</b>'+score+'/100<br><span class=mini>'+(d?.complete?'12項全部通過驗證後的加權方向':'只計已驗證項目；不可當成完整 9+3 結論')+'；不是上漲機率</span></div>'+
       '<div class=sourceitem><b>決策信心指數</b>'+conf+'/100<br><span class=mini>'+(d?.confidenceMeaning||'已驗證資料覆蓋率與方向一致性；不是勝率')+'</span></div>'+
-      '<div class=sourceitem><b>建議入場區間</b>'+price+'<br><span class=mini>'+(plan?.available?esc(plan.basis):esc(plan?.reason||'無法形成數字入場建議'))+'</span></div>'+
       '<div class=sourceitem><b>資料覆蓋</b>'+(d?.coveragePct??0)+'%<br><span class=mini>'+(missing?'未驗證：'+esc(missing):'9+3 全部通過驗證')+'</span></div></div>';
   }
   function conclusion(sections,ctx){
@@ -147,14 +161,14 @@
     const sections=makeSections(r,fx,R,H),family=window.StockLabTaiwan?.sectorFamily?.(fx.stock.industry)||'general',ctx=contexts(family),title=esc(r.name?(r.name+'／'+code):code);
     const weighted=window.StockLabEntryDecision?.weighted?.(sections,ctx,'entry');
     if(!weighted)throw Error('9+3 加權決策層尚未載入');
-    const plan=window.StockLabEntryDecision?.entryPlan?.(H.bars,r.close,weighted)||{available:false,reason:'9+3 入場價格層尚未載入'};
+    const plan=window.StockLabEntryDecision?.entryPlan?.(H.bars,r.close,weighted)||{available:false,reason:'價格結構層尚未載入'};
     box.innerHTML='<div class=toprow><div><h2>'+title+'</h2><div class=muted>'+esc(r.market)+'｜9+3 加權入場分析｜資料基準 '+esc(r.date)+'</div></div></div>'+
       conclusion(sections,ctx)+
       weightedHtml(weighted,plan)+
       '<h3>9 項主體分析</h3><div class=sourcegrid>'+Object.values(sections).map(card).join('')+'</div>'+
       '<h3>＋3 外部背景</h3><div class=sourcegrid>'+ctx.map(card).join('')+'</div>'+
-      '<details class=source-note><summary><b>資料來源／完整性</b></summary><div class=mini style="margin-top:8px">價格：OGDL 1.0 已驗證完成交易日 '+esc(r.date)+'。研究資料：'+esc(R.source||'unavailable')+'。歷史技術：'+(H.bars?H.bars.length+' 根合法已驗證 OHLC':'未使用（'+esc(H.reason||MISSING)+'）')+'。任何缺漏都不以第三方網站、0、平均值、舊值或 AI 補齊。</div></details>'+
-      '<div class=disclaimer><b>9+3 加權規則</b>入場價格不是前一交易日低點，也不是短／中／長固定買價。只有 9+3 全部通過驗證，且合法歷史足以形成價格結構時才顯示數字。決策信心指數只代表資料覆蓋與方向一致性，不是勝率或成功機率。</div>';
+      '<details class=source-note><summary><b>資料來源／完整性</b></summary><div class=mini style="margin-top:8px">價格：OGDL 1.0 已驗證完成交易日 '+esc(r.date)+'。研究資料：'+esc(R.source||'unavailable')+'。歷史技術：'+(H.bars?H.bars.length+' 根合法已驗證 OHLC｜'+esc(H.source||'verified history'):'未使用（'+esc(H.reason||MISSING)+'）')+'。任何缺漏都不以第三方網站、0、平均值、舊值或 AI 補齊。</div></details>'+
+      '<div class=disclaimer><b>價格層與決策層已分離</b>Entry Zone 只由至少 60 根合法已驗證 OHLC 的價格結構形成；9+3 負責判斷現在買、等回檔或不買。9+3 缺一項不再讓技術價格區消失，但缺少的基本面／法人／外部背景仍會降低決策完整性。決策信心指數不是勝率或成功機率。</div>';
     box.classList.remove('hidden');
   }
   window.StockLabNinePlusThreeResearch={research,history,factors,makeSections,contexts,technical};
