@@ -131,7 +131,7 @@
     const missing=(d?.missing||[]).map(x=>x.label).join('、');
     const price=plan?.available?(money(plan.low)+'–'+money(plan.high)):'—';
     return '<h3>9+3 加權入場決策</h3><div class=sourcegrid>'+
-      '<div class=sourceitem><b>9+3 加權分數</b>'+score+'/100<br><span class=mini>正負面證據依入場權重合成；不是上漲機率</span></div>'+
+      '<div class=sourceitem><b>'+(d?.complete?'9+3 完整加權分數':'已驗證部分方向分數')+'</b>'+score+'/100<br><span class=mini>'+(d?.complete?'12項全部通過驗證後的加權方向':'只計已驗證項目；不可當成完整 9+3 結論')+'；不是上漲機率</span></div>'+
       '<div class=sourceitem><b>決策信心指數</b>'+conf+'/100<br><span class=mini>'+(d?.confidenceMeaning||'已驗證資料覆蓋率與方向一致性；不是勝率')+'</span></div>'+
       '<div class=sourceitem><b>建議入場區間</b>'+price+'<br><span class=mini>'+(plan?.available?esc(plan.basis):esc(plan?.reason||'無法形成數字入場建議'))+'</span></div>'+
       '<div class=sourceitem><b>資料覆蓋</b>'+(d?.coveragePct??0)+'%<br><span class=mini>'+(missing?'未驗證：'+esc(missing):'9+3 全部通過驗證')+'</span></div></div>';
