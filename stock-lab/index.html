@@ -12,19 +12,19 @@
 <body>
 <main class="wrap">
   <section class="hero"><h1>StockLab 台股投資分析器</h1><p>資料不完整就不預測；不以假資料補值。</p></section>
-  <section class="card"><div class="tabs"><button id="findBtn" class="ghost">不知道買什麼</button><button id="singleBtn">想買這檔</button><button id="holdBtn" class="ghost">已持有</button></div></section>
+  <section class="card"><div class="tabs"><button id="findBtn" class="ghost">不知道買什麼</button><button id="singleBtn">我還沒買</button><button id="holdBtn" class="ghost">已持有</button></div></section>
   <section id="singlePanel" class="card">
     <label>股票代號／股票名稱<input id="ticker" inputmode="text" placeholder="例如：2454 或 聯發科"></label>
-    <p class="simple-rule">想買這檔分成兩層：①價格結構 Entry Zone：至少 60 根合法已驗證 OHLC 即可計算第一入場區、第二入場區、不追價上限與失效價；②9+3 決策層：判斷現在買、等回檔或不買。9+3 缺項不再把價格區整個鎖死。</p>
+    <p class="simple-rule">我還沒買：輸入股票後，以 9+3 判斷「今日／下一交易日」是否適合建立部位。價格層只輸出可執行的兩種路徑：拉回入場區、突破入場觸發；另顯示不追價上限與結構失效價。沒有合法即時行情時，盤中不假裝知道目前成交價。</p>
     <button id="analyzeBtn">9+3 入場分析</button><div id="singleLoad" class="loader hidden">正在驗證資料並建立入場判斷…</div>
   </section>
   <section id="result" class="card hidden"></section>
   <section id="holdPanel" class="card hidden">
     <label>股票代號／股票名稱<input id="holdTicker" inputmode="text" placeholder="例如：2454 或 聯發科"></label><div style="height:10px"></div>
-    <div id="manualPositionFields" class="grid"><label>目前成本均價<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>首次買入時間<input id="holdBuyTime" type="datetime-local" required></label></div><div class="source-note compact-note" style="margin-top:10px"><b>部位總成本由系統計算</b><div class="mini">目前成本均價 × 目前持有股數。你不需要再重複輸入總成本。</div></div>
+    <div id="manualPositionFields" class="grid"><label>目前成本均價（可與總成本二擇一）<input id="holdAvgCost" inputmode="decimal" placeholder="例如：4380"></label><label>目前持有股數<input id="holdShares" inputmode="numeric" placeholder="例如：1000"></label><label>目前部位總成本（可與均價二擇一）<input id="holdTotalCost" inputmode="decimal" placeholder="例如：4380000"></label><label>首次買入時間<input id="holdBuyTime" type="datetime-local" required></label></div><div class="source-note compact-note" style="margin-top:10px"><b>均價／總成本只需提供一個</b><div class="mini">輸入股數後，可填成本均價或部位總成本；系統只做確定性換算。若兩者都填，會先檢查是否一致，不一致就停止分析。</div></div>
     <label style="display:block;margin-top:10px">部位輸入方式<select id="positionInputMode"><option value="manual" selected>直接輸入目前均價／股數</option><option value="lots">進階：逐筆輸入仍持有明細</option></select></label>
     <div id="positionLots" class="hidden" style="margin-top:10px"><div id="positionLotRows"></div><button type="button" id="addPositionLot" class="ghost" style="margin-top:8px">＋ 新增一筆買入明細</button><div id="positionLotSummary" class="source-note compact-note"></div></div>
-    <p class="simple-rule">已持有股票不再套用短／中／長買入價。輸入買入時間、目前股數與目前成本均價後，系統以同一套 9+3 驗證加權做續抱／減碼／出場判斷；只有 9+3 完整且合法價格結構足夠時才顯示建議出場觸發價。出場決策信心指數只代表已驗證資料覆蓋與方向一致性，不是勝率。</p>
+    <p class="simple-rule">已持有股票不再套用任何短／中／長買入價。輸入買入時間、股數與成本資料後，系統以同一套 9+3 分析續抱／減碼／退出；價格風險線由合法已驗證 OHLC 結構形成，9+3 用來判斷是否收緊／放寬與是否需要減碼。缺資料維持未知，不以假值補齊。</p>
     <button id="holdAnalyzeBtn">分析出場時機</button><div id="holdLoad" class="loader hidden">正在驗證持股資料與市場事實…</div><div id="holdResult" class="source-note compact-note"><b>請輸入持股資料</b><div class="mini">均價、股數與首次買入時間採你的輸入；總成本由系統計算。</div></div>
   </section>
   <section id="findPanel" class="card hidden"><h2 style="margin-top:0">各類股近期績優研究標的</h2><p class="muted">依官方產業分類分組，每類最多 5 檔；只用最新完成交易日已驗證資料與已知風險旗標。</p><button id="scanBtn">查看各類股 5 檔候選</button><div id="scanLoad" class="loader hidden">正在整理各類股候選…</div></section>
