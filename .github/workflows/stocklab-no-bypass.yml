@@ -42,15 +42,25 @@ jobs:
               assert x not in idx+router+top10, f'legacy horizon buy path returned: {x}'
           assert '短／中／長' in idx
 
-          # 2. Rule-based research outputs are allowed locally; predictive/live claims remain locked.
-          assert '規則式入場研究' in router
-          assert 'Math.min(cl,avg)' in router
-          assert '不是盤中即時價、不是預測保證價' in router
+          # 2. Entry Zone is deterministic verified price structure; 9+3 separately governs action.
+          decision=R('stock-lab/entry-decision.js')
+          verified_history=R('stock-lab/verified-history.js')
+          assert '價格結構 Entry Zone' in router
+          assert '9+3 決策層' in router
+          assert '第一入場區' in router and '第二入場區' in router
+          assert '不追價上限' in router and '結構失效價' in router
+          assert "model:'TW-price-structure-entry-zone-v2'" in decision
+          assert "r.length<60" in decision
+          assert "MA10／MA20／MA60／ATR14" in decision
+          assert "StockLabVerifiedHistory" in verified_history
+          assert "mode:'same-origin-ogdl-archive-only'" in verified_history
+          assert policy['output_contract']['numeric_entry_requires_complete_9plus3'] is False
+          assert policy['output_contract']['numeric_entry_requires_price_structure_gate'] is True
           assert '各類股近期績優研究標的' in top10
           assert 'slice(0,5)' in top10 and 'SECTORS' in top10
           assert '這是研究候選，不是勝率排名' in top10
-          for forbidden in ('StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan','勝率：','上漲機率：'):
-              assert forbidden not in router+top10, f'predictive/local fake claim returned: {forbidden}'
+          for forbidden in ('Math.min(cl,avg)','StockLabEntryDecision.evaluate','openingGapStats','intradayPullbackStats','buildBuyPlan','勝率：','上漲機率：'):
+              assert forbidden not in router+top10, f'obsolete/fake entry logic returned: {forbidden}'
 
           # 3. Existing-position management is intentionally different: verified facts may drive deterministic rules locally.
           assert 'StockLabHolding' in holding
@@ -103,7 +113,7 @@ jobs:
           # 8. Statistical/predictive claims remain hard-gated; deterministic holding rules do not inherit that lock.
           for x in ('legal_source_verified!==true','imputation_used===true','oos_validation_passed!==true','confidence_calibrated===true','trading_calendar_verified!==true'):
               assert x in hard,x
-          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST','NINE_PLUS3_WEIGHTED_ENTRY_EXIT','EVIDENCE_CONFIDENCE_INDEX'):
+          for k in ('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST','NINE_PLUS3_WEIGHTED_ENTRY_EXIT','EVIDENCE_CONFIDENCE_INDEX','ENTRY_PRICE_DECISION_SEPARATION','PRICE_STRUCTURE_GATE'):
               assert k in policy['absolute_invariants'],k
           assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
           assert policy['history_requirements']['holding_rules']['minimum_verified_closes'] == 1
@@ -132,6 +142,8 @@ jobs:
           assert 'productionPredictionReady:false' in runtime
           assert 'ruleBasedEntryReferenceEnabled:true' in runtime
           assert 'sectorResearchEnabled:true' in runtime
+          assert 'verifiedOgdlArchiveHistoryEnabled:true' in runtime
+          assert 'entryPriceDecisionLayersSeparated:true' in runtime
           assert 'no OOS lock' in holding
           assert 'actionable deterministic holding rules' in holding
 
