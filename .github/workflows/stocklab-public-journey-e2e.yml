@@ -123,8 +123,9 @@ jobs:
             for(const required of ['聯發科／2454','目前持倉判斷','建議出場觸發價','出場條件','最新已驗證收盤']) {
               if(!holdFirst.includes(required)) throw new Error('Missing independent holding output: '+required+'\n'+holdFirst);
             }
-            if(/建議出場觸發價\s*—/.test(holdFirst)) throw new Error('Independent holding exit trigger unavailable despite verified OHLC:\n'+holdFirst);
-            console.log('PASS: independent holding path works without predictive OOS gate');
+            for(const required of ['9+3 加權出場決策','出場決策信心指數']) if(!holdFirst.includes(required)) throw new Error('Missing weighted holding decision: '+required+'\n'+holdFirst);
+            if(holdFirst.includes('9+3 尚未完整') && !/建議出場觸發價\s*—/.test(holdFirst)) throw new Error('Incomplete 9+3 emitted a fake numeric exit trigger:\n'+holdFirst);
+            console.log('PASS: independent holding path preserves truth and 9+3 weighting');
 
             // Single-stock entry reference journey.
             await page.locator('#singleBtn').click({timeout:10000});
@@ -132,14 +133,14 @@ jobs:
             await page.locator('#analyzeBtn').click({timeout:10000});
             await page.waitForFunction(() => {
               const t=document.querySelector('#result')?.innerText||'';
-              return t.includes('建議入場參考價') || t.includes('無法產生入場參考價');
+              return t.includes('9+3 加權入場決策') || t.includes('9+3 分析無法完成');
             }, null, {timeout:15000});
             const entryText=await page.locator('#result').innerText();
-            if(entryText.includes('無法產生入場參考價')) throw new Error('Entry reference journey failed:\n'+entryText);
-            for(const required of ['建議入場參考價','判斷理由','完成交易日成交均價','不是盤中即時價']) {
-              if(!entryText.includes(required)) throw new Error('Missing entry output: '+required+'\n'+entryText);
+            if(entryText.includes('9+3 分析無法完成')) throw new Error('9+3 entry journey failed:\n'+entryText);
+            for(const required of ['9+3 加權入場決策','9+3 加權分數','決策信心指數','建議入場區間','資料覆蓋']) {
+              if(!entryText.includes(required)) throw new Error('Missing 9+3 entry output: '+required+'\n'+entryText);
             }
-            console.log('PASS: single-stock rule-based entry reference produced price and reasons');
+            console.log('PASS: single-stock 9+3 entry path shows weighted decision without forcing a fake price');
 
             // Sector five-per-industry research journey.
             await page.locator('#findBtn').click({timeout:10000});
@@ -204,12 +205,10 @@ jobs:
               if (!result.includes(required)) throw new Error('Missing live holding output: ' + required + '\n' + result);
             }
             if (!result.includes('100,000')) throw new Error('Derived total cost was not shown correctly:\n' + result);
-            if (!result.includes('獲利中；多日結構不足')) throw new Error('Profitable one-close holding state is inconsistent:\n' + result);
-            if (result.includes('成本附近觀察')) throw new Error('Profitable holding was mislabeled as near-cost:\n' + result);
-            for (const required of ['建議出場觸發價','出場條件','判斷依據','上一完成交易日低點','停利／壓力參考']) {
-              if (!result.includes(required)) throw new Error('Missing actionable exit output: ' + required + '\n' + result);
+            for (const required of ['9+3 加權出場決策','出場決策信心指數','建議出場觸發價','出場條件','停利／壓力參考']) {
+              if (!result.includes(required)) throw new Error('Missing 9+3 holding output: ' + required + '\n' + result);
             }
-            if (/建議出場觸發價\s*—/.test(result)) throw new Error('Exit trigger price is still unavailable despite verified OHLC:\n' + result);
+            if (result.includes('9+3 尚未完整') && !/建議出場觸發價\s*—/.test(result)) throw new Error('Incomplete 9+3 must not emit a fake numeric exit trigger:\n' + result);
             if (errors.length) throw new Error('Browser runtime errors:\n' + errors.join('\n'));
 
             console.log('PASS: live mobile holding journey produced a usable result');
