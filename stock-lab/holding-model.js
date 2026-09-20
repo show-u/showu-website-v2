@@ -5,12 +5,14 @@
   function dateMs(v){if(!v)return null;const d=new Date(`${v}T00:00:00+08:00`);return Number.isNaN(d.getTime())?null:d.getTime()}
   function barDate(x){return x?.iso||x?.date||null}
   function positionInput(x){
-    const averageCost=num(x?.averageCost),shares=num(x?.shares),buyTime=String(x?.buyTime||'').trim(),buyDate=buyTime.slice(0,10);
-    if(!(averageCost>0))throw Error('成本均價必須大於 0');
+    let averageCost=num(x?.averageCost),shares=num(x?.shares),totalCost=num(x?.totalCost),buyTime=String(x?.buyTime||'').trim(),buyDate=buyTime.slice(0,10);
     if(!(shares>0))throw Error('持有股數必須大於 0');
+    if(!(averageCost>0)&&!(totalCost>0))throw Error('成本均價與總成本至少需要一個有效值');
     if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(buyTime)||dateMs(buyDate)==null)throw Error('首次買入時間必須由使用者輸入有效日期時間');
-    const totalCost=averageCost*shares;
-    return{averageCost,shares,totalCost,buyTime,buyDate,lots:Array.isArray(x?.lots)?x.lots:null,provenance:x?.provenance||{averageCost:'user_observed',shares:'user_observed',totalCost:'derived_from_user_position',buyTime:'user_observed'}};
+    if(!(averageCost>0))averageCost=totalCost/shares;
+    if(!(totalCost>0))totalCost=averageCost*shares;
+    const tol=Math.max(1,totalCost*.001);if(Math.abs(averageCost*shares-totalCost)>tol)throw Error('成本均價、持有股數與總成本彼此不一致');
+    return{averageCost,shares,totalCost,buyTime,buyDate,lots:Array.isArray(x?.lots)?x.lots:null,provenance:x?.provenance||{averageCost:'user_or_derived',shares:'user_observed',totalCost:'user_or_derived',buyTime:'user_observed'}};
   }
   function normalizeBars(bars){
     return (Array.isArray(bars)?bars:[]).filter(x=>Number.isFinite(Number(x?.c))&&Number(x.c)>0).map(x=>({...x,c:Number(x.c),o:num(x.o),h:num(x.h),l:num(x.l)})).sort((a,b)=>String(barDate(a)).localeCompare(String(barDate(b))));
@@ -22,6 +24,9 @@
     if(ctx.priceVerified!==true)throw Error('最新收盤尚未通過驗證');
     const L=r.at(-1),dataDate=barDate(L);if(!dataDate)throw Error('最新交易日缺漏');
     const cost=p.totalCost,marketValue=L.c*p.shares,pnl=marketValue-cost,pnlPct=cost?100*pnl/cost:null;
+    const buyMs=dateMs(p.buyDate),since=r.filter(x=>{const d=dateMs(String(barDate(x)||'').slice(0,10));return d!=null&&buyMs!=null&&d>=buyMs});
+    const sinceHigh=since.length?Math.max(...since.map(x=>num(x.h)).filter(Number.isFinite)):null,sinceLow=since.length?Math.min(...since.map(x=>num(x.l)).filter(Number.isFinite)):null;
+    const maxGainPct=sinceHigh!=null?100*(sinceHigh/p.averageCost-1):null,maxDrawdownPct=sinceLow!=null?100*(sinceLow/p.averageCost-1):null;
     const weighted=ctx.ninePlus3||null;
     const plan=window.StockLabEntryDecision?.exitPlan?.(r,L.c,p.averageCost,weighted)||{available:false,reason:'9+3 出場價格層尚未載入'};
     const riskBlocked=ctx.riskBlocked===true,riskKnown=ctx.activeRiskKnown===true,corporateKnown=ctx.corporateActionKnown===true;
@@ -30,14 +35,14 @@
       state='特殊交易風險優先';
       reason='已驗證處置／信用交易限制等特殊狀態優先於一般持有模型';
       nextAction='先確認下一合法交易時段可用委託與限制，再執行減碼／退出判斷';
-    }else if(weighted?.complete!==true){
-      state='9+3 尚未完整';
-      reason='缺少的 9+3 因子維持未知；不再用上一交易日低點或任何單一價位替代出場模型';
-      nextAction='保留持倉事實與損益資訊；待 9+3 全部通過驗證後再產生數字出場建議';
     }else if(!plan.available){
-      state='9+3 已驗證但價格結構不足';
+      state='價格結構不足';
       reason=plan.reason||'合法歷史不足，無法建立出場觸發價';
       nextAction='不以單日低點、固定百分比或 AI 猜值補出場價';
+    }else if(weighted?.complete!==true){
+      state='條件式持有管理';
+      reason='9+3 尚未完整；缺項維持未知，但已驗證 OHLC 可以形成結構風險線，不再整頁鎖死';
+      nextAction='先依結構風險線管理持倉；9+3 缺項補齊後，再升級續抱／減碼／退出方向判斷';
     }else if(weighted.score<=40){
       state='9+3 明顯轉弱';
       reason='加權後負面證據占優勢；出場風險線應較緊';
@@ -58,10 +63,10 @@
     return{
       model:'TW-holding-9plus3-v4',validation:'9PLUS3_WEIGHTED_RULE_BASED',dataDate,latestClose:L.c,
       position:p,
-      derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel:r.length>=60?`${r.length} 根合法已驗證 OHLC`:`${r.length} 根；不足 9+3 價格模型最低 60 根`,support:trigger,resistance:pressure},
+      derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel:r.length>=60?`${r.length} 根合法已驗證 OHLC`:`${r.length} 根；不足價格模型最低 60 根`,support:trigger,resistance:pressure,tradingBarsSinceBuy:since.length,maxGainPct,maxDrawdownPct,sinceEntryHigh:sinceHigh,sinceEntryLow:sinceLow},
       decision:{
         state,reason,nextAction,riskTrigger:trigger,pressureReference:pressure,
-        riskTriggerBasis:plan.available?plan.basis:'9+3 未完整或合法價格結構不足；禁止退回上一交易日低點',
+        riskTriggerBasis:plan.available?plan.basis:'合法價格結構不足；禁止退回上一交易日低點',
         pressureBasis:plan.available?'20日高價分布第80百分位，並由 9+3 持有判斷共同解讀':'資料不足',
         exitAction:exitCondition,exitCondition,reduceCondition,
         riskTriggerMeaning:trigger!=null?'9+3 加權後的結構化出場觸發，不是保證成交價':(plan.reason||'無法產生 9+3 出場價'),
