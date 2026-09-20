@@ -74,7 +74,7 @@ jobs:
           assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
 
           # B. Old short/mid/long buy-price UX must never return.
-          for text in ('不知道買什麼','想買這檔','已持有','分析進場價格','分析出場時機','目前成本均價','目前持有股數','首次買入時間'):
+          for text in ('不知道買什麼','想買這檔','已持有','9+3 入場分析','分析出場時機','目前成本均價','目前持有股數','首次買入時間'):
               assert text in idx,text
           for legacy in ('id="horizon"','scanHorizon','holdHorizon','短線｜約1個月','波段｜約3個月','長期｜1年以上','短線入場區間','中期入場區間','長期佈局區間'):
               assert legacy not in idx+router+top10,legacy
@@ -87,10 +87,10 @@ jobs:
           assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
           assert 'market-data inference' in pos
 
-          # D. Deterministic entry reference and sector research are available without predictive claims; holding remains separate deterministic rules.
-          assert '規則式入場研究' in router
-          assert 'Math.min(cl,avg)' in router
-          assert '不是盤中即時價、不是預測保證價' in router
+          # D. Entry and exit both use the same verified 9+3 contract; prices remain fail-closed.
+          assert '9+3 加權入場決策' in router
+          assert 'StockLabEntryDecision?.entryPlan' in router
+          assert '決策信心指數' in router
           assert '各類股近期績優研究標的' in top10
           assert 'slice(0,5)' in top10 and '這是研究候選，不是勝率排名' in top10
           assert policy['prediction_requirements']['rule_based_entry_reference']['oos_required'] is False
@@ -145,13 +145,13 @@ jobs:
           assert "ctx.legalSource!==true" in hold_model
           assert "ctx.priceVerified!==true" in hold_model
           assert "if(!r.length)throw Error('沒有可用的已驗證收盤資料')" in hold_model
-          assert "trigger!=null?'derived_from_verified_bars':'unavailable'" in hold_model
+          assert "riskTrigger:trigger!=null?'derived_from_verified_9plus3_and_price_structure':'unavailable'" in hold_model
           assert '缺少的資料維持缺少，不以假資料補值' in hold_router
           assert 'StockLabSameOrigin' in hold_router
           assert "row.licence!=='OGDL-1.0'" in hold_router
           assert '非盤中即時價' in hold_router
-          assert 'no OOS lock' in hold_router
-          assert 'actionable deterministic holding rules' in hold_router
+          assert '9+3 加權出場決策' in hold_router
+          assert '不再以「上一完成交易日低點」代替' in hold_router
 
           # G. Public facts source legality stays fail-closed and obsolete browser-data is forbidden.
           assert "mode:'licensed-normalized-market-facts'" in cache
@@ -175,8 +175,8 @@ jobs:
           # I. Previous close cannot be relabelled as current live price.
           for text in ('WAITING_TODAY_CLOSE_DATA','STALE_BASE_DATE','IMPOSSIBLE_CURRENT_CLOSE','盤中僅供參考，不以昨日資料重算現在價格'):
               assert text in session,text
-          assert '不是盤中即時價、不是預測保證價' in router
-          assert '沒有合法即時／延遲行情時，盤中不會用舊收盤冒充現在價格' in router
+          assert 'NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED' in policy['absolute_invariants']
+          assert '非盤中即時價' in hold_router
 
           # J. A historical-source URL never becomes legal data merely by existing.
           assert sources['rules']['public_url_is_not_a_licence'] is True
