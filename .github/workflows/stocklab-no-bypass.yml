@@ -59,7 +59,7 @@ jobs:
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold_model
           assert 'requiredBars:()=>1' in hold_model
           assert 'Numeric exit prices are NEVER replaced by the previous-session low' in hold_model
-          assert 'UNVALIDATED' in hold_model
+          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold_model
           assert 'probability_calibrated:false' in hold_model
           assert 'imputation_used:false' in hold_model
           assert '信心指數不是勝率' in holding
