@@ -1,6 +1,6 @@
 {
-  "schema_version": 10,
-  "architecture": "free-official-first-executable-entry-three-input-actionable-holding-v14",
+  "schema_version": 11,
+  "architecture": "taiwan-9plus3-weighted-entry-exit-truth-v16",
   "formal_prediction_validation_status": "BLOCKED_DATA_LAYER",
   "network_history_collection_performed": false,
   "network_history_collection_disabled": true,
@@ -8,7 +8,7 @@
   "models": {
     "entry_decision_9plus3": "BLOCKED_DATA_LAYER",
     "entry_scanner_9plus3": "BLOCKED_DATA_LAYER",
-    "holding_rules": "AVAILABLE_RULE_BASED"
+    "holding_rules": "AVAILABLE_FACTS_AND_WEIGHTED_RULE_BASED"
   },
   "truth_contract": {
     "missing_data_imputed": false,
@@ -17,7 +17,11 @@
     "legacy_horizon_buy_model_used": false,
     "predictive_oos_required": true,
     "deterministic_holding_rules_oos_required": false,
-    "holding_statistical_claims_oos_required": true
+    "holding_statistical_claims_oos_required": true,
+    "previous_session_low_exit_fallback_used": false,
+    "evidence_confidence_is_probability": false,
+    "numeric_entry_requires_complete_9plus3": true,
+    "numeric_exit_requires_complete_9plus3": true
   },
-  "reason": "Entry and scanner predictions remain blocked until their formal legal-data/OOS/execution/calibration gates pass. Existing-position management is a separate deterministic rule path using three user position facts plus legally verified completed-session OHLC; verified prior-session low/high may provide a single-session exit trigger and pressure reference when multi-day structure is unavailable."
+  "reason": "Entry and scanner predictive/statistical claims remain blocked until formal legal-data/OOS/execution/calibration gates pass. Entry and holding numeric price recommendations now use the same verified 9+3 evidence contract: numeric entry requires complete 9+3 plus legal verified price structure/reachability; numeric exit requires complete 9+3 plus at least 60 legal verified OHLC bars for the weighted MA/ATR/structure model. Missing inputs remain unavailable. The previous-session low/high is not a fallback recommendation. The displayed decision-confidence index is deterministic evidence coverage/consistency, not probability or win rate."
 }
