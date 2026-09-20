@@ -48,15 +48,15 @@ jobs:
           assert 'StockLabSessionContext.resolve' in public
 
           # Holding is NOT the old predictive/OOS-locked exit engine.
-          assert "model:'TW-holding-rule-v3'" in hold
-          assert "validation:'RULE_BASED'" in hold
+          assert "model:'TW-holding-9plus3-v4'" in hold
+          assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold
           assert 'requiredBars:()=>1' in hold
-          assert 'OOS status controls only statistical claims' in hold
-          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold
-          assert 'model.analyze(p,hb.bars' in router
-          assert '這不是 OOS 鎖定模型' in router
+          assert 'Numeric exit prices are NEVER replaced by the previous-session low' in hold
+          assert 'UNVALIDATED' in hold
+          assert 'model.analyze(p,modelBars' in router
+          assert '信心指數不是勝率' in router
           assert '建議出場觸發價' in router
-          assert '上一完成交易日低點' in hold
+          assert 'decisionConfidenceIndex' in hold and 'StockLabEntryDecision?.exitPlan' in hold
           assert 'api.holding(' not in router
           assert '正式出場時機／觸發價格尚未解鎖' not in router
           assert '不以本地公式假造續抱／減碼／賣出價格' not in router
@@ -81,8 +81,8 @@ jobs:
           assert policy['output_contract']['deterministic_holding_rules_require_oos_pass'] is False
           assert policy['backtest_validation']['holding_statistical_claims_require_oos'] is True
           assert policy['backtest_validation']['deterministic_holding_rules_require_oos'] is False
-          assert 'confidence_calibrated:false' in hold
-          assert '不得顯示勝率、成功率、機率或校準信心指數' in hold
+          assert 'probability_calibrated:false' in hold
+          assert '決策信心指數' in hold and '不是勝率' in hold
 
           print('PASS: session truth + rule-based holding path; obsolete OOS exit lock absent')
           PY
