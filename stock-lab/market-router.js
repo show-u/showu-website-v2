@@ -134,21 +134,24 @@
     return{priceVolume:price,taiwanMarket:market,technical:tech,chips,valuation,revenue,quarterly,financialQuality:financial,industryTrend};
   }
 
-  function weightedHtml(d,plan){
+  function weightedHtml(d,plan,session){
     const score=d?.score==null?'—':d.score,conf=d?.confidenceIndex==null?'—':d.confidenceIndex;
-    const missing=(d?.missing||[]).map(x=>x.label).join('、');
-    const zone=plan?.available
-      ? '<div class=sourceitem><b>第一入場區</b>'+money(plan.first.low)+'–'+money(plan.first.high)+'<br><span class=mini>主要價格需求區</span></div>'+
-        '<div class=sourceitem><b>第二入場區</b>'+(plan.second?money(plan.second.low)+'–'+money(plan.second.high):'—')+'<br><span class=mini>較深回檔價格區；不存在就不硬造</span></div>'+
-        '<div class=sourceitem><b>不追價上限</b>'+money(plan.noChase)+'<br><span class=mini>高於此區風險報酬開始惡化，不代表一定下跌</span></div>'+
-        '<div class=sourceitem><b>結構失效價</b>'+money(plan.invalid)+'<br><span class=mini>跌破後原本價格結構需重新分析</span></div>'
-      : '<div class=sourceitem><b>Entry Zone</b>—<br><span class=mini>'+esc(plan?.reason||'價格結構資料不足')+'</span></div>';
-    return '<h3>價格結構 Entry Zone</h3><div class=sourcegrid>'+zone+'</div>'+
-      '<div class=source-note><b>目前操作判斷</b><div>'+(plan?.available?esc(plan.action):'等待價格結構資料完成')+'</div><div class=mini style="margin-top:5px">'+(plan?.available?esc(plan.basis):'Entry Zone 不再被 9+3 單一缺項鎖死；現在只看價格結構 Gate。')+'</div></div>'+
+    const miss=(d?.missing||[]).map(x=>x.label).join('、');
+    const canShow=plan?.available&&session?.verified===true&&session?.displayNumericPlan===true;
+    const target=session?.targetDate||'尚未驗證';
+    const zone=canShow
+      ? '<div class=sourceitem><b>目標交易日</b>'+esc(target)+'<br><span class=mini>'+esc(session.label||'')+'</span></div>'+
+        '<div class=sourceitem><b>拉回入場區</b>'+money(plan.pullback.low)+'–'+money(plan.pullback.high)+'<br><span class=mini>價格回到需求區才考慮；不是預測一定會跌到這裡</span></div>'+
+        '<div class=sourceitem><b>突破入場觸發</b>'+money(plan.breakout.trigger)+'<br><span class=mini>可接受帶 '+money(plan.breakout.low)+'–'+money(plan.breakout.high)+(plan.volumeRatio!=null?'｜最近量比 '+plan.volumeRatio.toFixed(2)+'x':'｜成交量確認未取得')+'</span></div>'+
+        '<div class=sourceitem><b>不追價上限</b>'+money(plan.noChase)+'<br><span class=mini>高於此價不建立新部位</span></div>'+
+        '<div class=sourceitem><b>結構失效價</b>'+money(plan.invalid)+'<br><span class=mini>跌破後原入場邏輯失效，重新分析</span></div>'
+      : '<div class=sourceitem><b>目標交易日／價格</b>—<br><span class=mini>'+esc(session?.label||plan?.reason||'交易時序或價格資料尚未驗證')+'</span></div>';
+    return '<h3>今日／下一交易日入場判斷</h3><div class=sourcegrid>'+zone+'</div>'+
+      '<div class=source-note><b>目前操作判斷</b><div>'+(canShow?esc(plan.action):'目前不產生可執行價格')+'</div><div class=mini style="margin-top:5px">'+(canShow?esc(plan.basis):'只有完成交易日資料與交易日曆一致時才放行數字；盤中沒有即時行情時，不把昨收冒充現在價格。')+'</div></div>'+
       '<h3>9+3 決策層</h3><div class=sourcegrid>'+
       '<div class=sourceitem><b>'+(d?.complete?'9+3 完整加權分數':'已驗證部分方向分數')+'</b>'+score+'/100<br><span class=mini>'+(d?.complete?'12項全部通過驗證後的加權方向':'只計已驗證項目；不可當成完整 9+3 結論')+'；不是上漲機率</span></div>'+
       '<div class=sourceitem><b>決策信心指數</b>'+conf+'/100<br><span class=mini>'+(d?.confidenceMeaning||'已驗證資料覆蓋率與方向一致性；不是勝率')+'</span></div>'+
-      '<div class=sourceitem><b>資料覆蓋</b>'+(d?.coveragePct??0)+'%<br><span class=mini>'+(missing?'未驗證：'+esc(missing):'9+3 全部通過驗證')+'</span></div></div>';
+      '<div class=sourceitem><b>資料覆蓋</b>'+(d?.coveragePct??0)+'%<br><span class=mini>'+(miss?'未驗證：'+esc(miss):'9+3 全部通過驗證')+'</span></div></div>';
   }
   function conclusion(sections,ctx){
     const a=Object.values(sections),ok=a.filter(x=>x.verified).length,cok=ctx.filter(x=>x.verified).length,missing=[...a.filter(x=>!x.verified).map(x=>x.label),...ctx.filter(x=>!x.verified).map(x=>x.label)];
@@ -162,13 +165,16 @@
     const weighted=window.StockLabEntryDecision?.weighted?.(sections,ctx,'entry');
     if(!weighted)throw Error('9+3 加權決策層尚未載入');
     const plan=window.StockLabEntryDecision?.entryPlan?.(H.bars,r.close,weighted)||{available:false,reason:'價格結構層尚未載入'};
-    box.innerHTML='<div class=toprow><div><h2>'+title+'</h2><div class=muted>'+esc(r.market)+'｜9+3 加權入場分析｜資料基準 '+esc(r.date)+'</div></div></div>'+
+    const resolver=window.StockLabSessionContext?.resolve;
+    const session=resolver?await resolver({market:r.market,dataDate:r.date}):{verified:false,displayNumericPlan:false,label:'交易日曆／目標交易日尚未驗證',targetDate:null};
+    box.innerHTML='<div class=toprow><div><h2>'+title+'</h2><div class=muted>'+esc(r.market)+'｜我還沒買｜9+3 入場分析｜資料基準 '+esc(r.date)+'</div></div></div>'+
+      '<div class=source-note><b>時間基準</b><div>'+esc(session.label||'目標交易日尚未驗證')+'</div><div class=mini style="margin-top:5px">收盤前若最新完成資料仍是前一交易日，只能形成「今日原始計畫」；13:30 收盤後若今日官方完成資料尚未驗證，就等待，不提前製造下一交易日價格。</div></div>'+
       conclusion(sections,ctx)+
-      weightedHtml(weighted,plan)+
+      weightedHtml(weighted,plan,session)+
       '<h3>9 項主體分析</h3><div class=sourcegrid>'+Object.values(sections).map(card).join('')+'</div>'+
       '<h3>＋3 外部背景</h3><div class=sourcegrid>'+ctx.map(card).join('')+'</div>'+
       '<details class=source-note><summary><b>資料來源／完整性</b></summary><div class=mini style="margin-top:8px">價格：OGDL 1.0 已驗證完成交易日 '+esc(r.date)+'。研究資料：'+esc(R.source||'unavailable')+'。歷史技術：'+(H.bars?H.bars.length+' 根合法已驗證 OHLC｜'+esc(H.source||'verified history'):'未使用（'+esc(H.reason||MISSING)+'）')+'。任何缺漏都不以第三方網站、0、平均值、舊值或 AI 補齊。</div></details>'+
-      '<div class=disclaimer><b>價格層與決策層已分離</b>Entry Zone 只由至少 60 根合法已驗證 OHLC 的價格結構形成；9+3 負責判斷現在買、等回檔或不買。9+3 缺一項不再讓技術價格區消失，但缺少的基本面／法人／外部背景仍會降低決策完整性。決策信心指數不是勝率或成功機率。</div>';
+      '<div class=disclaimer><b>兩種入場路徑，不再用短／中／長價格</b>未持有股票只回答目標交易日是否適合建立部位，以及「拉回入場」或「突破入場」兩種可執行路徑。低於現價的支撐只是一條拉回路徑；若股票不回檔，必須等合法的突破觸發，而不是把永遠買不到的深層價格當唯一答案。</div>';
     box.classList.remove('hidden');
   }
   window.StockLabNinePlusThreeResearch={research,history,factors,makeSections,contexts,technical};
