@@ -39,7 +39,7 @@ def validate_status_manifest(x):
         assert item.get('required_before_pass'),(name,'missing required_before_pass')
     holding=models['holding_rules']
     assert holding.get('status')=='AVAILABLE_RULE_BASED'
-    assert holding.get('formula')=='TW-holding-rule-v3'
+    assert holding.get('formula')=='TW-holding-9plus3-v4'
     assert holding.get('oos_required_for_rule_output') is False
     assert holding.get('oos_required_for_statistical_claims') is True
     assert holding.get('confidence_calibrated') is False
@@ -47,7 +47,7 @@ def validate_status_manifest(x):
 
     entry_ref=models['entry_reference_rules']
     assert entry_ref.get('status')=='AVAILABLE_RULE_BASED'
-    assert entry_ref.get('formula')=='TW-entry-reference-v1'
+    assert entry_ref.get('formula')=='TW-9plus3-entry-price-v1'
     assert entry_ref.get('oos_required') is False
     assert entry_ref.get('predictive_executable_price') is False
 
