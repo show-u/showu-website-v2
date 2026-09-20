@@ -1,5 +1,5 @@
 {
-  "version": 16,
+  "version": 17,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -45,7 +45,9 @@
     "MISSING_SECTION_TRANSPARENCY": "Every unavailable 9+3 section must be visibly marked unavailable. Missing is not neutral, zero, negative or positive, and may not be filled from an unregistered website, stale snapshot, heuristic, AI text or another data field.",
     "NINE_PLUS3_WEIGHTED_ENTRY_EXIT": "Any numeric new-entry recommendation or numeric holding exit trigger must pass through the same verified 9+3 evidence contract. Entry and exit may use different disclosed governance weights, but neither may substitute a previous-session low, a former short/mid/long band, a fixed price percentage or an AI guess for the 9+3 decision layer.",
     "EVIDENCE_CONFIDENCE_INDEX": "Entry and exit may show a 0-100 decision-confidence index only as verified-data coverage multiplied by directional consistency under the published 9+3 weights. It is not a win rate, probability or return forecast. Missing/unverified factors reduce coverage and receive no neutral/zero imputation.",
-    "UNIFIED_WEIGHTED_ENTRY_PRICE": "StockLab has one numeric new-position entry recommendation path only: the complete verified 9+3 weighted decision followed by legally usable Taiwan price structure and empirical reachability. Legacy A/B/C scenario prices, investment-horizon price bands, fixed discounts and one-bar shortcuts are forbidden."
+    "UNIFIED_WEIGHTED_ENTRY_PRICE": "StockLab has one numeric new-position entry recommendation path only: the complete verified 9+3 weighted decision followed by legally usable Taiwan price structure and empirical reachability. Legacy A/B/C scenario prices, investment-horizon price bands, fixed discounts and one-bar shortcuts are forbidden.",
+    "ENTRY_PRICE_DECISION_SEPARATION": "Entry Zone price geometry is a deterministic price-structure layer and must not be erased merely because a non-price 9+3 factor is unavailable. The 9+3 layer determines whether/how to act on the zone; missing 9+3 evidence must remain visible and must not be imputed.",
+    "PRICE_STRUCTURE_GATE": "A numeric Entry Zone requires at least 60 legally usable verified OHLC bars plus valid Taiwan tick handling. It may not fall back to the previous close, previous low, a fixed percentage, or a one-bar heuristic."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
@@ -366,16 +368,17 @@
         "legal_source",
         "supported_common_stock",
         "verified_latest_completed_session_ohlc",
-        "verified_trade_value_and_volume",
+        "minimum_60_legal_verified_ohlc",
+        "taiwan_tick_rule"
+      ],
+      "oos_required": false,
+      "statistical_claims_allowed": false,
+      "decision_enhancements": [
         "nine_entry_factors_verified",
         "us_market_context_verified",
         "taifex_tx_context_verified",
-        "international_events_verified",
-        "minimum_60_legal_verified_ohlc",
-        "empirical_reachability_verified"
-      ],
-      "oos_required": false,
-      "statistical_claims_allowed": false
+        "international_events_verified"
+      ]
     },
     "sector_research": {
       "required": [
@@ -409,15 +412,22 @@
     "sector_research_requires_oos_pass": false,
     "sector_research_max_per_industry": 5,
     "visible_entry_structure": "analyst_9plus3",
-    "entry_zone_policy": "9plus3_weighted_actionable_structure_only",
+    "entry_zone_policy": "verified_price_structure_independent_of_9plus3_decision_completeness",
     "forbid_single_price_shortcut": true,
     "forbid_technical_indicator_factor_inflation": true,
     "evidence_confidence_is_probability": false,
     "evidence_confidence_formula": "verified_weight_coverage * (0.65 + 0.35 * absolute_directional_agreement)",
-    "numeric_entry_requires_complete_9plus3": true,
+    "numeric_entry_requires_complete_9plus3": false,
     "numeric_exit_requires_complete_9plus3": true,
     "forbid_previous_session_low_as_9plus3_exit": true,
-    "legacy_abc_entry_scenarios_forbidden": true
+    "legacy_abc_entry_scenarios_forbidden": true,
+    "numeric_entry_requires_price_structure_gate": true,
+    "entry_zone_outputs": [
+      "first_entry_zone",
+      "second_entry_zone_when_valid",
+      "no_chase_ceiling",
+      "structure_invalidation_price"
+    ]
   },
   "backtest_validation": {
     "requested_universe": 160,
