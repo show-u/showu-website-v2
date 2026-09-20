@@ -61,6 +61,7 @@ jobs:
           expected_model=$(grep -o 'holding-model.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_position=$(grep -o 'position-input.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_entry=$(grep -o 'market-router.js?v=[^"]*' stock-lab/index.html | head -1)
+          expected_decision=$(grep -o 'entry-decision.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_sector=$(grep -o 'top10-gate.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_compliance=$(grep -o 'compliance-gate.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_public=$(grep -o 'public-output.js?v=[^"]*' stock-lab/index.html | head -1)
