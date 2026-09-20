@@ -45,9 +45,9 @@
     },
     "holding_rules": {
       "status": "AVAILABLE_RULE_BASED",
-      "formula": "TW-holding-rule-v3",
+      "formula": "TW-holding-9plus3-v4",
       "position_input_contract": "User-supplied first buy time + current shares + current average cost, or user-entered remaining lots. Current total cost is deterministically derived from those user inputs; no position field is inferred from market data or AI.",
-      "reason": "Deterministic holding management uses user position facts plus legally verified completed-session OHLC. With 20 verified sessions it may derive multi-day structure; with less history, the latest verified session low/high provide a clearly labelled single-session exit trigger and pressure reference. No win rate, probability or calibrated confidence is claimed.",
+      "reason": "Holding facts/P&L remain available from user position facts plus the latest legally verified completed-session close. A numeric exit trigger is generated only when the same verified 9+3 evidence contract is complete and at least 60 legal verified OHLC bars support MA/ATR/structure. The previous-session low is never used as a fallback exit recommendation. The displayed decision-confidence index is evidence coverage/consistency only, not probability.",
       "minimum_required": [
         "user first buy time",
         "user current shares",
@@ -56,21 +56,26 @@
         "legally usable verified latest completed-session close"
       ],
       "optional_enhancements": [
-        "20+ verified OHLC bars for multi-day support/resistance",
+        "complete verified 9+3 evidence for numeric exit recommendation",
+        "60+ legal verified OHLC bars for numeric 9+3 exit trigger",
         "verified active Taiwan risk state",
         "verified corporate-action context"
       ],
       "oos_required_for_rule_output": false,
       "oos_required_for_statistical_claims": true,
       "confidence_calibrated": false,
-      "imputation_allowed": false
+      "imputation_allowed": false,
+      "evidence_confidence_index_available": true,
+      "evidence_confidence_is_probability": false
     },
     "entry_reference_rules": {
       "status": "AVAILABLE_RULE_BASED",
-      "formula": "TW-entry-reference-v1",
-      "reason": "Uses latest verified completed-session OHLC plus trade value/volume to form a deterministic non-live, non-predictive entry reference. No win rate or probability is claimed.",
+      "formula": "TW-9plus3-entry-price-v1",
+      "reason": "Numeric entry output is conditional: complete verified 9+3 evidence plus at least 60 legal verified OHLC bars and empirical reachability are required. 9+3 weights determine entry aggressiveness; price geometry comes from verified Taiwan price structure/ATR. Missing inputs keep the numeric recommendation unavailable.",
       "oos_required": false,
-      "predictive_executable_price": false
+      "predictive_executable_price": false,
+      "evidence_confidence_index_available": true,
+      "evidence_confidence_is_probability": false
     },
     "sector_research_rules": {
       "status": "AVAILABLE_RULE_BASED",
