@@ -61,7 +61,7 @@
     const reduceCondition=pressure!=null&&pnl>0?`接近 ${pressure} 且 9+3 未同步改善時，可檢視分批停利`:pnl>0?'有獲利，但 9+3／價格結構不足，暫不製造數字停利價':'目前未形成可驗證的獲利減碼價格條件';
     const confidence=weighted?.confidenceIndex??null;
     return{
-      model:'TW-holding-9plus3-v4',validation:'9PLUS3_WEIGHTED_RULE_BASED',dataDate,latestClose:L.c,
+      model:'TW-holding-9plus3-v5',validation:'9PLUS3_WEIGHTED_RULE_BASED',dataDate,latestClose:L.c,
       position:p,
       derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel:r.length>=60?`${r.length} 根合法已驗證 OHLC`:`${r.length} 根；不足價格模型最低 60 根`,support:trigger,resistance:pressure,tradingBarsSinceBuy:since.length,maxGainPct,maxDrawdownPct,sinceEntryHigh:sinceHigh,sinceEntryLow:sinceLow},
       decision:{
@@ -77,7 +77,7 @@
       ninePlus3:weighted,
       audit:{legal_source_verified:true,price_verified:true,active_risk_known:riskKnown,corporate_action_known:corporateKnown,oos_status:ctx.oosStatus||'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT',probability_calibrated:false,imputation_used:false},
       limits:{statement:'決策信心指數只衡量 9+3 已驗證資料覆蓋與方向一致性，不是勝率、成功率或未來價格機率。任何統計機率仍須正式 OOS 校準。'},
-      provenance:{position:p.provenance,latestClose:'observed',pnl:'derived',riskTrigger:trigger!=null?'derived_from_verified_9plus3_and_price_structure':'unavailable',decisionConfidenceIndex:confidence!=null?'derived_evidence_coverage_and_consistency':'unavailable',decision:'weighted_rule'}
+      provenance:{position:p.provenance,latestClose:'observed',pnl:'derived',riskTrigger:trigger!=null?'derived_from_verified_price_structure':'unavailable',decisionConfidenceIndex:confidence!=null?'derived_evidence_coverage_and_consistency':'unavailable',decision:'weighted_rule'}
     };
   }
   window.StockLabHolding={analyze,positionInput,requiredBars:()=>1,priceRecommendationBars:()=>60};
