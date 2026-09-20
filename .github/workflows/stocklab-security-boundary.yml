@@ -20,12 +20,16 @@ jobs:
           node --check stock-lab/api-client.js
           node --check stock-lab/market-router.js
           node --check stock-lab/top10-gate.js
+          node --check stock-lab/verified-history.js
+          node --check stock-lab/entry-decision.js
           node --check stock-lab/hard-policy.js
           grep -q './api-client.js' stock-lab/index.html
           grep -q './hard-policy.js' stock-lab/index.html
-          grep -q "規則式入場研究" stock-lab/market-router.js
-          grep -q "Math.min(cl,avg)" stock-lab/market-router.js
-          grep -q "不是盤中即時價、不是預測保證價" stock-lab/market-router.js
+          grep -q "價格結構 Entry Zone" stock-lab/market-router.js
+          grep -q "9+3 決策層" stock-lab/market-router.js
+          grep -q "TW-price-structure-entry-zone-v2" stock-lab/entry-decision.js
+          grep -q "r.length<60" stock-lab/entry-decision.js
+          grep -q "same-origin-ogdl-archive-only" stock-lab/verified-history.js
           grep -q "各類股近期績優研究標的" stock-lab/top10-gate.js
           grep -q "slice(0,5)" stock-lab/top10-gate.js
           grep -q "ruleBasedEntryReferenceEnabled:true" stock-lab/runtime-config.js
@@ -36,7 +40,7 @@ jobs:
           ! grep -q 'openingGapStats' stock-lab/market-router.js
           ! grep -q 'intradayPullbackStats' stock-lab/market-router.js
           ! grep -q 'buildBuyPlan' stock-lab/market-router.js
-          ! grep -q 'StockLabLicensedHistory' stock-lab/market-router.js
+          ! grep -q 'Math.min(cl,avg)' stock-lab/market-router.js
           ! grep -q 'StockLabEntryDecision.evaluate' stock-lab/market-router.js
           ! grep -q '勝率：' stock-lab/market-router.js
           ! grep -q '上漲機率：' stock-lab/top10-gate.js
