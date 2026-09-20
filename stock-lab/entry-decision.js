@@ -76,19 +76,46 @@
   function tickRound(p,mode='nearest'){const f=window.StockLabTaiwan?.roundTick;return typeof f==='function'?f(p,mode):p}
   function entryPlan(bars,latestClose,d){
     const r=Array.isArray(bars)?bars:[],cl=n(latestClose);
-    if(!d?.complete)return{available:false,reason:'9+3 尚未全部驗證；不產生數字入場建議'};
-    if(!(cl>0)||r.length<60)return{available:false,reason:'合法已驗證歷史 OHLC 未達 60 根；不以單日價格或假資料補入場價'};
-    if(d.score==null||d.score<=50)return{available:false,reason:'9+3 加權結果未偏正面；目前不建立新部位價格'};
-    const closes=r.map(x=>n(x.c)),ma=p=>avg(closes.slice(-p)),m5=ma(5),m10=ma(10),m20=ma(20),a=atr14(r);
-    if(![m5,m10,m20,a].every(Number.isFinite))return{available:false,reason:'入場價格結構計算資料不足'};
-    const lows20=r.slice(-20).map(x=>n(x.l)),support=Math.max(qtile(lows20,.25),Math.min(m10,cl),Math.min(m20,cl));
-    const pull=[];for(let i=Math.max(1,r.length-40);i<r.length;i++){const pc=n(r[i-1].c),lo=n(r[i].l);if(pc>0&&lo>0)pull.push((pc-lo)/pc)}
-    const reachable=qtile(pull,.80),aggr=Math.max(0,Math.min(1,(d.score-50)/50));
-    const center=support+aggr*(cl-support),dist=cl>0?(cl-center)/cl:null;
-    if(reachable==null||dist==null||dist>reachable)return{available:false,reason:'候選價格超出近期已驗證回檔可達範圍；不顯示買不到的深層支撐價'};
-    const half=a*.12,low=tickRound(Math.max(support,center-half),'up'),high=tickRound(Math.min(cl,center+half),'down');
-    if(!(low>0)||!(high>=low))return{available:false,reason:'台股升降單位處理後無有效入場區間'};
-    return{available:true,low,high,center:tickRound(center),support:tickRound(support),atr:a,score:d.score,confidenceIndex:d.confidenceIndex,model:'TW-9plus3-entry-price-v1',basis:'9+3 加權方向決定進場積極度；價格由已驗證 MA10/MA20、20日低價結構、ATR14 與歷史回檔可達性形成'};
+    if(!(cl>0)||r.length<60)return{available:false,reason:'價格結構 Gate 未通過：合法已驗證歷史 OHLC 未達 60 根；9+3 缺項不再是阻止 Entry Zone 的原因'};
+    const closes=r.map(x=>n(x.c)),ma=p=>avg(closes.slice(-p)),m10=ma(10),m20=ma(20),m60=ma(60),a=atr14(r);
+    if(![m10,m20,m60,a].every(Number.isFinite))return{available:false,reason:'價格結構 Gate 未通過：MA10／MA20／MA60／ATR14 計算資料不足'};
+    const lows20=r.slice(-20).map(x=>n(x.l)),highs20=r.slice(-20).map(x=>n(x.h)),lows60=r.slice(-60).map(x=>n(x.l));
+    const q20_35=qtile(lows20,.35),q60_25=qtile(lows60,.25),r20_80=qtile(highs20,.80);
+    if(![q20_35,q60_25,r20_80].every(Number.isFinite))return{available:false,reason:'價格結構 Gate 未通過：支撐／壓力分位數不足'};
+    const firstCenter=Math.min(cl,Math.max(q20_35,Math.min(m10,cl),Math.min(m20,cl)));
+    const firstHalf=a*.18;
+    const firstLow=tickRound(Math.max(0.01,firstCenter-firstHalf),'up');
+    const firstHigh=tickRound(Math.min(cl,firstCenter+firstHalf),'down');
+    const secondCenter=Math.min(firstCenter,Math.max(q60_25,Math.min(m60,firstCenter)));
+    const secondHalf=a*.22;
+    const secondLow=tickRound(Math.max(0.01,secondCenter-secondHalf),'up');
+    const secondHigh=tickRound(Math.min(firstLow,secondCenter+secondHalf),'down');
+    const noChase=tickRound(Math.max(firstHigh,m20+2*a,r20_80),'up');
+    const invalid=tickRound(Math.max(0.01,Math.min(m60,q60_25)-a*.35),'down');
+    if(!(firstLow>0)||!(firstHigh>=firstLow))return{available:false,reason:'台股升降單位處理後第一入場區無效'};
+    const secondAvailable=secondLow>0&&secondHigh>=secondLow&&secondHigh<firstLow;
+    const complete=d?.complete===true;
+    const score=n(d?.score);
+    let action='價格區可用；9+3 決策資料不足，等待更多驗證後再決定是否執行';
+    if(complete&&score!=null){
+      if(score>=65)action=cl<=firstHigh?'可分批建立部位':'等待回檔至第一入場區，不追價';
+      else if(score>=50)action='條件中性偏多；只考慮第一入場區小部位，等待更多確認';
+      else action='9+3 偏弱；目前不建立新部位，即使價格進入技術區也先等待';
+    }
+    return{
+      available:true,
+      first:{low:firstLow,high:firstHigh},
+      second:secondAvailable?{low:secondLow,high:secondHigh}:null,
+      noChase,
+      invalid,
+      atr:a,
+      action,
+      decisionComplete:complete,
+      score:score,
+      confidenceIndex:d?.confidenceIndex??null,
+      model:'TW-price-structure-entry-zone-v2',
+      basis:'Entry Zone 只由合法已驗證價格結構形成：MA10／MA20／MA60、20日與60日低價分布、ATR14、20日壓力；9+3 只決定現在買／等回檔／不買，不再決定價格區能不能存在'
+    };
   }
   function exitPlan(bars,latestClose,averageCost,d){
     const r=Array.isArray(bars)?bars:[],cl=n(latestClose),cost=n(averageCost);
@@ -108,5 +135,5 @@
   }
   function factorList(){return SECTIONS.map(([key,label])=>({key,label}))}
   function contextList(){return CONTEXTS.map(([key,label])=>({key,label}))}
-  window.StockLabEntryDecision={section,marketContexts,summarize,weighted,entryPlan,exitPlan,factorList,contextList,weights:WEIGHTS,MISSING,model:'TW-analyst-9plus3-weighted-v3'};
+  window.StockLabEntryDecision={section,marketContexts,summarize,weighted,entryPlan,exitPlan,factorList,contextList,weights:WEIGHTS,MISSING,model:'TW-analyst-9plus3-weighted-v4'};
 })();
