@@ -66,7 +66,7 @@ jobs:
           expected_public=$(grep -o 'public-output.js?v=[^"]*' stock-lab/index.html | head -1)
           test -n "$expected_model" && test -n "$expected_position" && test -n "$expected_entry" && test -n "$expected_decision" && test -n "$expected_sector" && test -n "$expected_compliance" && test -n "$expected_public"
           ready=0
-          for i in $(seq 1 24); do
+          for i in $(seq 1 48); do
             curl -fsSL --max-time 15 "${BASE_URL}?deploy=${RANDOM}" -o /tmp/live-index.html || true
             if grep -Fq "$expected_model" /tmp/live-index.html 2>/dev/null \
               && grep -Fq "$expected_position" /tmp/live-index.html 2>/dev/null \
