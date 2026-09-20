@@ -94,7 +94,7 @@ jobs:
           assert 'StockLabEntryDecision?.entryPlan' in router
           assert '決策信心指數' in router
           assert "model:'TW-price-structure-entry-zone-v2'" in R('stock-lab/entry-decision.js')
-          assert 'if(!d?.complete)' not in R('stock-lab/entry-decision.js')
+          assert "if(!d?.complete)return{available:false,reason:'9+3 尚未全部驗證；不產生數字入場建議'}" not in R('stock-lab/entry-decision.js')
           assert policy['output_contract']['numeric_entry_requires_complete_9plus3'] is False
           assert policy['output_contract']['numeric_entry_requires_price_structure_gate'] is True
           assert '各類股近期績優研究標的' in top10
