@@ -44,8 +44,8 @@ jobs:
           expected={'entry_decision_9plus3','entry_scanner_9plus3','holding_rules','entry_reference_rules','sector_research_rules'}
           allowed_nonpass={'FAIL','INSUFFICIENT','BLOCKED_LEGAL_SOURCE','BLOCKED_DATA_LAYER'}
 
-          assert x['schema_version']==10 and x['architecture']=='free-official-first-rule-research-plus-predictive-gates-v15'
-          assert manifest['schema_version']==9 and manifest['architecture']==x['architecture']
+          assert x['schema_version']==10 and x['architecture']=='free-official-first-price-structure-plus-9plus3-decision-v16'
+          assert manifest['schema_version']==10 and manifest['architecture']==x['architecture']
           assert x['formal_prediction_validation_status'] in allowed_nonpass
           assert x['network_history_collection_performed'] is False
           assert x['network_history_collection_disabled'] is True
@@ -59,6 +59,8 @@ jobs:
           assert x['models']['sector_research_rules']=='AVAILABLE_RULE_BASED'
           assert manifest['models']['entry_reference_rules']['oos_required'] is False
           assert manifest['models']['entry_reference_rules']['predictive_executable_price'] is False
+          assert manifest['models']['entry_reference_rules']['minimum_price_structure_bars']==60
+          assert manifest['models']['entry_reference_rules']['requires_complete_9plus3'] is False
           assert manifest['models']['sector_research_rules']['oos_required'] is False
           assert manifest['models']['sector_research_rules']['max_per_industry']==5
           assert manifest['models']['holding_rules']['oos_required_for_rule_output'] is False
@@ -74,15 +76,17 @@ jobs:
               'deterministic_holding_rules_oos_required':False,
               'holding_statistical_claims_oos_required':True,
               'rule_based_entry_reference_oos_required':False,
+              'entry_zone_requires_complete_9plus3':False,
+              'entry_zone_minimum_verified_bars':60,
               'sector_research_oos_required':False}
 
           src=Path('stock-lab/backtest-taiwan-v3.py').read_text(encoding='utf-8')
-          assert "ARCHITECTURE = 'free-official-first-rule-research-plus-predictive-gates-v15'" in src
+          assert "ARCHITECTURE = 'free-official-first-price-structure-plus-9plus3-decision-v16'" in src
           assert 'NETWORK_HISTORY_COLLECTION_DISABLED = True' in src
           for forbidden in ('holding-exit-validation-protocol.json','minimum_oos_episodes_total','minimum_oos_securities','TW-holding-exit-v4','urllib.request','www.twse.com.tw','www.tpex.org.tw','ThreadPoolExecutor','fetch_twse_month','fetch_tpex_month'):
               assert forbidden not in src,forbidden
           assert not Path('stock-lab/backtest-model.py').exists(),'obsolete horizon backtest-model.py must stay deleted'
-          print('PASS: predictive validation remains fail-closed; deterministic entry/sector/holding rules are not OOS-locked')
+          print('PASS: predictive validation remains fail-closed; deterministic price-zone/sector/holding rules are not OOS-locked')
           PY
       - name: Publish validation artifact
         uses: actions/upload-artifact@v4
