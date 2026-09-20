@@ -7,6 +7,8 @@ on:
       - '.github/workflows/stocklab-public-journey-e2e.yml'
       - 'stock-lab/index.html'
       - 'stock-lab/market-router.js'
+      - 'stock-lab/verified-history.js'
+      - 'stock-lab/entry-decision.js'
       - 'stock-lab/top10-gate.js'
       - 'stock-lab/position-input.js'
       - 'stock-lab/holding-model.js'
@@ -61,17 +63,19 @@ jobs:
           expected_model=$(grep -o 'holding-model.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_position=$(grep -o 'position-input.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_entry=$(grep -o 'market-router.js?v=[^"]*' stock-lab/index.html | head -1)
+          expected_history=$(grep -o 'verified-history.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_decision=$(grep -o 'entry-decision.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_sector=$(grep -o 'top10-gate.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_compliance=$(grep -o 'compliance-gate.js?v=[^"]*' stock-lab/index.html | head -1)
           expected_public=$(grep -o 'public-output.js?v=[^"]*' stock-lab/index.html | head -1)
-          test -n "$expected_model" && test -n "$expected_position" && test -n "$expected_entry" && test -n "$expected_decision" && test -n "$expected_sector" && test -n "$expected_compliance" && test -n "$expected_public"
+          test -n "$expected_model" && test -n "$expected_position" && test -n "$expected_entry" && test -n "$expected_history" && test -n "$expected_decision" && test -n "$expected_sector" && test -n "$expected_compliance" && test -n "$expected_public"
           ready=0
           for i in $(seq 1 48); do
             curl -fsSL --max-time 15 "${BASE_URL}?deploy=${RANDOM}" -o /tmp/live-index.html || true
             if grep -Fq "$expected_model" /tmp/live-index.html 2>/dev/null \
               && grep -Fq "$expected_position" /tmp/live-index.html 2>/dev/null \
               && grep -Fq "$expected_entry" /tmp/live-index.html 2>/dev/null \
+              && grep -Fq "$expected_history" /tmp/live-index.html 2>/dev/null \
               && grep -Fq "$expected_decision" /tmp/live-index.html 2>/dev/null \
               && grep -Fq "$expected_sector" /tmp/live-index.html 2>/dev/null \
               && grep -Fq "$expected_compliance" /tmp/live-index.html 2>/dev/null \
@@ -139,9 +143,10 @@ jobs:
             }, null, {timeout:15000});
             const entryText=await page.locator('#result').innerText();
             if(entryText.includes('9+3 分析無法完成')) throw new Error('9+3 entry journey failed:\n'+entryText);
-            for(const required of ['9+3 加權入場決策','決策信心指數','建議入場區間','資料覆蓋']) {
-              if(!entryText.includes(required)) throw new Error('Missing 9+3 entry output: '+required+'\n'+entryText);
+            for(const required of ['價格結構 Entry Zone','9+3 決策層','決策信心指數','資料覆蓋']) {
+              if(!entryText.includes(required)) throw new Error('Missing separated entry output: '+required+'\n'+entryText);
             }
+            if(!entryText.includes('第一入場區') && !entryText.includes('60')) throw new Error('Entry output must show either a numeric first zone or the 60-bar price-structure blocker:\n'+entryText);
             if(!entryText.includes('9+3 完整加權分數')&&!entryText.includes('已驗證部分方向分數')) throw new Error('Missing truthful 9+3 score label:\n'+entryText);
             console.log('PASS: single-stock 9+3 entry path shows weighted decision without forcing a fake price');
 
