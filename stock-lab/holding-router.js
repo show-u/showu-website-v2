@@ -20,7 +20,7 @@
     if(row.licence!=='OGDL-1.0'||row.provenance!=='observed')throw Error('市場事實授權／來源驗證未通過');
     const close=n(row.close),open=n(row.open),high=n(row.high),low=n(row.low),date=String(row.date||'').trim();
     if(!(close>0)||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error(`${market} 收盤價／交易日格式未通過`);
-    return{close,open,high,low,date,source:`${market} OGDL 授權市場事實｜${row.source_id||'source-id unavailable'}`,licence:'OGDL-1.0'};
+    return{close,open,high,low,date,volume:n(row.volume),trade_value:n(row.trade_value),source:`${market} OGDL 授權市場事實｜${row.source_id||'source-id unavailable'}`,licence:'OGDL-1.0'};
   }
 
   async function legalBars(code,market,snap){
@@ -73,9 +73,15 @@
   }
 
   function render(code,name,market,p,snap,res,ctx,barSource,session){
-    const d=res.derived||{},q=res.decision||{},profit=Number(d.pnl),pct=Number(d.pnlPct),trigger=q.riskTrigger,pressure=q.pressureReference;
+    const d=res.derived||{},q=res.decision||{},profit=Number(d.pnl),pct=Number(d.pnlPct),trigger=q.riskTrigger,pressure=q.pressureReference,w=res.ninePlus3||{};
     const triggerText=trigger!=null?money(trigger):'—',pressureText=pressure!=null?money(pressure):'—';
-    box.innerHTML=positionFacts(code,name,p)+`<div class=source-note><b>目前持倉判斷：${esc(q.state)}</b><div class=mini>${esc(q.reason)}</div><div style="margin-top:6px"><b>下一步：</b>${esc(q.nextAction)}</div><div style="margin-top:6px"><b>出場條件：</b>${esc(q.exitAction||'—')}</div><div class=mini style="margin-top:4px"><b>判斷依據：</b>${esc(q.riskTriggerBasis||'—')}；壓力依據：${esc(q.pressureBasis||'—')}</div></div><div class=source-note style="margin-top:8px"><b>建議出場／減碼條件</b><div style="margin-top:6px"><b>出場檢視：</b>${esc(q.exitCondition||'無法判定')}</div><div style="margin-top:6px"><b>減碼／停利檢視：</b>${esc(q.reduceCondition||'無法判定')}</div><div class=mini style="margin-top:6px">數字價格只在已取得足夠且合法驗證的價格結構時顯示；不足時明確說明缺少什麼，不用假價格補齊。</div></div><div class=sourcegrid style="margin-top:8px"><div class=sourceitem><b>最新已驗證收盤</b>${money(snap.close)}${snap.date?`｜${esc(snap.date)}`:''}<br><span class=mini>${esc(snap.source)}｜非盤中即時價</span></div><div class=sourceitem><b>依收盤估算損益</b>${profit>=0?'+':''}${money(profit)}｜${pct>=0?'+':''}${Number.isFinite(pct)?pct.toFixed(2):'—'}%</div><div class=sourceitem><b>建議出場觸發價</b>${triggerText}<br><span class=mini>${esc(q.riskTriggerMeaning)}</span></div><div class=sourceitem><b>停利／壓力參考</b>${pressureText}<br><span class=mini>${esc(q.pressureMeaning)}</span></div><div class=sourceitem><b>可用價格資料</b>${esc(d.historyLevel||'—')}｜${money(d.availableBars)} 根<br><span class=mini>${esc(barSource)}</span></div><div class=sourceitem><b>台股特殊狀態</b>${esc(ctx.riskLabel)}<br><span class=mini>${ctx.corporateKnown?'公司行動資料層已取得':'公司行動狀態未完整驗證'}</span></div></div><div class=source-note><b>執行時間</b><div class=mini>${esc(session)}。本頁用完成交易日資料形成條件；沒有合法即時行情時，不宣稱知道盤中現在價格。</div></div><div class=disclaimer><b>這不是 OOS 鎖定模型</b>持倉管理採已驗證事實＋確定性規則。OOS 尚未通過只代表不能宣稱勝率、成功率、機率或校準信心；不再把持股分析整頁鎖住。資料不足時不捏造賣價，價格型觸發線會顯示「—」，但仍提供可執行的下一步與風險條件。</div>`;
+    const missing=(w.missing||[]).map(x=>x.label).join('、');
+    box.innerHTML=positionFacts(code,name,p)+
+      `<div class=source-note><b>目前持倉判斷：${esc(q.state)}</b><div class=mini>${esc(q.reason)}</div><div style="margin-top:6px"><b>下一步：</b>${esc(q.nextAction)}</div><div style="margin-top:6px"><b>出場條件：</b>${esc(q.exitAction||'—')}</div></div>`+
+      `<h3>9+3 加權出場決策</h3><div class=sourcegrid><div class=sourceitem><b>9+3 加權分數</b>${q.decisionScore??'—'}/100<br><span class=mini>偏高代表已驗證證據較支持續抱；不是上漲機率</span></div><div class=sourceitem><b>出場決策信心指數</b>${q.decisionConfidenceIndex??'—'}/100<br><span class=mini>${esc(q.confidenceMeaning||'資料不足')}</span></div><div class=sourceitem><b>9+3 資料覆蓋</b>${w.coveragePct??0}%<br><span class=mini>${missing?'未驗證：'+esc(missing):'9+3 全部通過驗證'}</span></div><div class=sourceitem><b>建議出場觸發價</b>${triggerText}<br><span class=mini>${esc(q.riskTriggerMeaning)}</span></div></div>`+
+      `<div class=source-note style="margin-top:8px"><b>建議出場／減碼條件</b><div style="margin-top:6px"><b>出場檢視：</b>${esc(q.exitCondition||'無法判定')}</div><div style="margin-top:6px"><b>減碼／停利檢視：</b>${esc(q.reduceCondition||'無法判定')}</div><div class=mini style="margin-top:6px">出場觸發價必須由 9+3 全部驗證後，再結合合法價格結構形成；不再以「上一完成交易日低點」代替。</div></div>`+
+      `<div class=sourcegrid style="margin-top:8px"><div class=sourceitem><b>最新已驗證收盤</b>${money(snap.close)}${snap.date?`｜${esc(snap.date)}`:''}<br><span class=mini>${esc(snap.source)}｜非盤中即時價</span></div><div class=sourceitem><b>依收盤估算損益</b>${profit>=0?'+':''}${money(profit)}｜${pct>=0?'+':''}${Number.isFinite(pct)?pct.toFixed(2):'—'}%</div><div class=sourceitem><b>停利／壓力參考</b>${pressureText}<br><span class=mini>${esc(q.pressureMeaning)}</span></div><div class=sourceitem><b>可用價格資料</b>${esc(d.historyLevel||'—')}｜${money(d.availableBars)} 根<br><span class=mini>${esc(barSource)}</span></div><div class=sourceitem><b>台股特殊狀態</b>${esc(ctx.riskLabel)}<br><span class=mini>${ctx.corporateKnown?'公司行動資料層已取得':'公司行動狀態未完整驗證'}</span></div><div class=sourceitem><b>價格形成依據</b>${esc(q.riskTriggerBasis||'—')}</div></div>`+
+      `<div class=source-note><b>執行時間</b><div class=mini>${esc(session)}。本頁用完成交易日資料形成條件；沒有合法即時行情時，不宣稱知道盤中現在價格。</div></div><div class=disclaimer><b>信心指數不是勝率</b>StockLab 的「決策信心指數」只由 9+3 已驗證資料覆蓋率與方向一致性計算，不代表未來上漲／下跌機率。若 9+3 不完整或合法歷史不足，數字出場價維持「—」，不回退到前日低點、固定百分比或 AI 猜值。</div>`;
   }
 
   btn.onclick=async()=>{stage('clicked');load.classList.remove('hidden');try{
@@ -84,9 +90,16 @@
     const u=await resolver.loadUniverse(),meta=u.find(x=>x.code===code)||{},name=meta.name||'',market=meta.market;if(!market)throw Error('股票市場別未能由合法名稱索引驗證');stage('market-resolved');
     const snap=await loadSnapshot(code,market);stage('snapshot-loaded');
     const [hb,ctx]=await Promise.all([legalBars(code,market,snap),context(code,market)]);stage('enrichments-finished');
-    const model=window.StockLabHolding;if(!model?.analyze)throw Error('持倉規則模型尚未載入');
-    const res=model.analyze(p,hb.bars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,oosStatus:window.StockLabDataStatus?.validation?.models?.holding_exit?.status||'UNVALIDATED'});stage('model-finished');
+    const nine=window.StockLabNinePlusThreeResearch,decision=window.StockLabEntryDecision;
+    if(!nine?.research||!nine?.factors||!nine?.history||!nine?.makeSections||!nine?.contexts||!decision?.weighted)throw Error('9+3 共用決策層尚未載入');
+    const [fx,R,H]=await Promise.all([nine.factors(code,market),nine.research(),nine.history(code,market,60)]);
+    const rr={ticker:code,name,market,date:snap.date,open:snap.open,high:snap.high,low:snap.low,close:snap.close,volume:snap.volume,trade_value:snap.trade_value};
+    const sections=nine.makeSections(rr,fx,R,H),family=window.StockLabTaiwan?.sectorFamily?.(fx.stock?.industry)||'general',contexts=nine.contexts(family);
+    const weighted=decision.weighted(sections,contexts,'exit');
+    const model=window.StockLabHolding;if(!model?.analyze)throw Error('持倉 9+3 模型尚未載入');
+    const modelBars=Array.isArray(H.bars)&&H.bars.length?H.bars:hb.bars;
+    const res=model.analyze(p,modelBars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,ninePlus3:weighted,oosStatus:window.StockLabDataStatus?.validation?.models?.holding_exit?.status||'UNVALIDATED'});stage('model-finished');
     const session=await sessionInfo(market,snap.date||res.dataDate);stage('session-finished');
-    render(code,name,market,p,snap,res,ctx,hb.source,session);stage('rendered');
+    render(code,name,market,p,snap,res,ctx,H.bars?'licensed-history-9+3':hb.source,session);stage('rendered');
   }catch(e){stage('error');box.innerHTML=`<h3 class=bad>持倉分析失敗</h3><p>${esc(e.message||e)}</p><div class=mini>缺少的資料維持缺少，不以假資料補值。</div>`}finally{load.classList.add('hidden')}};
 })();
