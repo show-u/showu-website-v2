@@ -76,62 +76,87 @@
   function tickRound(p,mode='nearest'){const f=window.StockLabTaiwan?.roundTick;return typeof f==='function'?f(p,mode):p}
   function entryPlan(bars,latestClose,d){
     const r=Array.isArray(bars)?bars:[],cl=n(latestClose);
-    if(!(cl>0)||r.length<60)return{available:false,reason:'價格結構 Gate 未通過：合法已驗證歷史 OHLC 未達 60 根；9+3 缺項不再是阻止 Entry Zone 的原因'};
+    if(!(cl>0)||r.length<60)return{available:false,reason:'價格結構 Gate 未通過：合法已驗證歷史 OHLC 未達 60 根；不以固定百分比或舊短中長模型補值'};
     const closes=r.map(x=>n(x.c)),ma=p=>avg(closes.slice(-p)),m10=ma(10),m20=ma(20),m60=ma(60),a=atr14(r);
     if(![m10,m20,m60,a].every(Number.isFinite))return{available:false,reason:'價格結構 Gate 未通過：MA10／MA20／MA60／ATR14 計算資料不足'};
-    const lows20=r.slice(-20).map(x=>n(x.l)),highs20=r.slice(-20).map(x=>n(x.h)),lows60=r.slice(-60).map(x=>n(x.l));
-    const q20_35=qtile(lows20,.35),q60_25=qtile(lows60,.25),r20_80=qtile(highs20,.80);
-    if(![q20_35,q60_25,r20_80].every(Number.isFinite))return{available:false,reason:'價格結構 Gate 未通過：支撐／壓力分位數不足'};
-    const firstCenter=Math.min(cl,Math.max(q20_35,Math.min(m10,cl),Math.min(m20,cl)));
-    const firstHalf=a*.18;
-    const firstLow=tickRound(Math.max(0.01,firstCenter-firstHalf),'up');
-    const firstHigh=tickRound(Math.min(cl,firstCenter+firstHalf),'down');
-    const secondCenter=Math.min(firstCenter,Math.max(q60_25,Math.min(m60,firstCenter)));
-    const secondHalf=a*.22;
-    const secondLow=tickRound(Math.max(0.01,secondCenter-secondHalf),'up');
-    const secondHigh=tickRound(Math.min(firstLow,secondCenter+secondHalf),'down');
-    const noChase=tickRound(Math.max(firstHigh,m20+2*a,r20_80),'up');
+    const lows20=r.slice(-20).map(x=>n(x.l)),lows60=r.slice(-60).map(x=>n(x.l));
+    const prior20=r.length>=21?r.slice(-21,-1):r.slice(-20),priorHighs=prior20.map(x=>n(x.h));
+    const q20_35=qtile(lows20,.35),q60_25=qtile(lows60,.25),priorResistance=Math.max(...priorHighs.filter(Number.isFinite));
+    if(![q20_35,q60_25,priorResistance].every(Number.isFinite))return{available:false,reason:'價格結構 Gate 未通過：支撐／壓力資料不足'};
+
+    // Route A: pullback entry. This is a reachable demand zone, not a forecast that price must fall here.
+    const pullCenter=Math.min(cl,Math.max(q20_35,Math.min(m10,cl),Math.min(m20,cl)));
+    const pullLow=tickRound(Math.max(0.01,pullCenter-a*.18),'up');
+    const pullHigh=tickRound(Math.min(cl,pullCenter+a*.18),'down');
+    if(!(pullLow>0)||!(pullHigh>=pullLow))return{available:false,reason:'台股升降單位處理後拉回入場區無效'};
+
+    // Route B: breakout entry. A stock that never revisits the pullback zone still has an actionable path.
+    const breakoutTrigger=tickRound(priorResistance+a*.02,'up');
+    const noChase=tickRound(Math.max(cl,breakoutTrigger)+a*.50,'up');
+    const breakoutHigh=tickRound(Math.min(noChase,breakoutTrigger+a*.35),'down');
+    const breakout={trigger:breakoutTrigger,low:breakoutTrigger,high:Math.max(breakoutTrigger,breakoutHigh)};
+
+    const vols=prior20.map(x=>n(x.v)).filter(x=>Number.isFinite(x)&&x>0),lastVol=n(r.at(-1)?.v),vAvg=avg(vols),volumeRatio=vAvg&&lastVol?lastVol/vAvg:null;
+    const breakoutConfirmed=cl>priorResistance&&volumeRatio!=null&&volumeRatio>=1.20;
+
+    // Structural invalidation is risk control, not another buy zone.
     const invalid=tickRound(Math.max(0.01,Math.min(m60,q60_25)-a*.35),'down');
-    if(!(firstLow>0)||!(firstHigh>=firstLow))return{available:false,reason:'台股升降單位處理後第一入場區無效'};
-    const secondAvailable=secondLow>0&&secondHigh>=secondLow&&secondHigh<firstLow;
-    const complete=d?.complete===true;
-    const score=n(d?.score);
-    let action='價格區可用；9+3 決策資料不足，等待更多驗證後再決定是否執行';
+    const complete=d?.complete===true,score=n(d?.score);
+    let action='價格路徑可用；9+3 尚未完整，只顯示條件，不把缺項當中性';
     if(complete&&score!=null){
-      if(score>=65)action=cl<=firstHigh?'可分批建立部位':'等待回檔至第一入場區，不追價';
-      else if(score>=50)action='條件中性偏多；只考慮第一入場區小部位，等待更多確認';
-      else action='9+3 偏弱；目前不建立新部位，即使價格進入技術區也先等待';
+      if(score<50)action='9+3 偏弱：目前不建立新部位';
+      else if(score<65)action=cl<=pullHigh?'只考慮拉回區小部位；不追突破':'等待拉回區，不追價';
+      else if(cl>=pullLow&&cl<=pullHigh)action='目標交易日優先採拉回入場';
+      else if(breakoutConfirmed)action='已完成放量突破：目標交易日只在突破帶內評估，不超過不追價上限';
+      else action='等待兩種條件之一：拉回進入需求區，或放量突破觸發；中間區域不追價';
     }
     return{
       available:true,
-      first:{low:firstLow,high:firstHigh},
-      second:secondAvailable?{low:secondLow,high:secondHigh}:null,
+      pullback:{low:pullLow,high:pullHigh},
+      breakout,
+      breakoutConfirmed,
+      volumeRatio,
       noChase,
       invalid,
       atr:a,
       action,
       decisionComplete:complete,
-      score:score,
+      score,
       confidenceIndex:d?.confidenceIndex??null,
-      model:'TW-price-structure-entry-zone-v2',
-      basis:'Entry Zone 只由合法已驗證價格結構形成：MA10／MA20／MA60、20日與60日低價分布、ATR14、20日壓力；9+3 只決定現在買／等回檔／不買，不再決定價格區能不能存在'
+      model:'TW-two-route-entry-v1',
+      basis:'入場只保留兩條可執行路徑：拉回需求區（MA10／MA20、20日低價分布、ATR14）或突破觸發（前20日壓力＋成交量確認）。若價格不回檔，不再用買不到的深層價格當唯一答案；若未突破，也不在中間價追單。'
     };
   }
   function exitPlan(bars,latestClose,averageCost,d){
     const r=Array.isArray(bars)?bars:[],cl=n(latestClose),cost=n(averageCost);
-    if(!d?.complete)return{available:false,reason:'9+3 尚未全部驗證；不再用上一交易日低點代替出場建議'};
-    if(!(cl>0)||r.length<60)return{available:false,reason:'合法已驗證歷史 OHLC 未達 60 根；不以單日低點假造 9+3 出場價'};
-    const closes=r.map(x=>n(x.c)),ma=p=>avg(closes.slice(-p)),m5=ma(5),m20=ma(20),a=atr14(r);
-    if(![m5,m20,a].every(Number.isFinite))return{available:false,reason:'出場價格結構計算資料不足'};
+    if(!(cl>0)||r.length<60)return{available:false,reason:'合法已驗證歷史 OHLC 未達 60 根；不以單日低點、固定百分比或 AI 猜值補出場價'};
+    const closes=r.map(x=>n(x.c)),ma=p=>avg(closes.slice(-p)),m5=ma(5),m20=ma(20),m60=ma(60),a=atr14(r);
+    if(![m5,m20,m60,a].every(Number.isFinite))return{available:false,reason:'出場價格結構計算資料不足'};
     const lows20=r.slice(-20).map(x=>n(x.l)),highs20=r.slice(-20).map(x=>n(x.h)),floor=qtile(lows20,.20),pressure=qtile(highs20,.80);
-    const hold=Math.max(0,Math.min(1,(d.score??50)/100));
-    // Better 9+3 => allow more room; weaker 9+3 => tighten toward MA5/current close.
-    const structure=(1-hold)*m5+hold*m20;
-    const volatilityLine=cl-a*(0.35+0.90*hold);
-    let trigger=Math.max(floor,Math.min(cl,Math.max(structure,volatilityLine)));
-    // A profitable position may not use cost as a hidden inferred fact; only the user-supplied cost can be shown as a separate protection reference.
-    trigger=tickRound(trigger,'down');
-    return{available:true,trigger,pressure:tickRound(pressure,'up'),costReference:cost>0?tickRound(cost):null,score:d.score,confidenceIndex:d.confidenceIndex,model:'TW-9plus3-exit-price-v1',basis:'9+3 加權結果決定風險線鬆緊；觸發價由 MA5/MA20、ATR14 與20日低價結構共同形成，不使用單一前日低點'};
+    if(![floor,pressure].every(Number.isFinite))return{available:false,reason:'出場支撐／壓力分布不足'};
+    const complete=d?.complete===true,score=n(d?.score);
+    // Price risk line exists independently from 9+3 completeness. 9+3 may tighten/loosen it only when fully verified.
+    let atrMult=.80,mode='結構風險線（9+3 尚未完整）';
+    if(complete&&score!=null){
+      if(score>=65){atrMult=1.15;mode='9+3 偏強：較寬風險線'}
+      else if(score>=45){atrMult=.80;mode='9+3 混合：標準風險線'}
+      else{atrMult=.45;mode='9+3 偏弱：收緊風險線'}
+    }
+    const trendLine=complete&&score!=null&&score<45?Math.max(m5,m20):m20;
+    const volatilityLine=cl-a*atrMult;
+    const trigger=tickRound(Math.max(floor,Math.min(cl,Math.max(trendLine,volatilityLine))),'down');
+    return{
+      available:true,
+      trigger,
+      pressure:tickRound(pressure,'up'),
+      costReference:cost>0?tickRound(cost):null,
+      score,
+      confidenceIndex:d?.confidenceIndex??null,
+      complete,
+      mode,
+      model:'TW-structure-plus-9plus3-exit-v2',
+      basis:(complete?'9+3 已完整，':'9+3 未完整，不補值；')+'數字風險線仍只由合法價格結構形成；9+3 完整時才調整風險線鬆緊。'
+    };
   }
   function factorList(){return SECTIONS.map(([key,label])=>({key,label}))}
   function contextList(){return CONTEXTS.map(([key,label])=>({key,label}))}
