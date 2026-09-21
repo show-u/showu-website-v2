@@ -130,7 +130,7 @@ jobs:
               if(!holdFirst.includes(required)) throw new Error('Missing independent holding output: '+required+'\n'+holdFirst);
             }
             for(const required of ['9+3 證據層','決策信心指數']) if(!holdFirst.includes(required)) throw new Error('Missing weighted holding decision: '+required+'\n'+holdFirst);
-            if(holdFirst.includes('9+3 尚未完整') && !/建議出場觸發價\s*—/.test(holdFirst)) throw new Error('Incomplete 9+3 emitted a fake numeric exit trigger:\n'+holdFirst);
+            if(holdFirst.includes('不足價格模型最低 60 根') && !/結構風險線\s*—/.test(holdFirst)) throw new Error('Insufficient legal history emitted a fake structural risk line:\n'+holdFirst);
             console.log('PASS: independent holding path preserves truth and 9+3 weighting');
 
             // Single-stock entry reference journey.
@@ -139,7 +139,7 @@ jobs:
             await page.locator('#analyzeBtn').click({timeout:10000});
             await page.waitForFunction(() => {
               const t=document.querySelector('#result')?.innerText||'';
-              return t.includes('9+3 加權入場決策') || t.includes('9+3 分析無法完成');
+              return t.includes('今日／下一交易日入場判斷') || t.includes('9+3 分析無法完成');
             }, null, {timeout:15000});
             const entryText=await page.locator('#result').innerText();
             if(entryText.includes('9+3 分析無法完成')) throw new Error('9+3 entry journey failed:\n'+entryText);
