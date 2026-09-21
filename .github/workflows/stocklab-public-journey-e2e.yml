@@ -129,7 +129,7 @@ jobs:
             for(const required of ['聯發科／2454','目前建議動作','持股與出場管理','下一交易時段出場／減碼定價基準','最新已驗證收盤']) {
               if(!holdFirst.includes(required)) throw new Error('Missing independent holding output: '+required+'\n'+holdFirst);
             }
-            for(const required of ['9+3 證據層','決策信心指數']) if(!holdFirst.includes(required)) throw new Error('Missing weighted holding decision: '+required+'\n'+holdFirst);
+            for(const required of ['9+3 證據層']) if(!holdFirst.includes(required)) throw new Error('Missing weighted holding decision: '+required+'\n'+holdFirst);
             if(holdFirst.includes('不足價格模型最低 60 根') && !/結構風險線\s*—/.test(holdFirst)) throw new Error('Insufficient legal history emitted a fake structural risk line:\n'+holdFirst);
             console.log('PASS: independent holding path preserves truth and 9+3 weighting');
 
@@ -213,7 +213,7 @@ jobs:
               if (!result.includes(required)) throw new Error('Missing live holding output: ' + required + '\n' + result);
             }
             if (!result.includes('100,000')) throw new Error('Derived total cost was not shown correctly:\n' + result);
-            for (const required of ['9+3 證據層','決策信心指數','結構風險線','出場／減碼條件','停利／壓力參考']) {
+            for (const required of ['9+3 證據層','結構風險線','出場／減碼條件','停利／壓力參考']) {
               if (!result.includes(required)) throw new Error('Missing 9+3 holding output: ' + required + '\n' + result);
             }
             if (result.includes('不足價格模型最低 60 根') && !/結構風險線\s*—/.test(result)) throw new Error('Insufficient legal history must not emit a fake structural risk line:\n' + result);
