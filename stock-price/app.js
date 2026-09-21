@@ -18,7 +18,15 @@ function engine(b){const close=b.at(-1).c,a=atr(b),tol=Math.max((a||close*.02)*.
  const resist=cluster([maxHigh(b,20),maxHigh(b,60),maxHigh(b,120),...swings(b,'high'),...nodes].filter(x=>x&&x>=close*.995),tol).filter(c=>c.mid>=close*.995).sort((x,y)=>x.mid-y.mid);
  const s1=supports[0],s2=supports[1],r1=resist[0],r2=resist[1],def=s1?Math.max(.01,s1.min-(a||0)*.35):null,inv=s2?Math.max(.01,s2.min-(a||0)*.45):(s1?Math.max(.01,s1.min-(a||0)*1.1):null);
  const decision=s1&&close<=s1.max+tol*.25?'接近買入區':r1&&close>=r1.min-tol*.2?'接近壓力，不追價':'等待回檔';
- return{close,a,ma20:ma(b,20),ma60:ma(b,60),ma120:ma(b,120),decision,prices:{firstEntry:band(s1,a),secondEntry:band(s2,a),noChase:r1?fmt(r1.min):null,firstExit:band(r1,a),secondExit:band(r2,a),defense:def?fmt(def):null,invalidation:inv?fmt(inv):null}}}
+ const hist=Math.min(25,10+Math.max(0,b.length-60)/60*15);
+ const ev=Math.min(35,((s1?.count||0)+(r1?.count||0))*8.75);
+ const tightOne=c=>!c||!a?0:Math.max(0,1-Math.min(1,(c.max-c.min)/(a*1.5)));
+ const tight=25*((tightOne(s1)+tightOne(r1))/2);
+ const volPct=a&&close?a/close:null;
+ const vol=volPct==null?0:volPct<=.02?15:volPct<=.035?12:volPct<=.05?8:4;
+ const confidence=Math.round(Math.max(0,Math.min(100,hist+ev+tight+vol)));
+ const confidenceLabel=confidence>=80?'高':confidence>=65?'中高':confidence>=50?'中':'低';
+ return{close,a,ma20:ma(b,20),ma60:ma(b,60),ma120:ma(b,120),decision,confidence,confidenceLabel,prices:{firstEntry:band(s1,a),secondEntry:band(s2,a),noChase:r1?fmt(r1.min):null,firstExit:band(r1,a),secondExit:band(r2,a),defense:def?fmt(def):null,invalidation:inv?fmt(inv):null}}}
 async function get(url){
   try{
     const r=await fetch(url,{cache:'no-store'});
@@ -70,6 +78,7 @@ function render(s,b,e){
   d.className='decision '+(e.decision.includes('買入')?'good':e.decision.includes('壓力')?'bad':'wait');
 
   const p=e.prices;
+  $('#confidence').textContent=`${e.confidence} / 100（${e.confidenceLabel}）`;
   $('#firstEntry').textContent=p.firstEntry||'尚未成立';
   $('#secondEntry').textContent=p.secondEntry||'尚未成立';
   $('#firstExit').textContent=p.firstExit||'尚未成立';
