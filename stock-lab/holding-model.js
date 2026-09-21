@@ -95,7 +95,7 @@
     return{
       model:'TW-holding-9plus3-v6',validation:'9PLUS3_WEIGHTED_RULE_BASED',dataDate,latestClose:L.c,
       position:p,
-      derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel:r.length>=60?`${r.length} 根合法已驗證 OHLC`:`${r.length} 根；不足價格模型最低 60 根`,support:trigger,resistance:pressure,tradingBarsSinceBuy:since.length,maxGainPct,maxDrawdownPct,sinceEntryHigh:sinceHigh,sinceEntryLow:sinceLow},
+      derived:{cost,marketValue,pnl,pnlPct,availableBars:r.length,historyLevel:r.length>=60?`${r.length} 根合法已驗證 OHLC｜結構風險線可計算`:`${r.length} 根合法已驗證 OHLC｜結構風險線資料不足，但持股分析照常`,support:trigger,resistance:pressure,tradingBarsSinceBuy:since.length,maxGainPct,maxDrawdownPct,sinceEntryHigh:sinceHigh,sinceEntryLow:sinceLow},
       decision:{
         state,reason,nextAction,executionReference,breakevenReference,riskTrigger:trigger,pressureReference:pressure,
         executionReferenceMeaning:'最新合法已驗證完成交易日收盤，只作下一交易時段委託定價基準；不是盤中即時價、預測價或保證成交價',
