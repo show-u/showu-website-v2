@@ -94,7 +94,13 @@ jobs:
           assert 'id="holdTotalCost"' in idx
           assert 'if(!(tc>0)){tc=a*sh' in pos and 'if(!(a>0)){a=tc/sh' in pos
 
-          # 6. The obsolete OOS-locked holding monitor must stay deleted and must never be loaded indirectly.
+          # 6. Obsolete horizon/backtest artifacts and the old OOS-locked holding monitor must stay deleted.
+          for p in ('stock-lab/backtest-taiwan-v3.py','stock-lab/backtest-result.json','.github/workflows/stocklab-backtest.yml'):
+              assert not Path(p).exists(), f'obsolete horizon/backtest artifact returned: {p}'
+          assert Path('stock-lab/model-validation-gate.py').exists(), 'model validation gate missing'
+          assert Path('.github/workflows/stocklab-model-validation.yml').exists(), 'model validation workflow missing'
+
+          # 6b. The obsolete OOS-locked holding monitor must stay deleted and must never be loaded indirectly.
           assert not Path('stock-lab/holding-usable.js').exists(), 'obsolete holding-usable.js returned'
           assert 'holding-usable.js' not in idx+health, 'obsolete holding override returned'
 
@@ -147,5 +153,5 @@ jobs:
           assert 'no OOS lock' in holding
           assert 'actionable deterministic holding rules' in holding
 
-          print('StockLab no-bypass truth gate passed: obsolete holding lock absent; verified rule-based holding path allowed')
+          print('StockLab no-bypass truth gate passed: obsolete horizon/backtest and holding locks absent; verified rule-based holding path allowed')
           PY
