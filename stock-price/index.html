@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>台股買賣價格結構</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<main class="wrap">
+<section class="hero">
+<div class="eyebrow">Price Structure Engine</div>
+<h1>台股買賣價格結構</h1>
+<p>輸入上市股票代號或名稱。只用已取得的交易資料計算；資料不足就不補值。</p>
+<form id="form" class="search"><input id="query" value="2330" placeholder="例如 2330 或 台積電" inputmode="search"><button id="submit">開始分析</button></form>
+<div class="examples"><button data-q="2330">2330 台積電</button><button data-q="2454">2454 聯發科</button></div>
+</section>
+<section id="loading" class="card loading">正在取得官方交易資料並計算價格結構…</section>
+<section id="error" class="card error" hidden></section>
+<div id="result" hidden>
+<section class="summary card"><div><div id="market" class="muted"></div><h2 id="name"></h2><div id="latest" class="price"></div><div id="date" class="muted"></div></div><div id="decision" class="decision wait"></div></section>
+<section class="card"><div class="sectionTitle">買賣價格</div><div id="metrics" class="grid"></div></section>
+<section class="card"><div class="sectionTitle">5 項 Risk Check</div><div id="risks" class="riskGrid"></div></section>
+<section class="card details"><details><summary>查看價格形成依據</summary><ul id="reasons"></ul><div id="audit" class="audit"></div></details></section>
+</div>
+<footer>研究工具，不構成投資建議。未驗證資料不參與價格計算。</footer>
+</main>
+<script src="./app.js"></script>
+</body></html>
