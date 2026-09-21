@@ -113,7 +113,7 @@ jobs:
             console.log('stage: page-loaded');
 
             // Existing-position analysis is a first-class independent path.
-            // It must work even when predictive/OOS entry gates are not ready.
+            // It must work independently of separate statistical prediction validation.
             await page.locator('#holdBtn').click({timeout:10000});
             await page.locator('#holdTicker').fill('2454');
             await page.locator('#holdAvgCost').fill('1000');
@@ -200,7 +200,7 @@ jobs:
               const box = document.querySelector('#holdResult');
               if (!box) return false;
               const t = box.innerText || '';
-              return t.includes('目前持倉判斷') || t.includes('持倉分析失敗');
+              return t.includes('目前建議動作') || t.includes('持倉分析失敗');
             }, null, { timeout: 15000 });
             console.log('stage: result-rendered');
 
