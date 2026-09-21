@@ -12,7 +12,7 @@
   const withTimeout=(promise,ms,label)=>Promise.race([Promise.resolve(promise),new Promise((_,reject)=>setTimeout(()=>reject(Error(label)),ms))]);
   const stage=name=>{window.StockLabHoldingRuntime={stage:name,at:Date.now()};console.info('StockLabHoldingStage:'+name)};
 
-  function positionFacts(code,name,p){return `<div class=toprow><div><h2>${esc(name?`${name}／${code}`:code)}</h2><div class=muted>已持有｜持有／減碼／出場分析</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>目前部位總成本</b>${money(p.totalCost)}<br><span class=mini>採你的輸入，或由「均價 × 股數」確定性換算；兩者同填時必須一致</span></div><div class=sourceitem><b>首次買入時間</b>${esc(p.buyTime)}</div></div>`}
+  function positionFacts(code,name,p){return `<div class=toprow><div><h2>${esc(name?`${name}／${code}`:code)}</h2><div class=muted>已持有｜持有／減碼／出場分析</div></div></div><div class=sourcegrid style="margin-top:10px"><div class=sourceitem><b>成本均價</b>${money(p.averageCost)}</div><div class=sourceitem><b>目前持有股數</b>${money(p.shares)}</div><div class=sourceitem><b>目前部位總成本</b>${money(p.totalCost)}<br><span class=mini>固定由「成本均價 × 目前持有股數」確定性計算；不是另一個使用者輸入欄位</span></div><div class=sourceitem><b>首次買入時間</b>${esc(p.buyTime)}</div></div>`}
 
   async function loadSnapshot(code,market){
     const src=window.StockLabSameOrigin;if(!src?.latest)throw Error('合法市場事實介面尚未初始化');
