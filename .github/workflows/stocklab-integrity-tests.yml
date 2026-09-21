@@ -161,7 +161,7 @@ jobs:
 
           # E. The stale OOS holding lock and all of its runtime artifacts are permanently absent.
           obsolete=[
-            'stock-lab/model-validation-gate.py',
+            'stock-lab/backtest-taiwan-v3.py',
             'stock-lab/backtest-result.json',
             '.github/workflows/stocklab-backtest.yml',
             'stock-lab/holding-usable.js',
