@@ -19,9 +19,46 @@ function engine(b){const close=b.at(-1).c,a=atr(b),tol=Math.max((a||close*.02)*.
  const s1=supports[0],s2=supports[1],r1=resist[0],r2=resist[1],def=s1?Math.max(.01,s1.min-(a||0)*.35):null,inv=s2?Math.max(.01,s2.min-(a||0)*.45):(s1?Math.max(.01,s1.min-(a||0)*1.1):null);
  const decision=s1&&close<=s1.max+tol*.25?'接近買入區':r1&&close>=r1.min-tol*.2?'接近壓力，不追價':'等待回檔';
  return{close,a,ma20:ma(b,20),ma60:ma(b,60),ma120:ma(b,120),decision,prices:{firstEntry:band(s1,a),secondEntry:band(s2,a),noChase:r1?fmt(r1.min):null,firstExit:band(r1,a),secondExit:band(r2,a),defense:def?fmt(def):null,invalidation:inv?fmt(inv):null}}}
-async function get(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('官方資料連線失敗');return r.json()}
-async function resolve(q){const list=await get('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL'),s=String(q).trim();let row=list.find(x=>String(x.Code)===s);if(!row)row=list.find(x=>String(x.Name||'').includes(s));if(!row)throw Error('第一版只支援 TWSE 上市股票；找不到此股票');return{code:String(row.Code),name:String(row.Name||row.Code),market:'TWSE'}}
-async function history(code){const now=new Date(),rows=[];for(let i=0;i<14;i++){const d=addMonths(now,-i),j=await get(`https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${ymd(d)}&stockNo=${encodeURIComponent(code)}`);for(const r of (j.data||[])){const o=num(r[3]),h=num(r[4]),l=num(r[5]),c=num(r[6]),v=num(r[1]);if([o,h,l,c].every(Number.isFinite)&&h>=Math.max(o,l,c)&&l<=Math.min(o,h,c))rows.push({date:rocToIso(r[0]),o,h,l,c,v:Number.isFinite(v)?v:null})}await new Promise(res=>setTimeout(res,80))}const m=new Map(rows.map(x=>[x.date,x])),out=[...m.values()].sort((a,b)=>a.date.localeCompare(b.date));if(out.length<60)throw Error(`合法 OHLC 不足：${out.length}/60 根`);return out.slice(-250)}
+async function get(url){
+  try{
+    const r=await fetch(url,{cache:'no-store'});
+    if(!r.ok) throw Error('HTTP '+r.status);
+    return await r.json();
+  }catch(e){
+    throw Error('無法取得 TWSE 官方資料，請稍後再試');
+  }
+}
+async function resolve(q){
+  const s=String(q).trim();
+  if(/^\d{4,6}$/.test(s)) return {code:s,name:s,market:'TWSE'};
+  const list=await get('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
+  const row=list.find(x=>String(x.Name||'').includes(s));
+  if(!row) throw Error('找不到此上市股票，請改輸入股票代號，例如 2330');
+  return {code:String(row.Code),name:String(row.Name||row.Code),market:'TWSE'};
+}
+async function history(code){
+  const now=new Date(),rows=[];
+  let stockName=code;
+  for(let i=0;i<8;i++){
+    const d=addMonths(now,-i);
+    const url=`https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date=${ymd(d)}&stockNo=${encodeURIComponent(code)}`;
+    const j=await get(url);
+    if(j?.stat && !String(j.stat).includes('OK') && !(j.data||[]).length) throw Error('TWSE 暫時無法提供這個月份的資料');
+    const title=String(j.title||'');
+    const m=title.match(/\b\d{4,6}\s+([^\s]+)\s+各日成交資訊/);
+    if(m?.[1]) stockName=m[1];
+    for(const r of (j.data||[])){
+      const o=num(r[3]),h=num(r[4]),l=num(r[5]),c=num(r[6]),v=num(r[1]);
+      if([o,h,l,c].every(Number.isFinite)&&h>=Math.max(o,l,c)&&l<=Math.min(o,h,c))
+        rows.push({date:rocToIso(r[0]),o,h,l,c,v:Number.isFinite(v)?v:null});
+    }
+    await new Promise(res=>setTimeout(res,180));
+  }
+  const m=new Map(rows.map(x=>[x.date,x]));
+  const out=[...m.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  if(out.length<60) throw Error(`有效 OHLC 不足：${out.length}/60 根`);
+  return {bars:out.slice(-180),stockName};
+}
 function render(s,b,e){
   $('#market').textContent=`${s.market} · ${s.code}`;
   $('#name').textContent=s.name;
@@ -66,5 +103,11 @@ function render(s,b,e){
   $('#audit').textContent=`Price Gate：通過｜合法 OHLC：${b.length} 根｜來源：TWSE STOCK_DAY／STOCK_DAY_ALL｜缺值不補 0`;
   $('#result').hidden=false;
 }
-async function analyze(){const q=$('#query').value.trim();if(!q)return;$('#error').hidden=true;$('#result').hidden=true;$('#loading').classList.add('show');$('#submit').disabled=true;try{const s=await resolve(q),b=await history(s.code),e=engine(b);render(s,b,e)}catch(err){$('#error').textContent=err.message||String(err);$('#error').hidden=false}finally{$('#loading').classList.remove('show');$('#submit').disabled=false}}
+async function analyze(){const q=$('#query').value.trim();if(!q)return;$('#error').hidden=true;$('#result').hidden=true;$('#loading').classList.add('show');$('#submit').disabled=true;try{
+  const s=await resolve(q);
+  const h=await history(s.code);
+  if(s.name===s.code && h.stockName) s.name=h.stockName;
+  const b=h.bars,e=engine(b);
+  render(s,b,e)
+}catch(err){$('#error').textContent=err.message||String(err);$('#error').hidden=false}finally{$('#loading').classList.remove('show');$('#submit').disabled=false}}
 $('#form').addEventListener('submit',e=>{e.preventDefault();analyze()});document.querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',()=>{$('#query').value=b.dataset.q;analyze()}));
