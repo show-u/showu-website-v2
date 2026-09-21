@@ -135,7 +135,7 @@ jobs:
           assert policy['output_contract']['sector_research_max_per_industry']==5
           assert 'StockLabHolding' in hold_router and 'model.analyze(p,modelBars' in hold_router
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold_model
-          assert "model:'TW-holding-9plus3-v5'" in hold_model
+          assert "model:'TW-holding-9plus3-v6'" in hold_model
           assert '下一交易時段出場／減碼定價基準' in hold_router
           assert '成本損益零界' in hold_router and '結構風險線' in hold_router
           assert 'executionReference' in hold_model and 'breakevenReference' in hold_model
@@ -202,8 +202,8 @@ jobs:
           assert 'StockLabVerifiedHistory' in hold_router
           assert "row.licence!=='OGDL-1.0'" in hold_router
           assert '非盤中即時價' in hold_router
-          assert '持股價格與 9+3 出場決策' in hold_router
-          assert '下一交易時段定價基準只來自最新合法已驗證完成交易日收盤' in hold_router
+          assert '持股與出場管理' in hold_router and '目前建議動作' in hold_router
+          assert '最新完成交易日收盤可以作下一交易時段的委託定價基準' in hold_router
 
           # G. Public facts source legality stays fail-closed and obsolete browser-data is forbidden.
           assert "mode:'licensed-normalized-market-facts'" in cache
