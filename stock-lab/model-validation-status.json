@@ -75,8 +75,8 @@
     },
     "entry_reference_rules": {
       "status": "AVAILABLE_RULE_BASED",
-      "formula": "TW-price-structure-entry-zone-v2",
-      "reason": "Numeric Entry Zone is governed by the price-structure gate only: at least 60 legally usable verified OHLC bars and Taiwan tick rules. The 9+3 evidence layer separately decides whether to act now, wait for pullback, or avoid a new position; incomplete 9+3 evidence no longer suppresses an otherwise valid price zone.",
+      "formula": "TW-two-route-entry-v1",
+      "reason": "Rule-based new-position price geometry exposes only two conditional routes from at least 60 legally usable verified OHLC bars and Taiwan tick rules: a pullback demand zone and a breakout trigger/band, plus a no-chase ceiling and structural invalidation level. These are completed-session research references, not live prices or guaranteed fills. The 9+3 evidence layer separately decides whether to act; missing factors remain unavailable.",
       "oos_required": false,
       "predictive_executable_price": false,
       "evidence_confidence_index_available": true,
