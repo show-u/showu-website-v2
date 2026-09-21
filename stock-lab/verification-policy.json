@@ -1,5 +1,5 @@
 {
-  "version": 18,
+  "version": 19,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -47,7 +47,8 @@
     "EVIDENCE_CONFIDENCE_INDEX": "Entry and exit may show a 0-100 decision-confidence index only as verified-data coverage multiplied by directional consistency under the published 9+3 weights. It is not a win rate, probability or return forecast. Missing/unverified factors reduce coverage and receive no neutral/zero imputation.",
     "UNIFIED_WEIGHTED_ENTRY_PRICE": "StockLab has one new-position decision path only: verified 9+3 decides whether to act, and the legal Taiwan price layer exposes at most two conditional execution routes—pullback demand zone or breakout trigger. Legacy A/B/C scenarios, investment-horizon price bands, fixed discounts and one-bar shortcuts are forbidden.",
     "ENTRY_PRICE_DECISION_SEPARATION": "Entry Zone price geometry is a deterministic price-structure layer and must not be erased merely because a non-price 9+3 factor is unavailable. The 9+3 layer determines whether/how to act on the zone; missing 9+3 evidence must remain visible and must not be imputed.",
-    "PRICE_STRUCTURE_GATE": "A numeric Entry Zone requires at least 60 legally usable verified OHLC bars plus valid Taiwan tick handling. It may not fall back to the previous close, previous low, a fixed percentage, or a one-bar heuristic."
+    "PRICE_STRUCTURE_GATE": "A numeric Entry Zone requires at least 60 legally usable verified OHLC bars plus valid Taiwan tick handling. It may not fall back to the previous close, previous low, a fixed percentage, or a one-bar heuristic.",
+    "HOLDING_EXECUTION_REFERENCE_NOT_STRUCTURE_LOCKED": "Existing-position management may derive a deterministic next-session execution-pricing reference from the user's verified position facts and the latest legally verified completed-session close without OOS or 60-bar history. It must be labelled as a completed-session reference, never as live/current price, forecast price or guaranteed fill. The 60-bar requirement applies only to structural risk lines such as MA/ATR/price-structure triggers."
   },
   "provenance_classes": {
     "observed": "Direct field from a legally permitted source after schema/date validation.",
@@ -232,8 +233,10 @@
       "minimum_verified_closes": 1,
       "enhanced_structure_bars": 60,
       "max_latest_age_calendar_days": 4,
-      "missing_structure_behavior": "Holding facts and verified-close P/L may still be shown. A numeric structural risk line requires the declared legal-history minimum; missing structure remains unavailable and never falls back to previous-session low/high, fixed percentages, stale values or synthetic structure.",
-      "numeric_9plus3_exit_minimum_bars": 60
+      "missing_structure_behavior": "Holding facts, verified-close P/L, breakeven reference and completed-session execution-pricing reference remain available. Only MA/ATR/price-structure risk lines require the declared legal-history minimum. Missing structure stays unavailable and never falls back to previous-session low/high, fixed percentages, stale values or synthetic structure.",
+      "numeric_9plus3_exit_minimum_bars": 60,
+      "execution_reference_minimum_bars": 1,
+      "structural_exit_minimum_bars": 60
     },
     "max_unexplained_calendar_gap_days": 15
   },
@@ -342,15 +345,21 @@
       ],
       "oos_required": false,
       "statistical_claims_allowed": false,
-      "numeric_exit_required": [
-        "minimum_60_legal_verified_ohlc",
-        "taiwan_tick_rule"
-      ],
       "full_hold_reduce_exit_direction_required": [
         "nine_core_factors_verified",
         "us_market_context_verified",
         "taifex_tx_context_verified",
         "international_events_verified"
+      ],
+      "execution_reference_required": [
+        "user_average_cost_or_total_cost",
+        "user_shares",
+        "verified_latest_close",
+        "taiwan_tick_rule"
+      ],
+      "structural_risk_line_required": [
+        "minimum_60_legal_verified_ohlc",
+        "taiwan_tick_rule"
       ]
     },
     "scanner_entry": {
@@ -432,7 +441,11 @@
       "structure_invalidation_price"
     ],
     "full_holding_direction_requires_complete_9plus3": true,
-    "entry_action_requires_complete_9plus3": true
+    "entry_action_requires_complete_9plus3": true,
+    "holding_execution_reference_requires_oos_pass": false,
+    "holding_execution_reference_requires_60_bars": false,
+    "holding_execution_reference_is_prediction": false,
+    "holding_structural_risk_line_minimum_bars": 60
   },
   "backtest_validation": {
     "requested_universe": 160,
