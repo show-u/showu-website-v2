@@ -127,7 +127,7 @@
     const model=window.StockLabHolding;if(!model?.analyze)throw Error('持倉 9+3 模型尚未載入');
     const historyBars=Array.isArray(H.bars)&&H.bars.length?H.bars:hb.bars;
     const modelBars=mergeBarsWithLatestSnapshot(historyBars,snap);
-    const res=model.analyze(p,modelBars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,ninePlus3:weighted,oosStatus:window.StockLabDataStatus?.validation?.models?.holding_exit?.status||'UNVALIDATED'});stage('model-finished');
+    const res=model.analyze(p,modelBars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,ninePlus3:weighted});stage('model-finished');
     const session=await sessionInfo(market,snap.date||res.dataDate);stage('session-finished');
     render(code,name,market,p,snap,res,ctx,(Array.isArray(H.bars)&&H.bars.length?'licensed-history-9+3 + latest verified snapshot':hb.source),session);stage('rendered');
   }catch(e){stage('error');box.innerHTML=`<h3 class=bad>持倉分析失敗</h3><p>${esc(e.message||e)}</p><div class=mini>缺少的資料維持缺少，不以假資料補值。</div>`}finally{load.classList.add('hidden')}};
