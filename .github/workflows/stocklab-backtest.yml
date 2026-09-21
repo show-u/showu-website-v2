@@ -65,6 +65,8 @@ jobs:
           assert manifest['models']['sector_research_rules']['max_per_industry']==5
           assert manifest['models']['holding_rules']['oos_required_for_rule_output'] is False
           assert manifest['models']['holding_rules']['oos_required_for_statistical_claims'] is True
+          assert manifest['models']['holding_rules']['formula']=='TW-holding-9plus3-v6'
+          assert manifest['models']['holding_rules']['partial_verified_evidence_may_inform_rule_action'] is True
           assert policy['output_contract']['deterministic_holding_rules_require_oos_pass'] is False
           assert policy['backtest_validation']['deterministic_holding_rules_require_oos'] is False
           assert x['truth_contract']=={
@@ -78,7 +80,13 @@ jobs:
               'rule_based_entry_reference_oos_required':False,
               'entry_zone_requires_complete_9plus3':False,
               'entry_zone_minimum_verified_bars':60,
-              'sector_research_oos_required':False}
+              'sector_research_oos_required':False,
+              'holding_execution_reference_requires_oos':False,
+              'holding_execution_reference_minimum_verified_bars':1,
+              'holding_structural_risk_line_minimum_bars':60,
+              'numeric_exit_requires_complete_9plus3':False,
+              'full_holding_direction_requires_complete_9plus3':True,
+              'partial_verified_evidence_may_inform_rule_action':True}
 
           src=Path('stock-lab/backtest-taiwan-v3.py').read_text(encoding='utf-8')
           assert "ARCHITECTURE = 'free-official-first-price-structure-plus-9plus3-decision-v16'" in src
