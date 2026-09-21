@@ -25,7 +25,9 @@ jobs:
           node --check stock-lab/hard-policy.js
           grep -q './api-client.js' stock-lab/index.html
           grep -q './hard-policy.js' stock-lab/index.html
-          grep -q "今日／下一交易日入場判斷" stock-lab/market-router.js
+          grep -q "當日／下一交易時段入場價格" stock-lab/market-router.js
+          grep -q "priceReady=plan?.available===true" stock-lab/market-router.js
+          ! grep -q "目前不產生可執行價格" stock-lab/market-router.js
           grep -q "9+3 決策層" stock-lab/market-router.js
           grep -q "拉回入場區" stock-lab/market-router.js
           grep -q "突破入場觸發" stock-lab/market-router.js
