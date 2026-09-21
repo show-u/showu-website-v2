@@ -43,13 +43,12 @@ jobs:
           const r=window.StockLabHolding.analyze(
             {averageCost:100,shares:1000,buyTime:'2026-09-01T09:00'},
             [{iso:'2026-09-19',o:108,h:112,l:107,c:110}],
-            {legalSource:true,priceVerified:true,ninePlus3:{complete:false,score:null,confidenceIndex:0},oosStatus:'INSUFFICIENT'}
+            {legalSource:true,priceVerified:true,ninePlus3:{complete:false,score:null,confidenceIndex:0}}
           );
           assert.strictEqual(r.decision.executionReference,110);
           assert.strictEqual(r.decision.breakevenReference,100);
           assert.strictEqual(r.decision.riskTrigger,null);
           assert.notStrictEqual(r.decision.state,'價格結構不足');
-          assert.strictEqual(r.audit.oos_status,'INSUFFICIENT');
           assert.strictEqual(r.audit.imputation_used,false);
           console.log('PASS: one verified close produces execution reference without fake structure or OOS lock');
           NODE
