@@ -48,18 +48,17 @@ jobs:
           assert 'StockLabSessionContext.resolve' in public
 
           # Holding is NOT the old predictive/OOS-locked exit engine.
-          assert "model:'TW-holding-9plus3-v4'" in hold
+          assert "model:'TW-holding-9plus3-v6'" in hold
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold
           assert 'requiredBars:()=>1' in hold
           assert 'Numeric exit prices are NEVER replaced by the previous-session low' in hold
           assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold
           assert 'model.analyze(p,modelBars' in router
-          assert '信心指數不是勝率' in router
-          assert '建議出場觸發價' in router
+          assert '決策信心指數' in router
+          assert '持股與出場管理' in router and '結構風險線' in router and '目前建議動作' in router
           assert 'decisionConfidenceIndex' in hold and 'StockLabEntryDecision?.exitPlan' in hold
           assert 'api.holding(' not in router
           assert '正式出場時機／觸發價格尚未解鎖' not in router
-          assert '不以本地公式假造續抱／減碼／賣出價格' not in router
 
           # Market facts must come from the normalized OGDL source, never the deleted browser-data cache.
           assert 'StockLabSameOrigin' in router
@@ -68,10 +67,10 @@ jobs:
           assert 'browser-data.json' not in router+cache
 
           # User position provenance only.
-          for text in ('user_observed','derived_from_user_lots','derived_from_user_position','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','holdBuyTime','validDateTime(bt)'):
+          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','holdBuyTime','validDateTime(bt)','成本均價與部位總成本至少要輸入一個'):
               assert text in pos+idx,text
-          assert 'holdTotalCost' not in idx
-          assert 'const tc=a*sh' in pos
+          assert 'holdTotalCost' in idx
+          assert 'if(!(tc>0)){tc=a*sh' in pos and 'if(!(a>0)){a=tc/sh' in pos
           for k in ('THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY'):
               assert k in policy['absolute_invariants'],k
 
