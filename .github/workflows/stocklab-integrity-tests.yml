@@ -161,6 +161,9 @@ jobs:
 
           # E. The stale OOS holding lock and all of its runtime artifacts are permanently absent.
           obsolete=[
+            'stock-lab/backtest-taiwan-v3.py',
+            'stock-lab/backtest-result.json',
+            '.github/workflows/stocklab-backtest.yml',
             'stock-lab/holding-usable.js',
             'stock-lab/build-holding-readiness.py',
             'stock-lab/formalize-holding-oos.py',
@@ -257,7 +260,7 @@ jobs:
           assert 'Existing-position management is owned exclusively by holding-router.js' in public
           assert 'does not depend on obsolete holding-OOS readiness artifacts' in fallback
 
-          print('PASS: Taiwan truth architecture; obsolete holding OOS lock permanently removed')
+          assert Path('stock-lab/model-validation-gate.py').exists(),'model validation gate missing'\n          assert Path('.github/workflows/stocklab-model-validation.yml').exists(),'model validation workflow missing'\n          print('PASS: Taiwan truth architecture; legacy horizon/backtest artifacts permanently removed')
           PY
 
       - name: Reject raw licensed history in public repository
