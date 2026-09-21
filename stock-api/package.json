@@ -1,0 +1,8 @@
+{
+  "name": "showu-stock-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "No-database Taiwan stock structure analysis API",
+  "engines": {"node": ">=20"},
+  "scripts": {"start": "node server.js"}
+}
