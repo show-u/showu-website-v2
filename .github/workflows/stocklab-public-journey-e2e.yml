@@ -122,7 +122,7 @@ jobs:
             await page.locator('#holdAnalyzeBtn').click({timeout:10000});
             await page.waitForFunction(() => {
               const t=document.querySelector('#holdResult')?.innerText||'';
-              return t.includes('目前持倉判斷') || t.includes('持倉分析失敗');
+              return t.includes('目前建議動作') || t.includes('持倉分析失敗');
             }, null, {timeout:15000});
             const holdFirst=await page.locator('#holdResult').innerText();
             if(holdFirst.includes('持倉分析失敗')) throw new Error('Holding path failed before any entry/scanner flow:\n'+holdFirst);
@@ -209,14 +209,14 @@ jobs:
             if (result.includes('持倉分析失敗')) {
               throw new Error('Live holding journey reached controlled failure instead of usable result:\n' + result);
             }
-            for (const required of ['聯發科／2454','成本均價','目前持有股數','目前部位總成本','首次買入時間','目前持倉判斷','最新已驗證收盤','系統計算：成本均價 × 持有股數']) {
+            for (const required of ['聯發科／2454','成本均價','目前持有股數','目前部位總成本','首次買入時間','目前建議動作','最新已驗證收盤']) {
               if (!result.includes(required)) throw new Error('Missing live holding output: ' + required + '\n' + result);
             }
             if (!result.includes('100,000')) throw new Error('Derived total cost was not shown correctly:\n' + result);
-            for (const required of ['9+3 加權出場決策','出場決策信心指數','建議出場觸發價','出場條件','停利／壓力參考']) {
+            for (const required of ['9+3 證據層','決策信心指數','結構風險線','出場／減碼條件','停利／壓力參考']) {
               if (!result.includes(required)) throw new Error('Missing 9+3 holding output: ' + required + '\n' + result);
             }
-            if (result.includes('9+3 尚未完整') && !/建議出場觸發價\s*—/.test(result)) throw new Error('Incomplete 9+3 must not emit a fake numeric exit trigger:\n' + result);
+            if (result.includes('不足價格模型最低 60 根') && !/結構風險線\s*—/.test(result)) throw new Error('Insufficient legal history must not emit a fake structural risk line:\n' + result);
             if (errors.length) throw new Error('Browser runtime errors:\n' + errors.join('\n'));
 
             console.log('PASS: live mobile holding journey produced a usable result');
