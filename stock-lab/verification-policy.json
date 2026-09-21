@@ -1,5 +1,5 @@
 {
-  "version": 19,
+  "version": 20,
   "policy_name": "StockLab Taiwan Truth Rules",
   "principle": "No legally usable, source-identified, fresh and verified data => no scored factor, entry conclusion or executable prediction. Missing data stays missing and must never be fabricated, imputed, silently defaulted, or replaced by stale values.",
   "absolute_invariants": {
@@ -28,7 +28,7 @@
     "UNIFIED_ENTRY_SCANNER": "TOP10 uses the same 9+3 entry contract as single-stock analysis. It may not create separate rankings by investment horizon or silently use a different factor set.",
     "BUY_HOLDING_SEPARATION": "A buy-entry model and existing-position management are different decisions. A deep support level may not be presented as a currently executable buy price merely because it is below market.",
     "TARGET_SESSION_BY_DATA_DATE": "The model's target trading session is determined from the latest verified completed official session, not from the user's clock alone. Clock time only controls whether an order type is currently executable.",
-    "NEXT_SESSION_INPUT_COMPLETENESS": "A new next-session plan may be generated only after the latest completed official session has advanced and every input required by that model for the target session has independently passed legal-source, schema, date and integrity checks. A scheduled refresh time is never proof that data is ready.",
+    "NEXT_SESSION_INPUT_COMPLETENESS": "A new exact-date predictive next-session plan may be generated only after the latest completed official session has advanced and every input required by that predictive model has passed legal-source, schema, date and integrity checks. A rule-based price-structure reference may remain visible once its own legal 60-bar price gate passes; if the exact next trading date is not verified, label the date unavailable rather than erase the price structure.",
     "NO_INTRADAY_REPRICE_WITHOUT_LIVE_FEED": "Without a legally licensed real-time or delayed market-data feed, StockLab must not create a revised same-day executable price after 09:00 or describe any stale/daily-close value as the current market price. The original plan may remain visible only as a labelled reference/audit record.",
     "NO_UNBUYABLE_ENTRY_BANDS": "A deep support level may be shown only as a pullback condition. It must never be the sole current buy answer. If price does not pull back, the only alternative entry path is a separately validated breakout trigger; otherwise the output is wait/no entry.",
     "POSITION_INPUT_PROVENANCE": "Holding average cost, shares and buy date are user-supplied facts. Total cost may be deterministically derived from average cost × shares. None may be inferred from market data.",
@@ -37,7 +37,7 @@
     "NO_HORIZON_BUY_MODEL": "StockLab must not ask the user to choose short/mid/long as a condition for entry analysis or generate multiple buy prices by investment horizon.",
     "DIVIDEND_TRUTH": "Cash dividends, stock dividends, dividend yield, distribution year and ex-right/ex-dividend dates must come from licensed verified datasets. Missing or not-yet-announced dividend fields remain unavailable and must never be converted to zero or guessed dates.",
     "EXECUTABLE_ENTRY_ONLY": "A predictive or current-session executable entry output may show only a legally verified Taiwan-market executable price after all required predictive/session gates pass. A separately labelled deterministic completed-session research reference is permitted under RULE_BASED_ENTRY_REFERENCE and must not be described as live or guaranteed executable.",
-    "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires user-observed first buy time and current shares, plus either current average cost or current total cost. The missing cost field may be deterministically derived from the other and shares; if both are supplied they must agree within the declared tolerance.",
+    "THREE_INPUT_HOLDING_POSITION": "Existing-position direct input requires exactly three user-observed facts: first buy time, current shares and current average cost. Total cost is always deterministically derived as average cost × shares and must not reappear as a manual input field.",
     "RULE_BASED_ENTRY_REFERENCE": "A completed-session-derived pullback zone and breakout trigger may be displayed only after the legal price-structure gate passes. These are conditional price routes, not live prices or guarantees. The 9+3 layer decides whether either route may be acted on; missing 9+3 evidence stays visible and never becomes a neutral substitute.",
     "SECTOR_RESEARCH_SHORTLIST": "The 'don't know what to buy' path may show up to five research candidates per verified industry using deterministic completed-session facts and known risk flags. This shortlist is not a predictive ranking and may not display uncalibrated win rates.",
     "ANALYST_9PLUS3_STRUCTURE": "Every new-position result page must use the same 9+3 analyst structure. The visible nine sections are the company/stock analysis body; +1 US market/SOX, +2 TAIFEX TX, +3 international events are external context. Data legality, schema, freshness, security type, risk status, accounting class and corporate actions are prerequisite gates outside the visible nine.",
@@ -278,9 +278,9 @@
         "ticker",
         "shares",
         "first_buy_date",
-        "average_cost_or_total_cost"
+        "average_cost"
       ],
-      "purpose": "Manage an existing position from user-supplied shares, buy time and either average cost or total cost, plus the same verified 9+3 evidence contract. Verified completed-session P/L and a structural risk line may be shown from legal price history. Full hold/reduce/exit direction requires the available 9+3 evidence to be disclosed; incomplete 9+3 never gets imputed.",
+      "purpose": "Manage an existing position from user-supplied shares, buy time and average cost. Total cost is derived only as average cost × shares. Verified completed-session P/L and next-session execution-pricing reference remain available from legal verified close data; 60-bar history is required only for structural MA/ATR/price-risk lines. Full 9+3 evidence refines hold/reduce/exit direction but missing evidence is never imputed.",
       "forbidden": [
         "asking for a short/mid/long horizon to select a different exit model",
         "renaming buy-entry bands as exit advice",
@@ -332,8 +332,8 @@
       "required": [
         "user_shares",
         "user_first_buy_date",
-        "user_average_cost_or_total_cost",
-        "derived_other_cost_field",
+        "user_average_cost",
+        "derived_total_cost_from_average_cost_times_shares",
         "legal_source",
         "supported_security",
         "verified_latest_close"
@@ -352,7 +352,7 @@
         "international_events_verified"
       ],
       "execution_reference_required": [
-        "user_average_cost_or_total_cost",
+        "user_average_cost",
         "user_shares",
         "verified_latest_close",
         "taiwan_tick_rule"
@@ -445,7 +445,10 @@
     "holding_execution_reference_requires_oos_pass": false,
     "holding_execution_reference_requires_60_bars": false,
     "holding_execution_reference_is_prediction": false,
-    "holding_structural_risk_line_minimum_bars": 60
+    "holding_structural_risk_line_minimum_bars": 60,
+    "holding_manual_total_cost_input_forbidden": true,
+    "price_structure_must_not_be_erased_by_missing_9plus3_or_calendar": true,
+    "legacy_locked_price_message_forbidden": true
   },
   "backtest_validation": {
     "requested_universe": 160,
