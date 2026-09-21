@@ -63,7 +63,7 @@ jobs:
           need '目前成本均價' /tmp/index.html 'missing holding average-cost input'
           need '目前持有股數' /tmp/index.html 'missing holding shares input'
           need '首次買入時間' /tmp/index.html 'missing holding buy-time input'
-          need 'id="holdTotalCost"' /tmp/index.html 'holding total-cost alternative input missing'
+          forbid 'id="holdTotalCost"' /tmp/index.html 'manual holding total-cost input must stay removed'
           need '資料不完整就不預測；不以假資料補值' /tmp/index.html 'missing no-imputation statement'
           need '每類最多 5 檔' /tmp/index.html 'missing five-per-sector statement'
           forbid 'id="horizon"' /tmp/index.html 'legacy horizon selector returned'
