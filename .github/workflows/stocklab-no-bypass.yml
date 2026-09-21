@@ -69,9 +69,10 @@ jobs:
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold_model
           assert 'requiredBars:()=>1' in hold_model
           assert 'Numeric exit prices are NEVER replaced by the previous-session low' in hold_model
-          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold_model
           assert 'probability_calibrated:false' in hold_model
           assert 'imputation_used:false' in hold_model
+          assert 'oosStatus' not in holding+hold_model
+          assert 'oos_status' not in holding+hold_model
           assert '決策信心指數' in holding
           assert '持股與出場管理' in holding and '結構風險線' in holding and '目前建議動作' in holding
           assert 'riskTriggerBasis' in hold_model and '9+3' in hold_model
@@ -150,8 +151,8 @@ jobs:
           assert 'sectorResearchEnabled:true' in runtime
           assert 'verifiedOgdlArchiveHistoryEnabled:true' in runtime
           assert 'entryPriceDecisionLayersSeparated:true' in runtime
-          assert 'no OOS lock' in holding
           assert 'actionable deterministic holding rules' in holding
+          assert 'oosStatus' not in holding and 'oos_status' not in holding
 
           print('StockLab no-bypass truth gate passed: obsolete horizon/backtest and holding locks absent; verified rule-based holding path allowed')
           PY
