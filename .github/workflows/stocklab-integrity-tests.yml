@@ -97,28 +97,34 @@ jobs:
           assert policy['legal_use']['real_time_or_delayed_trading_information']['allowed'] is False
 
           # B. Old short/mid/long buy-price UX must never return.
-          for text in ('不知道買什麼','我還沒買','已持有','9+3 入場分析','分析出場時機','目前成本均價','目前持有股數','目前部位總成本','首次買入時間'):
+          for text in ('不知道買什麼','我還沒買','已持有','9+3 入場分析','分析出場時機','目前成本均價','目前持有股數','首次買入時間','總成本由系統自動計算'):
               assert text in idx,text
           for legacy in ('id="horizon"','scanHorizon','holdHorizon','短線｜約1個月','波段｜約3個月','長期｜1年以上','短線入場區間','中期入場區間','長期佈局區間'):
               assert legacy not in idx+router+top10,legacy
           assert '短／中／長' in idx
-          assert 'id="holdTotalCost"' in idx
+          assert 'id="holdTotalCost"' not in idx
 
           # C. Position facts come only from the user.
-          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)'):
+          for text in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)','derived_from_average_cost_times_shares'):
               assert text in pos,text
           assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
-          assert '成本均價與部位總成本至少要輸入一個' in pos
-          assert '成本均價 × 股數與你輸入的總成本不一致' in pos
+          assert '請完整輸入成本均價、目前持有股數與首次買入時間' in pos
+          assert 'totalCostInput' not in pos
+          assert 'holdTotalCost' not in pos
           assert 'market-data inference' in pos
 
           # D. Entry price geometry is separate from 9+3 action; prices remain fail-closed on verified price structure.
-          assert '今日／下一交易日入場判斷' in router
+          assert '當日／下一交易時段入場價格' in router
           assert '拉回入場區' in router and '突破入場觸發' in router
           assert 'StockLabSessionContext?.resolve' in router
           assert '9+3 決策層' in router
           assert 'StockLabEntryDecision?.entryPlan' in router
           assert '決策信心指數' in router
+          assert 'priceReady=plan?.available===true' in router
+          assert 'displayNumericPlan' not in router
+          assert '目前不產生可執行價格' not in router
+          assert '只有完成交易日資料與交易日曆一致時才放行數字' not in router
+          assert '缺項不會抹掉已成立的價格結構' in router
           assert "model:'TW-two-route-entry-v1'" in R('stock-lab/entry-decision.js')
           assert "if(!d?.complete)return{available:false,reason:'9+3 尚未全部驗證；不產生數字入場建議'}" not in R('stock-lab/entry-decision.js')
           assert policy['output_contract']['numeric_entry_requires_complete_9plus3'] is False
@@ -153,7 +159,11 @@ jobs:
           assert policy['output_contract']['holding_execution_reference_requires_60_bars'] is False
           assert policy['output_contract']['holding_execution_reference_is_prediction'] is False
           assert policy['output_contract']['holding_structural_risk_line_minimum_bars']==60
-          assert policy['prediction_requirements']['holding_rules']['execution_reference_required']==['user_average_cost_or_total_cost','user_shares','verified_latest_close','taiwan_tick_rule']
+          assert policy['prediction_requirements']['holding_rules']['execution_reference_required']==['user_average_cost','user_shares','verified_latest_close','taiwan_tick_rule']
+          assert policy['workflow_contract']['holding']['required_user_inputs']==['ticker','shares','first_buy_date','average_cost']
+          assert policy['output_contract']['holding_manual_total_cost_input_forbidden'] is True
+          assert policy['output_contract']['price_structure_must_not_be_erased_by_missing_9plus3_or_calendar'] is True
+          assert policy['output_contract']['legacy_locked_price_message_forbidden'] is True
           assert policy['prediction_requirements']['holding_rules']['structural_risk_line_required']==['minimum_60_legal_verified_ohlc','taiwan_tick_rule']
           assert 'numeric_exit_required' not in policy['prediction_requirements']['holding_rules']
           assert policy['backtest_validation']['holding_statistical_claims_require_oos'] is True
