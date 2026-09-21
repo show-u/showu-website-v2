@@ -6,14 +6,13 @@
   function tickRound(p,mode='nearest'){const f=window.StockLabTaiwan?.roundTick;return typeof f==='function'?f(p,mode):p}
   function barDate(x){return x?.iso||x?.date||null}
   function positionInput(x){
-    let averageCost=num(x?.averageCost),shares=num(x?.shares),totalCost=num(x?.totalCost),buyTime=String(x?.buyTime||'').trim(),buyDate=buyTime.slice(0,10);
+    const averageCost=num(x?.averageCost),shares=num(x?.shares),buyTime=String(x?.buyTime||'').trim(),buyDate=buyTime.slice(0,10);
+    if(!(averageCost>0))throw Error('成本均價必須由使用者輸入有效正數');
     if(!(shares>0))throw Error('持有股數必須大於 0');
-    if(!(averageCost>0)&&!(totalCost>0))throw Error('成本均價與總成本至少需要一個有效值');
     if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(buyTime)||dateMs(buyDate)==null)throw Error('首次買入時間必須由使用者輸入有效日期時間');
-    if(!(averageCost>0))averageCost=totalCost/shares;
-    if(!(totalCost>0))totalCost=averageCost*shares;
-    const tol=Math.max(1,totalCost*.001);if(Math.abs(averageCost*shares-totalCost)>tol)throw Error('成本均價、持有股數與總成本彼此不一致');
-    return{averageCost,shares,totalCost,buyTime,buyDate,lots:Array.isArray(x?.lots)?x.lots:null,provenance:x?.provenance||{averageCost:'user_or_derived',shares:'user_observed',totalCost:'user_or_derived',buyTime:'user_observed'}};
+    const totalCost=averageCost*shares;
+    if(num(x?.totalCost)!=null){const tol=Math.max(1,totalCost*.001);if(Math.abs(num(x.totalCost)-totalCost)>tol)throw Error('內部總成本必須等於成本均價 × 持有股數')}
+    return{averageCost,shares,totalCost,buyTime,buyDate,lots:Array.isArray(x?.lots)?x.lots:null,provenance:x?.provenance||{averageCost:'user_observed',shares:'user_observed',totalCost:'derived_from_average_cost_times_shares',buyTime:'user_observed'}};
   }
   function normalizeBars(bars){
     return (Array.isArray(bars)?bars:[]).filter(x=>Number.isFinite(Number(x?.c))&&Number(x.c)>0).map(x=>({...x,c:Number(x.c),o:num(x.o),h:num(x.h),l:num(x.l)})).sort((a,b)=>String(barDate(a)).localeCompare(String(barDate(b))));
