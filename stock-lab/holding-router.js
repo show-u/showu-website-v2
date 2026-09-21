@@ -42,6 +42,23 @@
     return{bars:[{iso:snap.date,date:snap.date,c:snap.close,o:snap.open,h:snap.high,l:snap.low,provenance:'observed',licence:'OGDL-1.0'}],source:'latest-verified-snapshot'};
   }
 
+  function mergeBarsWithLatestSnapshot(bars,snap){
+    const dateOf=x=>String(x?.iso||x?.date||'').slice(0,10);
+    const closeOf=x=>n(x?.c);
+    const clean=(Array.isArray(bars)?bars:[]).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(dateOf(x))&&closeOf(x)>0).sort((a,b)=>dateOf(a).localeCompare(dateOf(b)));
+    const latest={iso:snap.date,date:snap.date,c:snap.close,o:snap.open,h:snap.high,l:snap.low,v:snap.volume,provenance:'observed',licence:'OGDL-1.0'};
+    if(!clean.length)return[latest];
+    const same=clean.find(x=>dateOf(x)===snap.date);
+    if(same){
+      if(Math.abs(closeOf(same)-snap.close)>.0001)throw Error(`歷史資料與最新市場事實同日收盤不一致：${closeOf(same)} / ${snap.close}`);
+      return clean.map(x=>dateOf(x)===snap.date?{...x,...latest}:x);
+    }
+    const lastDate=dateOf(clean.at(-1));
+    if(lastDate>snap.date)throw Error(`歷史資料日期 ${lastDate} 晚於最新已驗證市場事實 ${snap.date}，停止分析`);
+    clean.push(latest);
+    return clean;
+  }
+
   async function context(code,market){
     let riskKnown=false,riskBlocked=false,riskLabel='注意／處置狀態未完整驗證',corporateKnown=false;
     const factorTask=(async()=>{
@@ -108,9 +125,10 @@
     const sections=nine.makeSections(rr,fx,R,H),family=window.StockLabTaiwan?.sectorFamily?.(fx.stock?.industry)||'general',contexts=nine.contexts(family);
     const weighted=decision.weighted(sections,contexts,'exit');
     const model=window.StockLabHolding;if(!model?.analyze)throw Error('持倉 9+3 模型尚未載入');
-    const modelBars=Array.isArray(H.bars)&&H.bars.length?H.bars:hb.bars;
+    const historyBars=Array.isArray(H.bars)&&H.bars.length?H.bars:hb.bars;
+    const modelBars=mergeBarsWithLatestSnapshot(historyBars,snap);
     const res=model.analyze(p,modelBars,{legalSource:true,priceVerified:true,activeRiskKnown:ctx.riskKnown,corporateActionKnown:ctx.corporateKnown,riskBlocked:ctx.riskBlocked,ninePlus3:weighted,oosStatus:window.StockLabDataStatus?.validation?.models?.holding_exit?.status||'UNVALIDATED'});stage('model-finished');
     const session=await sessionInfo(market,snap.date||res.dataDate);stage('session-finished');
-    render(code,name,market,p,snap,res,ctx,H.bars?'licensed-history-9+3':hb.source,session);stage('rendered');
+    render(code,name,market,p,snap,res,ctx,(Array.isArray(H.bars)&&H.bars.length?'licensed-history-9+3 + latest verified snapshot':hb.source),session);stage('rendered');
   }catch(e){stage('error');box.innerHTML=`<h3 class=bad>持倉分析失敗</h3><p>${esc(e.message||e)}</p><div class=mini>缺少的資料維持缺少，不以假資料補值。</div>`}finally{load.classList.add('hidden')}};
 })();
