@@ -148,7 +148,11 @@ jobs:
           assert 'requiredBars:()=>1' in hold_model
           assert 'imputation_used:false' in hold_model
           assert 'probability_calibrated:false' in hold_model
-          assert '任何統計機率仍須正式 OOS 校準' in hold_model
+          assert '統計型預測驗證屬另一模型層，不影響本頁規則式持股管理' in hold_model
+          assert '不足價格模型最低 60 根' not in hold_model
+          assert '結構風險線資料不足，但持股分析照常' in hold_model
+          for stale in ('正式出場建議仍被阻擋','holding-readiness','300 episodes','80 檔'):
+              assert stale not in hold_router+hold_model,stale
           assert 'oosStatus' not in hold_router+hold_model
           assert 'oos_status' not in hold_router+hold_model
           assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
