@@ -137,19 +137,28 @@
   function weightedHtml(d,plan,session){
     const score=d?.score==null?'—':d.score,conf=d?.confidenceIndex==null?'—':d.confidenceIndex;
     const miss=(d?.missing||[]).map(x=>x.label).join('、');
-    const canShow=plan?.available&&session?.verified===true&&session?.displayNumericPlan===true;
-    const target=session?.targetDate||'尚未驗證';
-    const zone=canShow
-      ? '<div class=sourceitem><b>目標交易日</b>'+esc(target)+'<br><span class=mini>'+esc(session.label||'')+'</span></div>'+
+    // Price geometry and the 9+3 evidence layer are deliberately independent.
+    // A missing 9+3 item or an unverified exact next-session date must never erase a price structure
+    // that is already supported by >=60 legally verified OHLC bars.
+    const priceReady=plan?.available===true;
+    const base=session?.baseDate||'最新完成交易日';
+    const target=session?.verified===true&&session?.targetDate
+      ? session.targetDate
+      : `資料基準 ${base} 的下一交易時段（精確交易日尚未驗證）`;
+    const sessionNote=session?.verified===true
+      ? (session.label||'交易時序已驗證')
+      : (session?.label||'精確下一交易日尚未驗證；不把「明天」硬寫成交易日');
+    const zone=priceReady
+      ? '<div class=sourceitem><b>目標交易時段</b>'+esc(target)+'<br><span class=mini>'+esc(sessionNote)+'</span></div>'+
         '<div class=sourceitem><b>拉回入場區</b>'+money(plan.pullback.low)+'–'+money(plan.pullback.high)+'<br><span class=mini>價格回到需求區才考慮；不是預測一定會跌到這裡</span></div>'+
         '<div class=sourceitem><b>突破入場觸發</b>'+money(plan.breakout.trigger)+'<br><span class=mini>可接受帶 '+money(plan.breakout.low)+'–'+money(plan.breakout.high)+(plan.volumeRatio!=null?'｜最近量比 '+plan.volumeRatio.toFixed(2)+'x':'｜成交量確認未取得')+'</span></div>'+
         '<div class=sourceitem><b>不追價上限</b>'+money(plan.noChase)+'<br><span class=mini>高於此價不建立新部位</span></div>'+
         '<div class=sourceitem><b>結構失效價</b>'+money(plan.invalid)+'<br><span class=mini>跌破後原入場邏輯失效，重新分析</span></div>'
-      : '<div class=sourceitem><b>目標交易日／價格</b>—<br><span class=mini>'+esc(session?.label||plan?.reason||'交易時序或價格資料尚未驗證')+'</span></div>';
-    return '<h3>今日／下一交易日入場判斷</h3><div class=sourcegrid>'+zone+'</div>'+
-      '<div class=source-note><b>目前操作判斷</b><div>'+(canShow?esc(plan.action):'目前不產生可執行價格')+'</div><div class=mini style="margin-top:5px">'+(canShow?esc(plan.basis):'只有完成交易日資料與交易日曆一致時才放行數字；盤中沒有即時行情時，不把昨收冒充現在價格。')+'</div></div>'+
+      : '<div class=sourceitem><b>價格結構</b>—<br><span class=mini>'+esc(plan?.reason||'合法價格歷史不足，價格層維持 unavailable')+'</span></div>';
+    return '<h3>當日／下一交易時段入場價格</h3><div class=sourcegrid>'+zone+'</div>'+
+      '<div class=source-note><b>目前操作判斷</b><div>'+(priceReady?esc(plan.action):'價格結構尚未形成')+'</div><div class=mini style="margin-top:5px">'+(priceReady?esc(plan.basis):'缺少合法價格歷史就維持 unavailable；不使用舊短／中／長價格、固定百分比或 AI 補值。')+'</div></div>'+
       '<h3>9+3 決策層</h3><div class=sourcegrid>'+
-      '<div class=sourceitem><b>'+(d?.complete?'9+3 完整加權分數':'已驗證部分方向分數')+'</b>'+score+'/100<br><span class=mini>'+(d?.complete?'12項全部通過驗證後的加權方向':'只計已驗證項目；不可當成完整 9+3 結論')+'；不是上漲機率</span></div>'+
+      '<div class=sourceitem><b>'+(d?.complete?'9+3 完整加權分數':'已驗證部分方向分數')+'</b>'+score+'/100<br><span class=mini>'+(d?.complete?'12項全部通過驗證後的加權方向':'只計已驗證項目；缺項不會抹掉已成立的價格結構')+'；不是上漲機率</span></div>'+
       '<div class=sourceitem><b>決策信心指數</b>'+conf+'/100<br><span class=mini>'+(d?.confidenceMeaning||'已驗證資料覆蓋率與方向一致性；不是勝率')+'</span></div>'+
       '<div class=sourceitem><b>資料覆蓋</b>'+(d?.coveragePct??0)+'%<br><span class=mini>'+(miss?'未驗證：'+esc(miss):'9+3 全部通過驗證')+'</span></div></div>';
   }
@@ -166,7 +175,8 @@
     if(!weighted)throw Error('9+3 加權決策層尚未載入');
     const plan=window.StockLabEntryDecision?.entryPlan?.(H.bars,r.close,weighted)||{available:false,reason:'價格結構層尚未載入'};
     const resolver=window.StockLabSessionContext?.resolve;
-    const session=resolver?await resolver({market:r.market,dataDate:r.date}):{verified:false,displayNumericPlan:false,label:'交易日曆／目標交易日尚未驗證',targetDate:null};
+    const session=resolver?await resolver({market:r.market,dataDate:r.date}):{verified:false,label:'交易日曆／目標交易日尚未驗證',targetDate:null,baseDate:r.date};
+    if(!session.baseDate)session.baseDate=r.date;
     box.innerHTML='<div class=toprow><div><h2>'+title+'</h2><div class=muted>'+esc(r.market)+'｜我還沒買｜9+3 入場分析｜資料基準 '+esc(r.date)+'</div></div></div>'+
       '<div class=source-note><b>時間基準</b><div>'+esc(session.label||'目標交易日尚未驗證')+'</div><div class=mini style="margin-top:5px">收盤前若最新完成資料仍是前一交易日，只能形成「今日原始計畫」；13:30 收盤後若今日官方完成資料尚未驗證，就等待，不提前製造下一交易日價格。</div></div>'+
       conclusion(sections,ctx)+
