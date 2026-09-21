@@ -1,0 +1,36 @@
+name: Stock API real-data smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-api/**'
+      - '.github/workflows/stock-api-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Start API
+        working-directory: stock-api
+        run: |
+          npm start > /tmp/stock-api.log 2>&1 &
+          echo $! > /tmp/stock-api.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/health; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/stock-api.log
+          exit 1
+      - name: Test real TWSE and TPEx stocks
+        working-directory: stock-api
+        run: node smoke-test.js
+      - name: Show API log on failure
+        if: failure()
+        run: cat /tmp/stock-api.log || true
