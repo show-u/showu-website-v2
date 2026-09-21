@@ -45,8 +45,11 @@ jobs:
           # 2. Entry Zone is deterministic verified price structure; 9+3 separately governs action.
           decision=R('stock-lab/entry-decision.js')
           verified_history=R('stock-lab/verified-history.js')
-          assert '今日／下一交易日入場判斷' in router
+          assert '當日／下一交易時段入場價格' in router
           assert '9+3 決策層' in router
+          assert 'priceReady=plan?.available===true' in router
+          assert 'displayNumericPlan' not in router
+          assert '目前不產生可執行價格' not in router
           assert '拉回入場區' in router and '突破入場觸發' in router
           assert '不追價上限' in router and '結構失效價' in router
           assert "model:'TW-two-route-entry-v1'" in decision
