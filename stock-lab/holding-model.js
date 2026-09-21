@@ -110,7 +110,7 @@
         confidenceMeaning:weighted?.confidenceMeaning||'資料不足；信心指數不補值'
       },
       ninePlus3:weighted,
-      audit:{legal_source_verified:true,price_verified:true,active_risk_known:riskKnown,corporate_action_known:corporateKnown,oos_status:ctx.oosStatus||'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT',probability_calibrated:false,imputation_used:false},
+      audit:{legal_source_verified:true,price_verified:true,active_risk_known:riskKnown,corporate_action_known:corporateKnown,probability_calibrated:false,imputation_used:false},
       limits:{statement:'決策信心指數只衡量 9+3 已驗證資料覆蓋與方向一致性，不是勝率、成功率或未來價格機率。任何統計機率仍須正式 OOS 校準。'},
       provenance:{position:p.provenance,latestClose:'observed',pnl:'derived',executionReference:'derived_from_latest_verified_close',breakevenReference:'derived_from_user_cost',riskTrigger:trigger!=null?'derived_from_verified_price_structure':'unavailable',decisionConfidenceIndex:confidence!=null?'derived_evidence_coverage_and_consistency':'unavailable',decision:'weighted_rule'}
     };
