@@ -45,11 +45,11 @@ jobs:
           # 2. Entry Zone is deterministic verified price structure; 9+3 separately governs action.
           decision=R('stock-lab/entry-decision.js')
           verified_history=R('stock-lab/verified-history.js')
-          assert '價格結構 Entry Zone' in router
+          assert '今日／下一交易日入場判斷' in router
           assert '9+3 決策層' in router
-          assert '第一入場區' in router and '第二入場區' in router
+          assert '拉回入場區' in router and '突破入場觸發' in router
           assert '不追價上限' in router and '結構失效價' in router
-          assert "model:'TW-price-structure-entry-zone-v2'" in decision
+          assert "model:'TW-two-route-entry-v1'" in decision
           assert "r.length<60" in decision
           assert "MA10／MA20／MA60／ATR14" in decision
           assert "StockLabVerifiedHistory" in verified_history
@@ -65,15 +65,15 @@ jobs:
           # 3. Existing-position management is intentionally different: verified facts may drive deterministic rules locally.
           assert 'StockLabHolding' in holding
           assert 'model.analyze(p,modelBars' in holding
-          assert "model:'TW-holding-9plus3-v4'" in hold_model
+          assert "model:'TW-holding-9plus3-v6'" in hold_model
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold_model
           assert 'requiredBars:()=>1' in hold_model
           assert 'Numeric exit prices are NEVER replaced by the previous-session low' in hold_model
           assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold_model
           assert 'probability_calibrated:false' in hold_model
           assert 'imputation_used:false' in hold_model
-          assert '信心指數不是勝率' in holding
-          assert '建議出場觸發價' in holding
+          assert '決策信心指數' in holding
+          assert '持股與出場管理' in holding and '結構風險線' in holding and '目前建議動作' in holding
           assert 'riskTriggerBasis' in hold_model and '9+3' in hold_model
 
           # 4. Holding rules still fail closed on legal source, verified close and actual user position facts.
@@ -86,13 +86,13 @@ jobs:
           assert '非盤中即時價' in holding
 
           # 5. Position facts can only be user observed or derived from user lots; no inferred cost/date/zero fill.
-          for x in ('user_observed','derived_from_user_lots','derived_from_user_position','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)','請完整輸入首次買入時間、目前持有股數與目前成本均價'):
+          for x in ('user_observed','derived_from_user_lots','缺值不補 0','weighted=totalShares?sumCost/totalShares:null','validDateTime(bt)','成本均價與部位總成本至少要輸入一個'):
               assert x in pos,x
           assert 'market-data inference' in pos
           assert 'averageCost:a' in pos and 'shares:sh' in pos and 'totalCost:tc' in pos and 'buyTime:bt' in pos
           assert 'id="holdBuyTime"' in idx and 'type="datetime-local" required' in idx
-          assert 'id="holdTotalCost"' not in idx
-          assert 'const tc=a*sh' in pos
+          assert 'id="holdTotalCost"' in idx
+          assert 'if(!(tc>0)){tc=a*sh' in pos and 'if(!(a>0)){a=tc/sh' in pos
 
           # 6. The obsolete OOS-locked holding monitor must stay deleted and must never be loaded indirectly.
           assert not Path('stock-lab/holding-usable.js').exists(), 'obsolete holding-usable.js returned'
