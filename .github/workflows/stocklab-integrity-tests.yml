@@ -64,7 +64,7 @@ jobs:
           # A. Non-negotiable Taiwan truth rules.
           assert policy['version']>=10
           assert policy['policy_name']=='StockLab Taiwan Truth Rules'
-          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST','ENTRY_PRICE_DECISION_SEPARATION','PRICE_STRUCTURE_GATE')
+          required=('LEGAL_SOURCE_ONLY','NO_IMPUTATION','FACT_ESTIMATE_SEPARATION','TRACEABILITY','FAIL_CLOSED','NO_HORIZON_BUY_MODEL','POSITION_INPUT_PROVENANCE','NO_FAKE_CONFIDENCE','NO_UNBUYABLE_ENTRY_BANDS','BUY_HOLDING_SEPARATION','EXIT_MODEL_SEPARATION','HOLDING_RULES_NOT_OOS_LOCKED','HOLDING_EXECUTION_REFERENCE_NOT_STRUCTURE_LOCKED','THREE_INPUT_HOLDING_POSITION','EXECUTABLE_ENTRY_ONLY','RULE_BASED_ENTRY_REFERENCE','SECTOR_RESEARCH_SHORTLIST','ENTRY_PRICE_DECISION_SEPARATION','PRICE_STRUCTURE_GATE')
           for k in required: assert k in policy['absolute_invariants'],k
           oc=policy['output_contract']
           for k in ('forbid_synthetic_fill','forbid_stale_as_current','forbid_unverified_as_fact','forbid_probability_without_calibration','forbid_horizon_specific_buy_prices'):
@@ -113,7 +113,9 @@ jobs:
           assert 'StockLabHolding' in hold_router and 'model.analyze(p,modelBars' in hold_router
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold_model
           assert "model:'TW-holding-9plus3-v5'" in hold_model
-          assert '建議出場觸發價' in hold_router
+          assert '下一交易時段出場／減碼定價基準' in hold_router
+          assert '成本損益零界' in hold_router and '結構風險線' in hold_router
+          assert 'executionReference' in hold_model and 'breakevenReference' in hold_model
           assert 'decisionConfidenceIndex' in hold_model and 'StockLabEntryDecision?.exitPlan' in hold_model
           assert 'requiredBars:()=>1' in hold_model
           assert 'imputation_used:false' in hold_model
@@ -122,6 +124,15 @@ jobs:
           assert '任何統計機率仍須正式 OOS 校準' in hold_model
           assert policy['prediction_requirements']['holding_rules']['oos_required'] is False
           assert policy['history_requirements']['holding_rules']['minimum_verified_closes']==1
+          assert policy['history_requirements']['holding_rules']['execution_reference_minimum_bars']==1
+          assert policy['history_requirements']['holding_rules']['structural_exit_minimum_bars']==60
+          assert policy['output_contract']['holding_execution_reference_requires_oos_pass'] is False
+          assert policy['output_contract']['holding_execution_reference_requires_60_bars'] is False
+          assert policy['output_contract']['holding_execution_reference_is_prediction'] is False
+          assert policy['output_contract']['holding_structural_risk_line_minimum_bars']==60
+          assert policy['prediction_requirements']['holding_rules']['execution_reference_required']==['user_average_cost_or_total_cost','user_shares','verified_latest_close','taiwan_tick_rule']
+          assert policy['prediction_requirements']['holding_rules']['structural_risk_line_required']==['minimum_60_legal_verified_ohlc','taiwan_tick_rule']
+          assert 'numeric_exit_required' not in policy['prediction_requirements']['holding_rules']
           assert policy['backtest_validation']['holding_statistical_claims_require_oos'] is True
           assert policy['backtest_validation']['deterministic_holding_rules_require_oos'] is False
 
@@ -159,13 +170,17 @@ jobs:
           assert "ctx.legalSource!==true" in hold_model
           assert "ctx.priceVerified!==true" in hold_model
           assert "if(!r.length)throw Error('沒有可用的已驗證收盤資料')" in hold_model
+          assert "executionReference:'derived_from_latest_verified_close'" in hold_model
+          assert "breakevenReference:'derived_from_user_cost'" in hold_model
           assert "riskTrigger:trigger!=null?'derived_from_verified_price_structure':'unavailable'" in hold_model
+          assert "state='價格結構不足'" not in hold_model
           assert '缺少的資料維持缺少，不以假資料補值' in hold_router
           assert 'StockLabSameOrigin' in hold_router
+          assert 'StockLabVerifiedHistory' in hold_router
           assert "row.licence!=='OGDL-1.0'" in hold_router
           assert '非盤中即時價' in hold_router
-          assert '9+3 加權出場決策' in hold_router
-          assert '價格風險線只由合法已驗證 OHLC 結構形成' in hold_router
+          assert '持股價格與 9+3 出場決策' in hold_router
+          assert '下一交易時段定價基準只來自最新合法已驗證完成交易日收盤' in hold_router
 
           # G. Public facts source legality stays fail-closed and obsolete browser-data is forbidden.
           assert "mode:'licensed-normalized-market-facts'" in cache
