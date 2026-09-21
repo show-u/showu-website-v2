@@ -27,14 +27,19 @@ function engine(b){const close=b.at(-1).c,a=atr(b),tol=Math.max((a||close*.02)*.
  const confidence=Math.round(Math.max(0,Math.min(100,hist+ev+tight+vol)));
  const confidenceLabel=confidence>=80?'高':confidence>=65?'中高':confidence>=50?'中':'低';
  return{close,a,ma20:ma(b,20),ma60:ma(b,60),ma120:ma(b,120),decision,confidence,confidenceLabel,prices:{firstEntry:band(s1,a),secondEntry:band(s2,a),noChase:r1?fmt(r1.min):null,firstExit:band(r1,a),secondExit:band(r2,a),defense:def?fmt(def):null,invalidation:inv?fmt(inv):null}}}
-async function get(url){
-  try{
-    const r=await fetch(url,{cache:'no-store'});
-    if(!r.ok) throw Error('HTTP '+r.status);
-    return await r.json();
-  }catch(e){
-    throw Error('無法取得 TWSE 官方資料，請稍後再試');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function get(url,retries=2){
+  let last;
+  for(let i=0;i<=retries;i++){
+    try{
+      const r=await fetch(url,{cache:'no-store'});
+      if(r.ok) return await r.json();
+      last=Error('HTTP '+r.status);
+      if(![429,500,502,503,504].includes(r.status)) break;
+    }catch(e){last=e}
+    if(i<retries) await sleep(700*(i+1));
   }
+  throw last||Error('官方資料連線失敗');
 }
 async function resolve(q){
   const s=String(q).trim();
@@ -46,26 +51,38 @@ async function resolve(q){
 }
 async function history(code){
   const now=new Date(),rows=[];
-  let stockName=code;
-  for(let i=0;i<8;i++){
-    const d=addMonths(now,-i);
-    const url=`https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date=${ymd(d)}&stockNo=${encodeURIComponent(code)}`;
-    const j=await get(url);
-    if(j?.stat && !String(j.stat).includes('OK') && !(j.data||[]).length) throw Error('TWSE 暫時無法提供這個月份的資料');
+  let stockName=code,okMonths=0,failedMonths=0;
+  for(let i=0;i<10;i++){
+    const d=addMonths(now,-i),date=ymd(d);
+    const urls=[
+      `https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date=${date}&stockNo=${encodeURIComponent(code)}`,
+      `https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${date}&stockNo=${encodeURIComponent(code)}`
+    ];
+    let j=null;
+    for(const url of urls){
+      try{
+        const x=await get(url,2);
+        if(Array.isArray(x?.data)&&x.data.length){j=x;break}
+      }catch(e){}
+    }
+    if(!j){failedMonths++;await sleep(500);continue}
+    okMonths++;
     const title=String(j.title||'');
     const m=title.match(/\b\d{4,6}\s+([^\s]+)\s+各日成交資訊/);
     if(m?.[1]) stockName=m[1];
-    for(const r of (j.data||[])){
+    for(const r of j.data){
       const o=num(r[3]),h=num(r[4]),l=num(r[5]),c=num(r[6]),v=num(r[1]);
       if([o,h,l,c].every(Number.isFinite)&&h>=Math.max(o,l,c)&&l<=Math.min(o,h,c))
         rows.push({date:rocToIso(r[0]),o,h,l,c,v:Number.isFinite(v)?v:null});
     }
-    await new Promise(res=>setTimeout(res,180));
+    const uniq=new Map(rows.map(x=>[x.date,x]));
+    if(uniq.size>=150) break;
+    await sleep(450);
   }
   const m=new Map(rows.map(x=>[x.date,x]));
   const out=[...m.values()].sort((a,b)=>a.date.localeCompare(b.date));
-  if(out.length<60) throw Error(`有效 OHLC 不足：${out.length}/60 根`);
-  return {bars:out.slice(-180),stockName};
+  if(out.length<60) throw Error(`TWSE 歷史資料不足：取得 ${out.length} 根（成功月份 ${okMonths}、失敗月份 ${failedMonths}）`);
+  return {bars:out.slice(-180),stockName,okMonths,failedMonths};
 }
 function render(s,b,e){
   $('#market').textContent=`${s.market} · ${s.code}`;
@@ -109,7 +126,7 @@ function render(s,b,e){
     '價格群由均線、20/60/120 日高低點、局部波段高低點與成交量價格節點共同形成，至少兩個依據重疊才成立'
   ];
   $('#reasons').innerHTML=rs.map(x=>`<li>${x}</li>`).join('');
-  $('#audit').textContent=`Price Gate：通過｜合法 OHLC：${b.length} 根｜來源：TWSE STOCK_DAY／STOCK_DAY_ALL｜缺值不補 0`;
+  $('#audit').textContent=`Price Gate：通過｜合法 OHLC：${b.length} 根｜來源：TWSE STOCK_DAY｜缺值不補 0`;
   $('#result').hidden=false;
 }
 async function analyze(){const q=$('#query').value.trim();if(!q)return;$('#error').hidden=true;$('#result').hidden=true;$('#loading').classList.add('show');$('#submit').disabled=true;try{
