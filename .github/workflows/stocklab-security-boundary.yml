@@ -25,9 +25,11 @@ jobs:
           node --check stock-lab/hard-policy.js
           grep -q './api-client.js' stock-lab/index.html
           grep -q './hard-policy.js' stock-lab/index.html
-          grep -q "價格結構 Entry Zone" stock-lab/market-router.js
+          grep -q "今日／下一交易日入場判斷" stock-lab/market-router.js
           grep -q "9+3 決策層" stock-lab/market-router.js
-          grep -q "TW-price-structure-entry-zone-v2" stock-lab/entry-decision.js
+          grep -q "拉回入場區" stock-lab/market-router.js
+          grep -q "突破入場觸發" stock-lab/market-router.js
+          grep -q "TW-two-route-entry-v1" stock-lab/entry-decision.js
           grep -q "r.length<60" stock-lab/entry-decision.js
           grep -q "same-origin-ogdl-archive-only" stock-lab/verified-history.js
           grep -q "各類股近期績優研究標的" stock-lab/top10-gate.js
