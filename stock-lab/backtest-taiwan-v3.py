@@ -47,7 +47,7 @@ def validate_status_manifest(x):
 
     entry_ref=models['entry_reference_rules']
     assert entry_ref.get('status')=='AVAILABLE_RULE_BASED'
-    assert entry_ref.get('formula')=='TW-price-structure-entry-zone-v2'
+    assert entry_ref.get('formula')=='TW-two-route-entry-v1'
     assert entry_ref.get('oos_required') is False
     assert entry_ref.get('predictive_executable_price') is False
     assert entry_ref.get('minimum_price_structure_bars')==60
