@@ -40,13 +40,13 @@ jobs:
           assert 'holding-usable.js' not in idx+health, 'obsolete holding override still loaded'
           for s in ('已持有','分析出場時機','目前成本均價','目前持有股數','首次買入時間'):
               assert s in idx,s
-          assert 'id="holdTotalCost"' not in idx
-          assert '建議出場觸發價' in router
+          assert 'id="holdTotalCost"' in idx
+          assert '持股與出場管理' in router and '結構風險線' in router and '目前建議動作' in router
           assert 'decisionConfidenceIndex' in model and 'StockLabEntryDecision?.exitPlan' in model
           assert 'model.analyze(p,modelBars' in router
-          assert "model:'TW-holding-9plus3-v4'" in model
+          assert "model:'TW-holding-9plus3-v6'" in model
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in model
-          assert '信心指數不是勝率' in router
+          assert '決策信心指數' in router
           assert '決策信心指數' in model and '不是勝率' in model
           assert '缺少的資料維持缺少，不以假資料補值' in router
           assert '非盤中即時價' in router
