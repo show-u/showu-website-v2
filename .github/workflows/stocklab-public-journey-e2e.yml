@@ -126,10 +126,10 @@ jobs:
             }, null, {timeout:15000});
             const holdFirst=await page.locator('#holdResult').innerText();
             if(holdFirst.includes('持倉分析失敗')) throw new Error('Holding path failed before any entry/scanner flow:\n'+holdFirst);
-            for(const required of ['聯發科／2454','目前持倉判斷','建議出場觸發價','出場條件','最新已驗證收盤']) {
+            for(const required of ['聯發科／2454','目前建議動作','持股與出場管理','下一交易時段出場／減碼定價基準','最新已驗證收盤']) {
               if(!holdFirst.includes(required)) throw new Error('Missing independent holding output: '+required+'\n'+holdFirst);
             }
-            for(const required of ['9+3 加權出場決策','出場決策信心指數']) if(!holdFirst.includes(required)) throw new Error('Missing weighted holding decision: '+required+'\n'+holdFirst);
+            for(const required of ['9+3 證據層','決策信心指數']) if(!holdFirst.includes(required)) throw new Error('Missing weighted holding decision: '+required+'\n'+holdFirst);
             if(holdFirst.includes('9+3 尚未完整') && !/建議出場觸發價\s*—/.test(holdFirst)) throw new Error('Incomplete 9+3 emitted a fake numeric exit trigger:\n'+holdFirst);
             console.log('PASS: independent holding path preserves truth and 9+3 weighting');
 
@@ -143,10 +143,10 @@ jobs:
             }, null, {timeout:15000});
             const entryText=await page.locator('#result').innerText();
             if(entryText.includes('9+3 分析無法完成')) throw new Error('9+3 entry journey failed:\n'+entryText);
-            for(const required of ['價格結構 Entry Zone','9+3 決策層','決策信心指數','資料覆蓋']) {
+            for(const required of ['今日／下一交易日入場判斷','9+3 決策層','決策信心指數','資料覆蓋']) {
               if(!entryText.includes(required)) throw new Error('Missing separated entry output: '+required+'\n'+entryText);
             }
-            if(!entryText.includes('第一入場區') && !entryText.includes('60')) throw new Error('Entry output must show either a numeric first zone or the 60-bar price-structure blocker:\n'+entryText);
+            if(!entryText.includes('拉回入場區') && !entryText.includes('60')) throw new Error('Entry output must show either a numeric first zone or the 60-bar price-structure blocker:\n'+entryText);
             if(!entryText.includes('9+3 完整加權分數')&&!entryText.includes('已驗證部分方向分數')) throw new Error('Missing truthful 9+3 score label:\n'+entryText);
             console.log('PASS: single-stock 9+3 entry path shows weighted decision without forcing a fake price');
 
