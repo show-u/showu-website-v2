@@ -3,7 +3,7 @@
 window.STOCKLAB_RUNTIME={
   apiBase:'',
   architecture:'free-official-first-backend-online',
-  hardPolicyVersion:14,
+  hardPolicyVersion:15,
   dataMode:'free-official-first',
   persistentMarketData:false,
   allowLocalFallback:false,
@@ -46,7 +46,7 @@ window.STOCKLAB_RUNTIME={
     '單股新部位研究分成兩層：價格結構 Entry Zone 只要求至少 60 根合法已驗證 OHLC 與台股價格規則；9+3 只決定現在買、等回檔或不買。9+3 缺項不得再抹除已合法形成的 Entry Zone，但缺項必須維持 unavailable。正式預測型可執行買價仍須通過 OOS、可達性與校準 Gate。',
     '進場區間必須驗證觸價／成交可達性；深層支撐只能是條件式等待情境，不能冒充目前可買價格，也不能用來製造漂亮回測。',
     '沒有 calibration PASS 時不得用正向因子數、主觀權重或 heuristic 冒充勝率／信心指數。',
-    '已持有股票不受 OOS 總開關限制；只要使用者部位資料與合法已驗證收盤可用，就可輸出確定性持倉規則。缺少歷史結構時，支撐／壓力／價格型觸發線維持 unavailable，不得捏造。',
+    '已持有股票不受 OOS 總開關限制；只要使用者部位資料與合法已驗證收盤可用，就必須輸出成本損益、成本零界與下一交易時段執行定價基準。60 根合法歷史只限制 MA／ATR／價格結構風險線，不得把整個持股價格分析鎖住；缺少結構時該欄維持 unavailable，不得捏造。',
     '任何未來的預測型出場價、勝率、機率或校準信心，仍須另行通過正式 OOS 與執行驗證，不得與目前規則式持股管理混用。',
     '沒有合法即時／延遲行情授權時，09:00 後禁止聲稱知道當日目前可執行價格；只能顯示已驗證完成交易日事實或下一交易時段條件。',
     '收盤後時間不是資料完成證明；只有當次合法來源確認官方資料日期前進且必要輸入全部通過，才能建立下一交易時段計畫。',
