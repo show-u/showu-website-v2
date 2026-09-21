@@ -139,11 +139,11 @@ jobs:
             await page.locator('#analyzeBtn').click({timeout:10000});
             await page.waitForFunction(() => {
               const t=document.querySelector('#result')?.innerText||'';
-              return t.includes('今日／下一交易日入場判斷') || t.includes('9+3 分析無法完成');
+              return t.includes('當日／下一交易時段入場價格') || t.includes('9+3 分析無法完成');
             }, null, {timeout:15000});
             const entryText=await page.locator('#result').innerText();
             if(entryText.includes('9+3 分析無法完成')) throw new Error('9+3 entry journey failed:\n'+entryText);
-            for(const required of ['今日／下一交易日入場判斷','9+3 決策層','決策信心指數','資料覆蓋']) {
+            for(const required of ['當日／下一交易時段入場價格','9+3 決策層','決策信心指數','資料覆蓋']) {
               if(!entryText.includes(required)) throw new Error('Missing separated entry output: '+required+'\n'+entryText);
             }
             if(!entryText.includes('拉回入場區') && !entryText.includes('60')) throw new Error('Entry output must show either a numeric first zone or the 60-bar price-structure blocker:\n'+entryText);
