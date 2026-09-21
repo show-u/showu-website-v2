@@ -8,6 +8,10 @@ on:
     paths:
       - 'stock-lab/model-validation-gate.py'
       - 'stock-lab/model-validation-status.json'
+      - 'stock-lab/holding-model.js'
+      - 'stock-lab/holding-router.js'
+      - 'stock-lab/position-input.js'
+      - 'stock-lab/entry-decision.js'
       - 'stock-lab/verification-policy.json'
       - 'stock-lab/runtime-config.js'
       - '.github/workflows/stocklab-model-validation.yml'
