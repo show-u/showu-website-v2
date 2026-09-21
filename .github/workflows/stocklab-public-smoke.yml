@@ -56,14 +56,14 @@ jobs:
           # Public UX: three decisions only; no legacy horizon-based buy prices.
           need 'StockLab 台股投資分析器' /tmp/index.html 'missing StockLab title'
           need '不知道買什麼' /tmp/index.html 'missing scanner workflow'
-          need '想買這檔' /tmp/index.html 'missing entry workflow'
+          need '未持有｜找入場' /tmp/index.html 'missing entry workflow'
           need '已持有' /tmp/index.html 'missing holding workflow'
           need '9+3 入場分析' /tmp/index.html 'missing entry action'
           need '分析出場時機' /tmp/index.html 'missing holding action'
           need '目前成本均價' /tmp/index.html 'missing holding average-cost input'
           need '目前持有股數' /tmp/index.html 'missing holding shares input'
           need '首次買入時間' /tmp/index.html 'missing holding buy-time input'
-          forbid 'id="holdTotalCost"' /tmp/index.html 'redundant holding total-cost input returned'
+          need 'id="holdTotalCost"' /tmp/index.html 'holding total-cost alternative input missing'
           need '資料不完整就不預測；不以假資料補值' /tmp/index.html 'missing no-imputation statement'
           need '每類最多 5 檔' /tmp/index.html 'missing five-per-sector statement'
           forbid 'id="horizon"' /tmp/index.html 'legacy horizon selector returned'
@@ -98,12 +98,12 @@ jobs:
           need 'entryPlan' /tmp/entry-decision.js '9+3 weighted entry price layer unavailable'
           need 'window.StockLabPositionInput' /tmp/position-input.js 'position input module unavailable'
           need 'window.StockLabHolding' /tmp/holding-model.js 'holding model module unavailable'
-          need "model:'TW-holding-9plus3-v4'" /tmp/holding-model.js 'rule-based holding model unavailable'
+          need "model:'TW-holding-9plus3-v6'" /tmp/holding-model.js 'rule-based holding model unavailable'
           need 'requiredBars:()=>1' /tmp/holding-model.js 'holding rules must work from one verified completed-session close'
           need 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' /tmp/holding-model.js 'holding rules were re-locked behind OOS'
           need 'StockLabPositionInput?.collect' /tmp/holding-router.js 'holding router not using user position collector'
-          need '9+3 加權出場決策' /tmp/holding-router.js 'weighted holding decision UI unavailable'
-          need '出場決策信心指數' /tmp/holding-router.js 'holding decision-confidence index unavailable'
+          need '持股與出場管理' /tmp/holding-router.js 'holding management UI unavailable'
+          need '目前建議動作' /tmp/holding-router.js 'holding primary action unavailable'
           forbid 'from:p.buyDate' /tmp/holding-router.js 'holding router attempts unsafe history fetch from buy date'
           need 'WAITING_TODAY_CLOSE_DATA' /tmp/session-context.js 'missing completed-close waiting state'
           need 'STALE_BASE_DATE' /tmp/session-context.js 'missing stale-base guard'
@@ -143,8 +143,9 @@ jobs:
           assert p['output_contract']['rule_based_entry_reference_requires_oos_pass'] is False
           assert p['output_contract']['sector_research_requires_oos_pass'] is False
           assert int(p['output_contract']['sector_research_max_per_industry']) == 5
-          assert p['output_contract']['numeric_entry_requires_complete_9plus3'] is True
-          assert p['output_contract']['numeric_exit_requires_complete_9plus3'] is True
+          assert p['output_contract']['numeric_entry_requires_complete_9plus3'] is False
+          assert p['output_contract']['numeric_exit_requires_complete_9plus3'] is False
           assert p['output_contract']['evidence_confidence_is_probability'] is False
-          print('PASS: public StockLab 9+3 weighted truth-first deployment is live')
+          assert p['output_contract']['full_holding_direction_requires_complete_9plus3'] is True
+          print('PASS: public StockLab truth-first holding-first deployment is live')
           PY
