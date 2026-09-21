@@ -52,7 +52,8 @@ jobs:
           assert "validation:'9PLUS3_WEIGHTED_RULE_BASED'" in hold
           assert 'requiredBars:()=>1' in hold
           assert 'Numeric exit prices are NEVER replaced by the previous-session low' in hold
-          assert 'NOT_REQUIRED_FOR_RULE_BASED_OUTPUT' in hold
+          assert "executionReference:'derived_from_latest_verified_close'" in hold
+          assert 'imputation_used:false' in hold
           assert 'model.analyze(p,modelBars' in router
           assert '決策信心指數' in router
           assert '持股與出場管理' in router and '結構風險線' in router and '目前建議動作' in router
