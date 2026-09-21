@@ -39,7 +39,7 @@ def validate_status_manifest(x):
         assert item.get('required_before_pass'),(name,'missing required_before_pass')
     holding=models['holding_rules']
     assert holding.get('status')=='AVAILABLE_RULE_BASED'
-    assert holding.get('formula')=='TW-holding-9plus3-v4'
+    assert holding.get('formula')=='TW-holding-9plus3-v6'
     assert holding.get('oos_required_for_rule_output') is False
     assert holding.get('oos_required_for_statistical_claims') is True
     assert holding.get('confidence_calibrated') is False
@@ -86,9 +86,15 @@ def blocked_payload(status_path):
             'rule_based_entry_reference_oos_required':False,
             'entry_zone_requires_complete_9plus3':False,
             'entry_zone_minimum_verified_bars':60,
-            'sector_research_oos_required':False
+            'sector_research_oos_required':False,
+            'holding_execution_reference_requires_oos':False,
+            'holding_execution_reference_minimum_verified_bars':1,
+            'holding_structural_risk_line_minimum_bars':60,
+            'numeric_exit_requires_complete_9plus3':False,
+            'full_holding_direction_requires_complete_9plus3':True,
+            'partial_verified_evidence_may_inform_rule_action':True
         },
-        'reason':'Predictive entry and predictive scanner remain fail-closed. Deterministic Entry Zone is governed by verified price structure, while 9+3 separately governs action. Sector-research and holding rules remain available without statistical confidence claims.'
+        'reason':'Predictive entry and predictive scanner remain fail-closed. Deterministic entry references are governed by verified price structure, while 9+3 separately governs action. Existing-position management is not OOS-locked: user position facts plus one legally verified completed-session close support P/L and next-session execution reference; partial verified evidence may inform a labelled rule action without imputing missing factors; 60+ legal verified OHLC bars are required only for the structural MA/ATR risk line, and complete 9+3 evidence is required only for a full directional label.'
     }
 
 
