@@ -2,28 +2,80 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>台股買賣價格結構</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>台股價格分析</title>
+<meta name="description" content="輸入台股代號或名稱，取得買入、賣出、防守與結構失效價格。">
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<main class="wrap">
-<section class="hero">
-<div class="eyebrow">Price Structure Engine</div>
-<h1>台股買賣價格結構</h1>
-<p>輸入上市股票代號或名稱。只用已取得的交易資料計算；資料不足就不補值。</p>
-<form id="form" class="search"><input id="query" value="2330" placeholder="例如 2330 或 台積電" inputmode="search"><button id="submit">開始分析</button></form>
-<div class="examples"><button data-q="2330">2330 台積電</button><button data-q="2454">2454 聯發科</button></div>
+<main class="app">
+<header class="top">
+  <div class="brand">台股價格分析</div>
+  <div class="tag">哪裡買・哪裡賣・哪裡錯</div>
+</header>
+
+<section class="searchCard">
+  <form id="form" class="search">
+    <input id="query" value="2330" placeholder="輸入股票代號或名稱" inputmode="search" autocomplete="off">
+    <button id="submit">分析</button>
+  </form>
+  <div class="quick">
+    <button type="button" data-q="2330">2330 台積電</button>
+    <button type="button" data-q="2454">2454 聯發科</button>
+  </div>
 </section>
-<section id="loading" class="card loading">正在取得官方交易資料並計算價格結構…</section>
-<section id="error" class="card error" hidden></section>
+
+<section id="loading" class="notice loading">正在取得官方交易資料並計算價格結構…</section>
+<section id="error" class="notice error" hidden></section>
+
 <div id="result" hidden>
-<section class="summary card"><div><div id="market" class="muted"></div><h2 id="name"></h2><div id="latest" class="price"></div><div id="date" class="muted"></div></div><div id="decision" class="decision wait"></div></section>
-<section class="card"><div class="sectionTitle">買賣價格</div><div id="metrics" class="grid"></div></section>
-<section class="card"><div class="sectionTitle">5 項 Risk Check</div><div id="risks" class="riskGrid"></div></section>
-<section class="card details"><details><summary>查看價格形成依據</summary><ul id="reasons"></ul><div id="audit" class="audit"></div></details></section>
+  <section class="stockHead">
+    <div>
+      <div id="market" class="meta"></div>
+      <h1 id="name"></h1>
+      <div class="latestRow"><span class="label">最新價</span><strong id="latest"></strong></div>
+      <div id="date" class="meta"></div>
+    </div>
+    <div id="decision" class="decision"></div>
+  </section>
+
+  <section class="strategy">
+    <div class="strategyTitle">目前策略</div>
+    <div id="strategyText" class="strategyText"></div>
+  </section>
+
+  <section class="group buyGroup">
+    <div class="groupTitle">買入</div>
+    <div class="priceRow"><span>第一買入區</span><strong id="firstEntry">—</strong></div>
+    <div class="priceRow"><span>第二買入區</span><strong id="secondEntry">—</strong></div>
+  </section>
+
+  <section class="group sellGroup">
+    <div class="groupTitle">賣出</div>
+    <div class="priceRow"><span>第一減碼區</span><strong id="firstExit">—</strong></div>
+    <div class="priceRow"><span>第二停利區</span><strong id="secondExit">—</strong></div>
+  </section>
+
+  <section class="group riskGroup">
+    <div class="groupTitle">風險</div>
+    <div class="priceRow"><span>不追價上限</span><strong id="noChase">—</strong></div>
+    <div class="priceRow"><span>防守價</span><strong id="defense">—</strong></div>
+    <div class="priceRow"><span>結構失效價</span><strong id="invalidation">—</strong></div>
+  </section>
+
+  <details class="details">
+    <summary><span>市場風險與價格依據</span><span>查看</span></summary>
+    <div class="detailsBody">
+      <div id="risks" class="riskList"></div>
+      <div class="divider"></div>
+      <ul id="reasons"></ul>
+      <div id="audit" class="audit"></div>
+    </div>
+  </details>
 </div>
-<footer>研究工具，不構成投資建議。未驗證資料不參與價格計算。</footer>
+
+<footer>僅供研究參考，不構成投資建議。未驗證資料不補值。</footer>
 </main>
 <script src="./app.js"></script>
-</body></html>
+</body>
+</html>
