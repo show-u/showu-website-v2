@@ -68,7 +68,7 @@
       nextAction='先維持現有部位管理；若下一合法交易時段出現已驗證風險事件或結構風險線失守，再檢視減碼／退出';
     }else{
       state=pnl>=0?'獲利部位｜方向證據不足':'虧損部位｜方向證據不足';
-      reason='持倉事實與損益可計算，但目前沒有足夠已驗證方向證據；不以 OOS、舊值或 AI 補成買賣結論';
+      reason='持倉事實與損益可計算，但目前沒有足夠已驗證方向證據；不以舊值、缺值或 AI 補成買賣結論';
       nextAction='保留最新完成交易日收盤作下一交易時段執行定價基準；方向證據未形成前，不捏造續抱／減碼／退出判斷';
     }
     const trigger=plan.available?plan.trigger:null,pressure=plan.available?plan.pressure:null;
