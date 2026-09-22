@@ -74,8 +74,9 @@ function snapshots(common){
  }
  return [...by.values()];
 }
-function topBottom(rows,scoreField){
- const x=rows.filter(r=>Number.isFinite(r.f[scoreField])).sort((a,b)=>b.f[scoreField]-a.f[scoreField]||a.f.perPct-b.f.perPct);
+function topBottom(rows,scoreField,h=null){
+ const x=rows.filter(r=>Number.isFinite(r.f[scoreField])&&(h==null||Number.isFinite(r.ret[h]))).sort((a,b)=>b.f[scoreField]-a.f[scoreField]||a.f.perPct-b.f.perPct);
+ if(x.length<10)return {top:[],bottom:[],k:0};
  const k=Math.max(2,Math.floor(x.length*.2));return {top:x.slice(0,k),bottom:x.slice(-k),k};
 }
 function stat(a){return {n:a.length,mean:mean(a),median:median(a),positive:a.filter(x=>x>0).length/a.length,q25:q(a,.25),q75:q(a,.75)}}
@@ -86,7 +87,12 @@ function permP(diffs,B=10000){
 }
 (async()=>{
  const info=await fm('TaiwanStockInfo','', '2026-01-01','2026-09-22');
- const universe=info.filter(x=>x.type==='twse'&&/^[0-9]{4}$/.test(x.stock_id)&&!EX.has(x.stock_id));
+ const latestInfo=new Map();
+ for(const x of info){
+   if(x.type!=='twse'||!/^[0-9]{4}$/.test(x.stock_id)||EX.has(x.stock_id)||x.industry_category==='ETF'||x.stock_name.includes('創'))continue;
+   const old=latestInfo.get(x.stock_id);if(!old||x.date>old.date)latestInfo.set(x.stock_id,x);
+ }
+ const universe=[...latestInfo.values()];
  const rr=rng(SEED),selected=[...universe].sort(()=>rr()-.5).slice(0,NSTOCK);
  console.log('STOCK_LOCK',JSON.stringify({seed:SEED,stocks:selected.map(x=>({code:x.stock_id,name:x.stock_name,industry:x.industry_category}))}));
  const data={},sets=[];
@@ -97,7 +103,9 @@ function permP(diffs,B=10000){
    ]);
    const p=P(pr);data[s.stock_id]={code:s.stock_id,name:s.stock_name,industry:s.industry_category,p,rev,per,fin,bs,cf,sh};sets.push(new Set(p.map(x=>x.date)));
  }
- const common=[...sets[0]].filter(d=>sets.every(s=>s.has(d))).sort(),snaps=snapshots(common);
+ const index=await fm('TaiwanStockTotalReturnIndex','TAIEX');
+ const calendar=index.map(x=>x.date).sort();
+ const snaps=snapshots(calendar);
  const models=['quality','growth','value','safety','qg','qv','gv','full'];
  const rec=Object.fromEntries(models.map(m=>[m,[]]));
  const industryRec=[],sizeRec=[];
@@ -108,25 +116,30 @@ function permP(diffs,B=10000){
      const r={code:d.code,name:d.name,industry:d.industry,f,marketCap:null,ret:{},dd:{}};
      const i=d.p.findIndex(x=>x.date===date);if(i<0)continue;
      const sh=latestShares(d.sh,date);if(sh)r.marketCap=d.p[i].close*sh;
-     let ok=true;for(const h of H){r.ret[h]=outcome(d.p,date,h);r.dd[h]=dd(d.p,date,h);if(r.ret[h]==null)ok=false}if(ok)rows.push(r);
+     let available=0;for(const h of H){r.ret[h]=outcome(d.p,date,h);r.dd[h]=dd(d.p,date,h);if(r.ret[h]!=null)available++}
+     if(available)rows.push(r);
    }
-   if(rows.length<15)continue;
+   if(rows.length<12)continue;
    for(const m of models){
-     const tb=topBottom(rows,m);
-     for(const h of H)rec[m].push({date,h,top:mean(tb.top.map(x=>x.ret[h])),bottom:mean(tb.bottom.map(x=>x.ret[h])),topDD:mean(tb.top.map(x=>x.dd[h])),bottomDD:mean(tb.bottom.map(x=>x.dd[h])),k:tb.k,n:rows.length});
+     for(const h of H){
+       const tb=topBottom(rows,m,h);if(!tb.k)continue;
+       rec[m].push({date,h,top:mean(tb.top.map(x=>x.ret[h])),bottom:mean(tb.bottom.map(x=>x.ret[h])),topDD:mean(tb.top.map(x=>x.dd[h])),bottomDD:mean(tb.bottom.map(x=>x.dd[h])),k:tb.k,n:rows.length});
+     }
    }
    // industry-neutral: demean full score within sample industry groups with >=2 names
    const groups=new Map();for(const r of rows){if(!groups.has(r.industry))groups.set(r.industry,[]);groups.get(r.industry).push(r)}
    const ir=rows.map(r=>({...r,neutral:r.f.full-(groups.get(r.industry).length>=2?mean(groups.get(r.industry).map(x=>x.f.full)):mean(rows.map(x=>x.f.full)))}));
-   const itb=topBottom(ir.map(x=>({...x,f:{...x.f,indNeutral:x.neutral}})),'indNeutral');
-   for(const h of H)industryRec.push({date,h,top:mean(itb.top.map(x=>x.ret[h])),bottom:mean(itb.bottom.map(x=>x.ret[h])),k:itb.k});
+   const ir2=ir.map(x=>({...x,f:{...x.f,indNeutral:x.neutral}}));
+   for(const h of H){const itb=topBottom(ir2,'indNeutral',h);if(itb.k)industryRec.push({date,h,top:mean(itb.top.map(x=>x.ret[h])),bottom:mean(itb.bottom.map(x=>x.ret[h])),k:itb.k});}
    // size-neutral: rank full score inside market-cap terciles, then combine top/bottom within tercile
-   const sr=rows.filter(x=>Number.isFinite(x.marketCap)).sort((a,b)=>a.marketCap-b.marketCap);
-   if(sr.length>=15){
-     const buckets=[sr.slice(0,Math.floor(sr.length/3)),sr.slice(Math.floor(sr.length/3),Math.floor(2*sr.length/3)),sr.slice(Math.floor(2*sr.length/3))];
-     const tops=[],bots=[];
-     for(const b of buckets){const z=[...b].sort((a,b)=>b.f.full-a.f.full);const k=Math.max(1,Math.floor(z.length*.2));tops.push(...z.slice(0,k));bots.push(...z.slice(-k))}
-     for(const h of H)sizeRec.push({date,h,top:mean(tops.map(x=>x.ret[h])),bottom:mean(bots.map(x=>x.ret[h])),k:tops.length});
+   for(const h of H){
+     const sr=rows.filter(x=>Number.isFinite(x.marketCap)&&Number.isFinite(x.ret[h])).sort((a,b)=>a.marketCap-b.marketCap);
+     if(sr.length>=12){
+       const buckets=[sr.slice(0,Math.floor(sr.length/3)),sr.slice(Math.floor(sr.length/3),Math.floor(2*sr.length/3)),sr.slice(Math.floor(2*sr.length/3))];
+       const tops=[],bots=[];
+       for(const b of buckets){const z=[...b].sort((a,b)=>b.f.full-a.f.full);const k=Math.max(1,Math.floor(z.length*.2));tops.push(...z.slice(0,k));bots.push(...z.slice(-k))}
+       sizeRec.push({date,h,top:mean(tops.map(x=>x.ret[h])),bottom:mean(bots.map(x=>x.ret[h])),k:tops.length});
+     }
    }
  }
  const out={};
