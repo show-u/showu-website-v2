@@ -3,76 +3,146 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0f16">
 <title>台股價格分析</title>
 <meta name="description" content="輸入台股代號或名稱，取得買入、賣出、防守與結構失效價格。">
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <main class="app">
-<header class="top">
-  <div class="brand">台股價格分析</div>
-  <div class="tag">輸入股票名稱／代碼</div>
-</header>
+  <header class="top">
+    <div class="eyebrow">TAIWAN STOCK PRICE STRUCTURE</div>
+    <div class="brand">台股價格分析</div>
+    <div class="tag">輸入股票名稱／代碼，直接看買點、賣點與風險價格</div>
+  </header>
 
-<section class="searchCard">
-  <form id="form" class="search">
-    <input id="query" value="2330" placeholder="輸入股票代號或名稱" inputmode="search" autocomplete="off">
-    <button id="submit">分析</button>
-  </form>
-</section>
-
-<section id="loading" class="notice loading">正在取得官方交易資料並計算價格結構…</section>
-<section id="error" class="notice error" hidden></section>
-
-<div id="result" hidden>
-  <section class="stockHead">
-    <div>
-      <div id="market" class="meta"></div>
-      <h1 id="name"></h1>
-      <div class="latestRow"><span class="label">最新價</span><strong id="latest"></strong></div>
-      <div id="date" class="meta"></div>
-    </div>
-    <div id="decision" class="decision"></div>
+  <section class="searchCard" aria-label="股票搜尋">
+    <form id="form" class="search">
+      <div class="inputWrap">
+        <span class="searchIcon" aria-hidden="true">⌕</span>
+        <input id="query" value="2330" placeholder="例如：2330、台積電、6488" inputmode="search" autocomplete="off" aria-label="股票名稱或代碼">
+      </div>
+      <button id="submit" type="submit"><span>分析</span><span class="buttonArrow">→</span></button>
+    </form>
+    <div class="searchHint">支援 TWSE 上市與 TPEx 上櫃股票</div>
   </section>
 
-  <section class="strategy">
-    <div class="confidenceRow"><span>價格結構信心</span><strong id="confidence">—</strong></div>
-    <div class="confidenceNote">衡量價格結構證據完整度，不是勝率或上漲機率</div>
-    <div class="strategyTitle">目前策略</div>
-    <div id="strategyText" class="strategyText"></div>
+  <section id="loading" class="notice loading" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <span>正在取得交易資料並計算價格結構…</span>
   </section>
+  <section id="error" class="notice error" hidden></section>
 
-  <section class="group buyGroup">
-    <div class="groupTitle">買入</div>
-    <div class="priceRow"><span>第一買入區</span><strong id="firstEntry">—</strong></div>
-    <div class="priceRow"><span>第二買入區</span><strong id="secondEntry">—</strong></div>
-  </section>
+  <div id="result" hidden>
+    <section class="stockHead">
+      <div class="stockIdentity">
+        <div id="market" class="meta marketPill"></div>
+        <h1 id="name"></h1>
+        <div class="latestRow">
+          <span class="label">最新價</span>
+          <strong id="latest"></strong>
+        </div>
+        <div id="date" class="meta dateLine"></div>
+      </div>
+      <div id="decision" class="decision"></div>
+    </section>
 
-  <section class="group sellGroup">
-    <div class="groupTitle">賣出</div>
-    <div class="priceRow"><span>第一減碼區</span><strong id="firstExit">—</strong></div>
-    <div class="priceRow"><span>第二停利區</span><strong id="secondExit">—</strong></div>
-  </section>
+    <section class="strategy">
+      <div class="strategyTop">
+        <div>
+          <div class="sectionKicker">PRICE STRUCTURE</div>
+          <div class="strategyTitle">目前策略</div>
+        </div>
+        <div class="confidenceBox">
+          <span>結構信心</span>
+          <strong id="confidence">—</strong>
+        </div>
+      </div>
+      <div id="strategyText" class="strategyText"></div>
+      <div class="confidenceNote">信心分數衡量價格結構證據完整度，不代表勝率或上漲機率</div>
+    </section>
 
-  <section class="group riskGroup">
-    <div class="groupTitle">風險</div>
-    <div class="priceRow"><span>不追價上限</span><strong id="noChase">—</strong></div>
-    <div class="priceRow"><span>防守價</span><strong id="defense">—</strong></div>
-    <div class="priceRow"><span>結構失效價</span><strong id="invalidation">—</strong></div>
-  </section>
+    <section class="priceDashboard">
+      <section class="group buyGroup">
+        <div class="groupHeader">
+          <div>
+            <div class="groupEyebrow">ENTRY</div>
+            <div class="groupTitle">買入區</div>
+          </div>
+          <span class="groupDot"></span>
+        </div>
+        <div class="priceRow">
+          <span><small>01</small>第一買入區</span>
+          <strong id="firstEntry">—</strong>
+        </div>
+        <div class="priceRow">
+          <span><small>02</small>第二買入區</span>
+          <strong id="secondEntry">—</strong>
+        </div>
+      </section>
 
-  <details class="details">
-    <summary><span>市場風險與價格依據</span><span>查看</span></summary>
-    <div class="detailsBody">
-      <div id="risks" class="riskList"></div>
-      <div class="divider"></div>
-      <ul id="reasons"></ul>
-      <div id="audit" class="audit"></div>
-    </div>
-  </details>
-</div>
+      <section class="group sellGroup">
+        <div class="groupHeader">
+          <div>
+            <div class="groupEyebrow">EXIT</div>
+            <div class="groupTitle">賣出區</div>
+          </div>
+          <span class="groupDot"></span>
+        </div>
+        <div class="priceRow">
+          <span><small>01</small>第一減碼區</span>
+          <strong id="firstExit">—</strong>
+        </div>
+        <div class="priceRow">
+          <span><small>02</small>第二停利區</span>
+          <strong id="secondExit">—</strong>
+        </div>
+      </section>
 
-<footer>僅供研究參考，不構成投資建議。未驗證資料不補值。</footer>
+      <section class="group riskGroup">
+        <div class="groupHeader">
+          <div>
+            <div class="groupEyebrow">RISK</div>
+            <div class="groupTitle">風險界線</div>
+          </div>
+          <span class="groupDot"></span>
+        </div>
+        <div class="priceRow">
+          <span>不追價上限</span>
+          <strong id="noChase">—</strong>
+        </div>
+        <div class="priceRow">
+          <span>防守價</span>
+          <strong id="defense">—</strong>
+        </div>
+        <div class="priceRow emphasis">
+          <span>結構失效價</span>
+          <strong id="invalidation">—</strong>
+        </div>
+      </section>
+    </section>
+
+    <details class="details">
+      <summary>
+        <div>
+          <span class="detailsTitle">市場風險與價格依據</span>
+          <small>查看資料來源、指標與判斷依據</small>
+        </div>
+        <span class="detailsAction">展開</span>
+      </summary>
+      <div class="detailsBody">
+        <div id="risks" class="riskList"></div>
+        <div class="divider"></div>
+        <ul id="reasons"></ul>
+        <div id="audit" class="audit"></div>
+      </div>
+    </details>
+  </div>
+
+  <footer>
+    <div>僅供研究參考，不構成投資建議。</div>
+    <div>未驗證資料不補值。</div>
+  </footer>
 </main>
 <script src="./app.js"></script>
 </body>
