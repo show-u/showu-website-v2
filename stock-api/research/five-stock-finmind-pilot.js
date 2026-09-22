@@ -75,20 +75,20 @@ function stat(a){
     momentum:'20d adjusted return percentile vs prior 252 observations: top20% MOM_UP, bottom20% MOM_DOWN',
     turnover:'5d avg (Trading_Volume / point-in-time NumberOfSharesIssued), normalized by trailing 60d median; top20%/bottom20% vs prior 120 ratios',
     regime:'TAIEX total-return index above/below MA120 x 20d realized vol above/below prior-120 median',
-    outcome:'10-trading-day forward adjusted return > 0',
-    noOptimization:true
+    outcome:'10-trading-day forward raw-price return > 0',
+    noOptimization:true,
+    limitation:'raw close is used in this pilot; ex-dividend/corporate-action windows may distort some return observations'
   },null,2));
   const idx=await fm('TaiwanStockTotalReturnIndex','TAIEX');
   const rm=regimeMap(idx);
   const all=[];
   const results=[];
   for(const s of stocks){
-    const [adj,raw,sh]=await Promise.all([
-      fm('TaiwanStockPriceAdj',s.code),
+    const [raw,sh]=await Promise.all([
       fm('TaiwanStockPrice',s.code),
       fm('TaiwanStockShareholding',s.code)
     ]);
-    const b=buildRows(adj,raw,sh,rm);
+    const b=buildRows(raw,raw,sh,rm);
     const key=b.current?b.current.mstate+'|'+b.current.tstate+'|'+b.current.market:null;
     const own=b.events.filter(x=>(x.mstate+'|'+x.tstate+'|'+x.market)===key);
     for(const e of b.events)all.push({...e,code:s.code,name:s.name});
