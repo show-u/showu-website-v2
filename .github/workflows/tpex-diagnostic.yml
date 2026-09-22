@@ -9,16 +9,16 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe TPEx historical endpoints
+      - name: Probe modern TPEx historical endpoint
         shell: bash
         run: |
           set +e
-          for u in             "https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_result.php?l=zh-tw&d=115/09&stkno=6488"             "https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_print.php?l=zh-tw&d=115/09&stkno=6488&s=0"             "https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_download.php?l=zh-tw&d=115/09&stkno=6488&s=0,asc,0"             "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
+          for u in             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?response=json&date=115/09&code=6488"             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?response=json&date=115%2F09&code=6488"             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?date=115/09&code=6488"             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?response=json&date=2026/09&code=6488"
           do
             echo "==== $u"
             curl -L --max-time 30 -A "Mozilla/5.0" -sS -D /tmp/h -o /tmp/b "$u"
             head -20 /tmp/h
             echo "SIZE $(wc -c </tmp/b)"
-            head -c 800 /tmp/b | tr '\n' ' '
+            head -c 1500 /tmp/b | tr '\n' ' '
             echo
           done
