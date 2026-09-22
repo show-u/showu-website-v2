@@ -1,0 +1,18 @@
+name: A factor decomposition fresh validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-api/research/a-factor-decomposition-30.js'
+      - '.github/workflows/a-factor-decomposition-30.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node stock-api/research/a-factor-decomposition-30.js
