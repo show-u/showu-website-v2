@@ -115,20 +115,27 @@ function pairStats(pairs){
  return o;
 }
 function placeboP(sample,data,ex,B=5000){
- const r=rng(998877),res={};
+ const r=rng(998877),res={},pool=new Map();
+ for(const e of sample){
+   const key=e.code+'|'+e.signalDate.slice(0,4);
+   if(pool.has(key))continue;
+   const p=data[e.code].p,year=e.signalDate.slice(0,4),arr=[];
+   for(let i=120;i<p.length-21;i++)if(p[i].date.slice(0,4)===year&&!ex.has(p[i].date)){const o=outcome(p,i);if(o)arr.push(o)}
+   pool.set(key,arr);
+ }
  for(const h of H){
-   const obs=mean(sample.map(x=>x['r'+h])),sim=[];let extreme=0;
+   const obs=mean(sample.map(x=>x['r'+h]));let extreme=0,sumSim=0;
    for(let b=0;b<B;b++){
      let s=0,n=0;
      for(const e of sample){
-       const p=data[e.code].p,year=e.signalDate.slice(0,4),cand=[];
-       for(let i=120;i<p.length-21;i++)if(p[i].date.slice(0,4)===year&&!ex.has(p[i].date)){const o=outcome(p,i);if(o)cand.push(o)}
-       if(cand.length){s+=cand[Math.floor(r()*cand.length)]['r'+h];n++}
+       const arr=pool.get(e.code+'|'+e.signalDate.slice(0,4))||[];
+       if(arr.length){s+=arr[Math.floor(r()*arr.length)]['r'+h];n++}
      }
-     const v=n?s/n:0;sim.push(v);if(v>=obs)extreme++;
+     const v=n?s/n:0;sumSim+=v;if(v>=obs)extreme++;
    }
-   res[h]={observedMean:obs,placeboMean:mean(sim),empiricalP:(extreme+1)/(B+1)};
- } return res;
+   res[h]={observedMean:obs,placeboMean:sumSim/B,empiricalP:(extreme+1)/(B+1)};
+ }
+ return res;
 }
 (async()=>{
  console.log('METHOD_LOCK',JSON.stringify({
