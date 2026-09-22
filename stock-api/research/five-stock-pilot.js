@@ -22,13 +22,26 @@ async function json(url){
 async function stockBars(code){
   const out=[];
   for(const date of months(START,END)){
-    const u='https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date='+date+'&stockNo='+code;
-    const j=await json(u);
-    for(const r of (j.data||[])){
-      const o=n(r[3]),h=n(r[4]),l=n(r[5]),c=n(r[6]),v=n(r[1]);
-      if([o,h,l,c,v].every(Number.isFinite)) out.push({date:roc(r[0]),o,h,l,c,v});
+    const urls=[
+      'https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date='+date+'&stockNo='+code,
+      'https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date='+date+'&stockNo='+code
+    ];
+    let j=null;
+    for(const u of urls){
+      try{
+        const x=await json(u);
+        if(Array.isArray(x?.data)){j=x;break}
+      }catch(e){}
     }
-    await sleep(90);
+    if(j){
+      for(const r of (j.data||[])){
+        const o=n(r[3]),h=n(r[4]),l=n(r[5]),c=n(r[6]),v=n(r[1]);
+        if([o,h,l,c,v].every(Number.isFinite)) out.push({date:roc(r[0]),o,h,l,c,v});
+      }
+    }else{
+      console.log('WARN stock month failed',code,date);
+    }
+    await sleep(120);
   }
   return [...new Map(out.map(x=>[x.date,x])).values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
