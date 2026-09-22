@@ -107,13 +107,13 @@ function engine(b){
   };
 }
 
-async function fetchJson(url,retries=2){
+async function fetchJson(url,retries=2,extraHeaders={}){
   let last;
   for(let i=0;i<=retries;i++){
     const ctrl=new AbortController();
     const timer=setTimeout(()=>ctrl.abort(),12000);
     try{
-      const r=await fetch(url,{headers:{'User-Agent':UA,'Accept':'application/json'},signal:ctrl.signal});
+      const r=await fetch(url,{headers:{'User-Agent':UA,'Accept':'application/json',...extraHeaders},signal:ctrl.signal});
       if(r.ok) return await r.json();
       last=new Error('HTTP '+r.status+' '+url);
       if(![429,500,502,503,504].includes(r.status)) break;
@@ -196,18 +196,26 @@ async function fetchTwseHistory(code){
 async function fetchTpexHistory(code){
   const now=new Date(),rows=[];
   let okMonths=0,failedMonths=0;
+  const referer='https://www.tpex.org.tw/zh-tw/mainboard/trading/info/stock-day.html';
+  const headers={
+    'Referer':referer,
+    'X-Requested-With':'XMLHttpRequest',
+    'Accept':'application/json, text/plain, */*'
+  };
   for(let i=0;i<10;i++){
-    const d=addMonths(now,-i),month=rocMonth(d);
-    const url=`https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_result.php?l=zh-tw&d=${encodeURIComponent(month)}&stkno=${encodeURIComponent(code)}`;
+    const d=addMonths(now,-i);
+    const date=`${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,'0')}/01`;
+    const url=`https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code=${encodeURIComponent(code)}&date=${encodeURIComponent(date)}&response=json`;
     try{
-      const j=await fetchJson(url,2);
-      const data=Array.isArray(j?.aaData)?j.aaData:[];
-      if(!data.length){failedMonths++;continue}
+      const j=await fetchJson(url,2,headers);
+      const table=Array.isArray(j?.tables)?j.tables[0]:null;
+      const data=Array.isArray(table?.data)?table.data:[];
+      if(String(j?.stat||'').toLowerCase()!=='ok'||!data.length){failedMonths++;continue}
       okMonths++;
       for(const r of data){
         const o=num(r[3]),h=num(r[4]),l=num(r[5]),c=num(r[6]),v=num(r[1]);
         if([o,h,l,c].every(Number.isFinite)&&h>=Math.max(o,l,c)&&l<=Math.min(o,h,c))
-          rows.push({date:rocDateToIso(r[0]),o,h,l,c,v:Number.isFinite(v)?v:null});
+          rows.push({date:rocDateToIso(r[0]),o,h,l,c,v:Number.isFinite(v)?v*1000:null});
       }
     }catch{failedMonths++}
     if(new Set(rows.map(x=>x.date)).size>=150) break;
