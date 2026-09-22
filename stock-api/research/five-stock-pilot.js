@@ -5,7 +5,7 @@ const stocks=[
   {code:'2881',name:'富邦金'},
   {code:'1301',name:'台塑'}
 ];
-const START='2021-01-01';
+const START='2022-01-01';
 const END='2026-09-22';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const n=x=>{const v=Number(String(x??'').replaceAll(',','').replace(/[+X]/g,''));return Number.isFinite(v)?v:null};
@@ -19,43 +19,38 @@ async function json(url){
   }
   throw Error('fetch failed '+url);
 }
+async function pool(items,worker,concurrency=3){
+  const out=new Array(items.length); let next=0;
+  async function run(){while(true){const i=next++;if(i>=items.length)return;out[i]=await worker(items[i],i)}}
+  await Promise.all(Array.from({length:concurrency},run)); return out;
+}
 async function stockBars(code){
-  const out=[];
-  for(const date of months(START,END)){
+  const chunks=await pool(months(START,END),async date=>{
     const urls=[
       'https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date='+date+'&stockNo='+code,
       'https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date='+date+'&stockNo='+code
     ];
     let j=null;
     for(const u of urls){
-      try{
-        const x=await json(u);
-        if(Array.isArray(x?.data)){j=x;break}
-      }catch(e){}
+      try{const x=await json(u);if(Array.isArray(x?.data)){j=x;break}}catch(e){}
     }
-    if(j){
-      for(const r of (j.data||[])){
-        const o=n(r[3]),h=n(r[4]),l=n(r[5]),c=n(r[6]),v=n(r[1]);
-        if([o,h,l,c,v].every(Number.isFinite)) out.push({date:roc(r[0]),o,h,l,c,v});
-      }
-    }else{
-      console.log('WARN stock month failed',code,date);
-    }
-    await sleep(120);
-  }
+    if(!j){console.log('WARN stock month failed',code,date);return []}
+    return (j.data||[]).map(r=>{
+      const o=n(r[3]),h=n(r[4]),l=n(r[5]),c=n(r[6]),v=n(r[1]);
+      return [o,h,l,c,v].every(Number.isFinite)?{date:roc(r[0]),o,h,l,c,v}:null;
+    }).filter(Boolean);
+  },3);
+  const out=chunks.flat();
   return [...new Map(out.map(x=>[x.date,x])).values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
 async function taiexBars(){
-  const out=[];
-  for(const date of months(START,END)){
-    const u='https://www.twse.com.tw/indicesReport/MI_5MINS_HIST?response=json&date='+date;
-    const j=await json(u);
-    for(const r of (j.data||[])){
-      const c=n(r[4]);
-      if(Number.isFinite(c)) out.push({date:roc(r[0]),c});
-    }
-    await sleep(90);
-  }
+  const chunks=await pool(months(START,END),async date=>{
+    try{
+      const j=await json('https://www.twse.com.tw/indicesReport/MI_5MINS_HIST?response=json&date='+date);
+      return (j.data||[]).map(r=>{const c=n(r[4]);return Number.isFinite(c)?{date:roc(r[0]),c}:null}).filter(Boolean);
+    }catch(e){console.log('WARN taiex month failed',date);return []}
+  },3);
+  const out=chunks.flat();
   return [...new Map(out.map(x=>[x.date,x])).values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
 const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
