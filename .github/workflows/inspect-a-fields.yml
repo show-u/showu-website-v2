@@ -1,0 +1,18 @@
+name: Inspect A factor field names
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-api/research/inspect-a-fields.js'
+      - '.github/workflows/inspect-a-fields.yml'
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node stock-api/research/inspect-a-fields.js
