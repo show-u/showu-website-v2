@@ -9,14 +9,17 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe corrected TPEx endpoint
+      - name: Probe TPEx with browser-like session
         shell: bash
         run: |
           set -e
-          u="https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code=6488&date=2026%2F09%2F01&response=json"
-          echo "$u"
-          curl -L --max-time 30 -A "Mozilla/5.0" -sS -D /tmp/h -o /tmp/b "$u"
-          head -20 /tmp/h
+          page="https://www.tpex.org.tw/zh-tw/mainboard/trading/info/stock-day.html"
+          api="https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code=6488&date=2026%2F09%2F01&response=json"
+          curl -L --max-time 30 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"             -c /tmp/cookies -sS -o /tmp/page "$page"
+          echo "PAGE $(wc -c </tmp/page) COOKIE"
+          cat /tmp/cookies
+          curl -L --max-time 30             -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"             -e "$page" -b /tmp/cookies -c /tmp/cookies             -H "Accept: application/json, text/plain, */*"             -H "X-Requested-With: XMLHttpRequest"             -sS -D /tmp/h -o /tmp/b "$api"
+          head -30 /tmp/h
           echo "SIZE $(wc -c </tmp/b)"
-          head -c 3000 /tmp/b | tr '\n' ' '
+          head -c 4000 /tmp/b | tr '\n' ' '
           echo
