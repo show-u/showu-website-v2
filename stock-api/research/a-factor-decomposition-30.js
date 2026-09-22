@@ -43,7 +43,7 @@ function valuation(per,date){
 function features(d,date){
  const op=latest(d.fin,'OperatingIncome',date),ni=latest(d.fin,'IncomeAfterTaxes',date);
  let ocf=latest(d.cf,'CashFlowsFromOperatingActivities',date);if(ocf==null)ocf=latest(d.cf,'NetCashInflowFromOperatingActivities',date);
- const assets=latest(d.bs,'TotalAssets',date),liab=latest(d.bs,'TotalLiabilities',date);
+ const assets=latest(d.bs,'TotalAssets',date),liab=latest(d.bs,'Liabilities',date);
  const rev=revenueInfo(d.rev,date),val=valuation(d.per,date);
  if([op,ni,ocf,assets,liab].some(v=>v==null)||!rev||!val||assets<=0)return null;
  const quality=(op>0?1:0)+(ni>0?1:0)+(ocf>0?1:0);
