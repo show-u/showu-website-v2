@@ -1,0 +1,18 @@
+name: Five-stock FinMind pilot
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-api/research/five-stock-finmind-pilot.js'
+      - '.github/workflows/five-stock-finmind-pilot.yml'
+  workflow_dispatch:
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node stock-api/research/five-stock-finmind-pilot.js
