@@ -9,20 +9,27 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect TPEx Swagger
+      - name: Test OTC history provider against TPEx codes
         shell: bash
         run: |
           set -e
-          curl -L --max-time 60 -A "Mozilla/5.0" -sS "https://www.tpex.org.tw/openapi/swagger.json" -o /tmp/swagger.json
-          echo "SIZE $(wc -c </tmp/swagger.json)"
-          python - <<'PY'
-          import json,re
-          j=json.load(open('/tmp/swagger.json'))
-          paths=j.get('paths',{})
-          for p,v in paths.items():
-              s=(p+' '+json.dumps(v,ensure_ascii=False)).lower()
-              if any(k in s for k in ['history','histor','daily','close','quote','trading','aftertrading','mainboard']):
-                  print(p)
-                  print(json.dumps(v,ensure_ascii=False)[:1800])
-                  print('---')
+          for code in 6488 5483 8069 8299; do
+            echo "==== $code"
+            curl -L --max-time 30 -A "Mozilla/5.0" -sS               "https://query1.finance.yahoo.com/v8/finance/chart/$code.TWO?range=1y&interval=1d&events=history"               -o /tmp/y.json
+            python - "$code" <<'PY'
+          import json,sys,math
+          code=sys.argv[1]
+          j=json.load(open('/tmp/y.json'))
+          r=j['chart']['result'][0]
+          ts=r.get('timestamp') or []
+          q=r['indicators']['quote'][0]
+          good=0
+          for i in range(len(ts)):
+              vals=[q.get(k,[None]*len(ts))[i] for k in ('open','high','low','close')]
+              if all(v is not None and isinstance(v,(int,float)) and math.isfinite(v) for v in vals):
+                  good+=1
+          meta=r.get('meta',{})
+          print({'code':code,'symbol':meta.get('symbol'),'bars':good,'currency':meta.get('currency'),'exchange':meta.get('exchangeName'),'last':meta.get('regularMarketPrice')})
+          if good < 120: raise SystemExit(2)
           PY
+          done
