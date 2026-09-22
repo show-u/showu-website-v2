@@ -1,0 +1,40 @@
+name: Stock website browser E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-price/**'
+      - '.github/workflows/stock-website-e2e.yml'
+  workflow_dispatch:
+
+jobs:
+  browser-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Wait for GitHub Pages release
+        shell: bash
+        run: |
+          set -e
+          for i in {1..36}; do
+            if curl -fsS --max-time 20 "https://www.showujapan.com/stock-price/app.js?probe=$i" -o /tmp/app.js &&
+               grep -q "stock-api-production-9d2c.up.railway.app" /tmp/app.js; then
+              echo "new frontend is live"
+              exit 0
+            fi
+            echo "waiting for Pages... $i"
+            sleep 5
+          done
+          echo "new frontend was not published in time"
+          exit 1
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run mobile browser E2E
+        run: node stock-price/browser-e2e.js
