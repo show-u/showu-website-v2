@@ -15,7 +15,7 @@ async function fm(dataset,id){
  const u=new URL(API);u.searchParams.set('dataset',dataset);if(id)u.searchParams.set('data_id',id);u.searchParams.set('start_date',START);u.searchParams.set('end_date',END);
  const r=await fetch(u);if(!r.ok)throw Error(dataset+' '+id+' HTTP '+r.status);const j=await r.json();return j.data||[];
 }
-function P(raw){return raw.map(r=>({date:r.date,open:+r.open,high:+r.max,low:+r.min,close:+r.close,vol:+r.Trading_Volume})).filter(x=>[x.open,x.high,x.low,x.close].every(Number.isFinite)).sort((a,b)=>a.date.localeCompare(b.date))}
+function P(raw){return raw.map(r=>({date:r.date,open:+r.open,high:+r.max,low:+r.min,close:+r.close,vol:+r.Trading_Volume})).filter(x=>[x.open,x.high,x.low,x.close].every(v=>Number.isFinite(v)&&v>0)).sort((a,b)=>a.date.localeCompare(b.date))}
 function I(raw){return raw.map(r=>({date:r.date,close:+r.price})).filter(x=>Number.isFinite(x.close)).sort((a,b)=>a.date.localeCompare(b.date))}
 function ma(p,i,n){if(i<n-1)return null;return mean(p.slice(i-n+1,i+1).map(x=>x.close))}
 function ret(p,i,n){return i>=n?p[i].close/p[i-n].close-1:null}
