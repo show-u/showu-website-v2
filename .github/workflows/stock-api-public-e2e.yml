@@ -1,0 +1,41 @@
+name: Stock API public E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stock-api-public-e2e.yml'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Test public Railway API
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://stock-api-production-9d2c.up.railway.app"
+          echo "Health:"
+          curl -fsS --retry 3 --retry-delay 2 "$BASE/health"
+          echo
+          for stock in 2330 2454 2409 2317 2303 2881 6488 5483; do
+            echo "==== $stock"
+            curl -fsS --retry 3 --retry-delay 2 --max-time 120 "$BASE/api/analyze?stock=$stock" -o "/tmp/$stock.json"
+            node - "$stock" "/tmp/$stock.json" <<'NODE'
+          const fs=require('fs');
+          const [stock,file]=process.argv.slice(2);
+          const j=JSON.parse(fs.readFileSync(file,'utf8'));
+          if(!j.ok) throw new Error(j.error||'not ok');
+          if(j.stock?.code!==stock) throw new Error('code mismatch');
+          if(!(j.stock?.bars>=60)) throw new Error('insufficient bars');
+          if(!Number.isFinite(j.latest)) throw new Error('latest missing');
+          if(!j.prices || !j.confidence) throw new Error('analysis missing');
+          console.log(JSON.stringify({
+            stock:j.stock.code,name:j.stock.name,market:j.stock.market,
+            date:j.stock.date,bars:j.stock.bars,latest:j.latest,
+            confidence:j.confidence.score,source:j.audit?.source
+          }));
+          NODE
+          done
