@@ -1,0 +1,18 @@
+name: Taiwan entry-method fresh validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-api/research/taiwan-entry-methods-fresh.js'
+      - '.github/workflows/taiwan-entry-methods-fresh.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node stock-api/research/taiwan-entry-methods-fresh.js
