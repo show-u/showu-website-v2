@@ -9,16 +9,14 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe modern TPEx historical endpoint
+      - name: Probe corrected TPEx endpoint
         shell: bash
         run: |
-          set +e
-          for u in             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?response=json&date=115/09&code=6488"             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?response=json&date=115%2F09&code=6488"             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?date=115/09&code=6488"             "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?response=json&date=2026/09&code=6488"
-          do
-            echo "==== $u"
-            curl -L --max-time 30 -A "Mozilla/5.0" -sS -D /tmp/h -o /tmp/b "$u"
-            head -20 /tmp/h
-            echo "SIZE $(wc -c </tmp/b)"
-            head -c 1500 /tmp/b | tr '\n' ' '
-            echo
-          done
+          set -e
+          u="https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code=6488&date=2026%2F09%2F01&response=json"
+          echo "$u"
+          curl -L --max-time 30 -A "Mozilla/5.0" -sS -D /tmp/h -o /tmp/b "$u"
+          head -20 /tmp/h
+          echo "SIZE $(wc -c </tmp/b)"
+          head -c 3000 /tmp/b | tr '\n' ' '
+          echo
