@@ -9,17 +9,20 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe TPEx with browser-like session
+      - name: Inspect TPEx Swagger
         shell: bash
         run: |
           set -e
-          page="https://www.tpex.org.tw/zh-tw/mainboard/trading/info/stock-day.html"
-          api="https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code=6488&date=2026%2F09%2F01&response=json"
-          curl -L --max-time 30 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"             -c /tmp/cookies -sS -o /tmp/page "$page"
-          echo "PAGE $(wc -c </tmp/page) COOKIE"
-          cat /tmp/cookies
-          curl -L --max-time 30             -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"             -e "$page" -b /tmp/cookies -c /tmp/cookies             -H "Accept: application/json, text/plain, */*"             -H "X-Requested-With: XMLHttpRequest"             -sS -D /tmp/h -o /tmp/b "$api"
-          head -30 /tmp/h
-          echo "SIZE $(wc -c </tmp/b)"
-          head -c 4000 /tmp/b | tr '\n' ' '
-          echo
+          curl -L --max-time 60 -A "Mozilla/5.0" -sS "https://www.tpex.org.tw/openapi/swagger.json" -o /tmp/swagger.json
+          echo "SIZE $(wc -c </tmp/swagger.json)"
+          python - <<'PY'
+          import json,re
+          j=json.load(open('/tmp/swagger.json'))
+          paths=j.get('paths',{})
+          for p,v in paths.items():
+              s=(p+' '+json.dumps(v,ensure_ascii=False)).lower()
+              if any(k in s for k in ['history','histor','daily','close','quote','trading','aftertrading','mainboard']):
+                  print(p)
+                  print(json.dumps(v,ensure_ascii=False)[:1800])
+                  print('---')
+          PY
