@@ -92,7 +92,11 @@ async function analyze(){
   if(error) error.hidden=true;
   if(result) result.hidden=true;
   if(loading) loading.classList.add('show');
-  if(submit) submit.disabled=true;
+  if(submit){
+    submit.disabled=true;
+    submit.dataset.original=submit.innerHTML;
+    submit.innerHTML='<span>分析中</span><span class="buttonArrow">…</span>';
+  }
 
   try{
     const ctrl=new AbortController();
@@ -122,7 +126,10 @@ async function analyze(){
     }
   }finally{
     if(loading) loading.classList.remove('show');
-    if(submit) submit.disabled=false;
+    if(submit){
+      submit.disabled=false;
+      if(submit.dataset.original) submit.innerHTML=submit.dataset.original;
+    }
   }
 }
 
