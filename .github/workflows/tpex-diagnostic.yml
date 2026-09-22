@@ -1,0 +1,24 @@
+name: TPEx endpoint diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tpex-diagnostic.yml'
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe TPEx historical endpoints
+        shell: bash
+        run: |
+          set +e
+          for u in             "https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_result.php?l=zh-tw&d=115/09&stkno=6488"             "https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_print.php?l=zh-tw&d=115/09&stkno=6488&s=0"             "https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_download.php?l=zh-tw&d=115/09&stkno=6488&s=0,asc,0"             "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
+          do
+            echo "==== $u"
+            curl -L --max-time 30 -A "Mozilla/5.0" -sS -D /tmp/h -o /tmp/b "$u"
+            head -20 /tmp/h
+            echo "SIZE $(wc -c </tmp/b)"
+            head -c 800 /tmp/b | tr '\n' ' '
+            echo
+          done
