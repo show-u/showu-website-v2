@@ -238,10 +238,18 @@ async function analyze(stock){
   const result=engine(hist.bars);
   return {
     ok:true,
-    stock:{...resolved,date:hist.bars.at(-1).date,bars:hist.bars.length},
+    stock:{
+      ...resolved,
+      name:hist.official?.name||resolved.name,
+      date:hist.bars.at(-1).date,
+      bars:hist.bars.length
+    },
     ...result,
     audit:{
-      source:resolved.market==='TWSE'?'TWSE STOCK_DAY':'TPEx individual daily trading info',
+      source:resolved.market==='TWSE'
+        ? 'TWSE STOCK_DAY'
+        : 'TPEx OpenAPI latest quote + Yahoo Finance .TWO historical OHLCV',
+      officialCrossCheck:resolved.market==='TPEx'?hist.officialCrossCheck:true,
       fetchedOnline:true,
       database:false,
       validOHLC:hist.bars.length,
