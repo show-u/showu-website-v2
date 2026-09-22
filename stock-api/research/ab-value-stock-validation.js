@@ -131,7 +131,7 @@ function placeboTop(records,B=5000){
   B:'For A-selected stock only, estimate 20d path from up to 20 same-stock pre-snapshot analogues using 20d return, distance to MA60, realized vol, and 20d relative strength vs TAIEX. Analogue outcomes must be fully known before snapshot. Favorable iff historical median 20d return >0 AND median MFE/abs(MAE)>1.',
   validation:'Exclude every prior validation date +/-20 common trading days. Monthly snapshots are fixed before outcome reading. A compared with bottom stock/equal-weight/random placebo. B favorable vs unfavorable realized MFE/MAE/return.'
  },null,2));
- const idx=I(await fm('TaiwanStockTotalReturnIndex','')),indexMap=new Map(idx.map((x,i)=>[x.date,i]));
+ const idx=I(await fm('TaiwanStockTotalReturnIndex','TAIEX')),indexMap=new Map(idx.map((x,i)=>[x.date,i]));
  const data={},sets=[];
  for(const s of STOCKS){
   const [pr,rev,per,fin,bs,cf]=await Promise.all([
