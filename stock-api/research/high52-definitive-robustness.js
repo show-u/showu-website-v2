@@ -53,14 +53,14 @@ function boot(vals,B=10000){const r=rng(7766),v=[];for(let b=0;b<B;b++){const a=
 function winsor(a,p=.1){const lo=q(a,p),hi=q(a,1-p);return a.map(x=>Math.max(lo,Math.min(hi,x)))}
 (async()=>{
  const info=await fm('TaiwanStockInfo','');const im=new Map();for(const x of info){if(STOCKS.includes(x.stock_id))im.set(x.stock_id,x.industry_category||'UNKNOWN')}
- const data={};for(const code of STOCKS){const pr=await fm('TaiwanStockPrice',code);let sh=[];try{sh=await fm('TaiwanStockShareholding',code)}catch(e){console.log('SH_SKIP',code)}data[code]={p:P(pr),sh}}
+ const data={};for(const code of STOCKS){let pr=[],sh=[];try{pr=await fm('TaiwanStockPrice',code)}catch(e){console.log('PRICE_SKIP',code);continue}try{sh=await fm('TaiwanStockShareholding',code)}catch(e){console.log('SH_SKIP',code)}const p=P(pr);if(p.length<400)continue;data[code]={p,sh}}
  const cal=(await fm('TaiwanStockTotalReturnIndex','TAIEX')).map(x=>x.date).sort(),dates=nonOverlapDates(cal);
  const all={};
  for(const h of HORIZONS){
    const rec=[];
    for(const date of dates){
      const rows=[];
-     for(const code of STOCKS){const d=data[code],i=d.p.findIndex(x=>x.date===date);if(i<252)continue;const sh=latestShares(d.sh,date),ret=outcome(d.p,date,h);if(!sh||ret==null)continue;rows.push({code,HIGH52:high52(d.p,i),MOM6:pastRet(d.p,i,126,21),cap:d.p[i].close*sh,ret})}
+     for(const code of Object.keys(data)){const d=data[code],i=d.p.findIndex(x=>x.date===date);if(i<252)continue;const sh=latestShares(d.sh,date),ret=outcome(d.p,date,h);if(!sh||ret==null)continue;rows.push({code,HIGH52:high52(d.p,i),MOM6:pastRet(d.p,i,126,21),cap:d.p[i].close*sh,ret})}
      if(rows.length<50)continue;
      const ir=industryNeutral(rows,im),ls=longShort(rows,'HIGH52'),ils=longShort(ir,'IND_HIGH'),coef=fmbJoint(rows);
      if(ls)rec.push({date,n:rows.length,spread:ls.spread,top:ls.top,bottom:ls.bottom,coef,indSpread:ils?.spread??null,wSpread:mean(winsor(ls.topR))-mean(winsor(ls.bottomR)),conservative:mean([...ls.topR].sort((a,b)=>a-b).slice(0,-1))-mean(ls.bottomR)});
