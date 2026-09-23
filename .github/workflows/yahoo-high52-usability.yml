@@ -1,0 +1,18 @@
+name: Yahoo HIGH52 usability stress
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-api/research/yahoo-high52-usability.js'
+      - '.github/workflows/yahoo-high52-usability.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node stock-api/research/yahoo-high52-usability.js
