@@ -29,7 +29,7 @@ const q=(a,p)=>{if(!a.length)return null;const x=[...a].sort((a,b)=>a-b),z=(x.le
 const sd=a=>{if(a.length<2)return null;const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1))};
 function rng(seed){let x=seed>>>0;return()=>{x=(1664525*x+1013904223)>>>0;return x/4294967296}}
 async function info(){
- const u=new URL(API);u.searchParams.set('dataset','TaiwanStockInfo');u.searchParams.set('start_date','2026-01-01');u.searchParams.set('end_date','2026-09-22');
+ const u=new URL(API);u.searchParams.set('dataset','TaiwanStockInfo');
  const r=await fetch(u);if(!r.ok)throw Error('info '+r.status);return (await r.json()).data||[];
 }
 async function yahoo(code){
