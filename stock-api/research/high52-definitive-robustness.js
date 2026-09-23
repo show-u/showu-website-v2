@@ -53,7 +53,7 @@ function boot(vals,B=10000){const r=rng(7766),v=[];for(let b=0;b<B;b++){const a=
 function winsor(a,p=.1){const lo=q(a,p),hi=q(a,1-p);return a.map(x=>Math.max(lo,Math.min(hi,x)))}
 (async()=>{
  const info=await fm('TaiwanStockInfo','');const im=new Map();for(const x of info){if(STOCKS.includes(x.stock_id))im.set(x.stock_id,x.industry_category||'UNKNOWN')}
- const data={};for(const code of STOCKS){const [pr,sh]=await Promise.all([fm('TaiwanStockPrice',code),fm('TaiwanStockShareholding',code)]);data[code]={p:P(pr),sh}}
+ const data={};for(const code of STOCKS){const pr=await fm('TaiwanStockPrice',code);let sh=[];try{sh=await fm('TaiwanStockShareholding',code)}catch(e){console.log('SH_SKIP',code)}data[code]={p:P(pr),sh}}
  const cal=(await fm('TaiwanStockTotalReturnIndex','TAIEX')).map(x=>x.date).sort(),dates=nonOverlapDates(cal);
  const all={};
  for(const h of HORIZONS){
