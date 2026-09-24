@@ -1,10 +1,17 @@
 name: Delisted data source inspection
-on: workflow_dispatch
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stock-api/research/delisted-source-inspection.js'
+      - '.github/workflows/delisted-source-inspection.yml'
+  workflow_dispatch:
 jobs:
  inspect:
   runs-on: ubuntu-latest
   steps:
    - uses: actions/checkout@v4
    - uses: actions/setup-node@v4
-     with: {node-version: '20'}
+     with:
+       node-version: '20'
    - run: node stock-api/research/delisted-source-inspection.js
