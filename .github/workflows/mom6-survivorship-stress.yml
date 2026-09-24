@@ -1,0 +1,18 @@
+name: MOM6 survivorship stress
+on:
+ push:
+  branches: [main]
+  paths:
+   - 'stock-api/research/mom6-survivorship-stress.js'
+   - '.github/workflows/mom6-survivorship-stress.yml'
+ workflow_dispatch:
+jobs:
+ validate:
+  runs-on: ubuntu-latest
+  timeout-minutes: 50
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with:
+      node-version: '20'
+   - run: node stock-api/research/mom6-survivorship-stress.js
