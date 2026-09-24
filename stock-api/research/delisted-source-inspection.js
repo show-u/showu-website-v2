@@ -9,6 +9,12 @@
   const t=await r.text();
   console.log('URL',u,'STATUS',r.status,'LEN',t.length);
   console.log(t.slice(0,5000).replace(/\n/g,' '));
+  if(u.includes('tpex.org.tw')){
+    const ms=[...t.matchAll(/(?:fetch|url|api|ajax|query|tables)[^"'<>]{0,180}/gi)].map(m=>m[0]);
+    console.log('TPEX_HINTS',JSON.stringify(ms.slice(0,80)));
+    const scripts=[...t.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m=>m[1]);
+    console.log('TPEX_SCRIPTS',JSON.stringify(scripts));
+  }
  }
  for(const code of ['2841','6452','2456','2823','1701','2443','2358','3682']){
   for(const sfx of ['.TW','.TWO']){
