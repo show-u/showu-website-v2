@@ -1,6 +1,9 @@
 
 (async()=>{
  const urls=[
+ 'https://www.tpex.org.tw/www/zh-tw/company/deListed',
+ 'https://www.tpex.org.tw/www/zh-tw/company/deListed?code=&date=&reason=-1',
+ 'https://www.tpex.org.tw/www/zh-tw/company/deListed?code=&date=2024&reason=-1',
  'https://www.tpex.org.tw/web/api/company/deListed?l=zh-tw',
  'https://www.tpex.org.tw/api/company/deListed?l=zh-tw',
  'https://www.tpex.org.tw/www/api/company/deListed?l=zh-tw',
