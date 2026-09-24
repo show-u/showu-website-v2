@@ -1,0 +1,13 @@
+name: TPEX main inspect
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/tpex-main-inspect.js','.github/workflows/tpex-main-inspect.yml']
+jobs:
+ inspect:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/tpex-main-inspect.js
