@@ -1,0 +1,17 @@
+name: TPEX endpoint probe
+on:
+ push:
+  branches: [main]
+  paths:
+   - 'stock-api/research/tpex-endpoint-probe.js'
+   - '.github/workflows/tpex-endpoint-probe.yml'
+ workflow_dispatch:
+jobs:
+ probe:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with:
+      node-version: '20'
+   - run: node stock-api/research/tpex-endpoint-probe.js
