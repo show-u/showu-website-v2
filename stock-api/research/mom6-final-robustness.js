@@ -147,12 +147,12 @@ const RULES=[{name:'MOM6',features:[['MOM6',1]]}];
  }
  const costStress=[0,.003,.006,.01,.02].map(x=>evalMOM(.20,x));
  const breadth=[.10,.20,.30].map(x=>evalMOM(x,.006));
- const base=costStress[0];
+ const baseEval=costStress[0];
 
  // leave-one-year-out using the primary top-20% rule, gross winner lift
  const loo={};
  for(const y of ['2021','2022','2023','2024','2025','2026']){
-   const vals=base.perDate.filter(x=>!x.date.startsWith(y)).map(x=>x.lift);
+   const vals=baseEval.perDate.filter(x=>!x.date.startsWith(y)).map(x=>x.lift);
    loo[y]={n:vals.length,mean:mean(vals),positive:vals.filter(x=>x>0).length/vals.length,p:perm(vals),ci:boot(vals)};
  }
 
@@ -176,7 +176,7 @@ const RULES=[{name:'MOM6',features:[['MOM6',1]]}];
  const repl=[];for(let i=1;i<sets.length;i++){const a=sets[i-1].sel,b=sets[i].sel,inter=[...a].filter(x=>b.has(x)).length,union=new Set([...a,...b]).size;repl.push(1-inter/union)}
  const turnover={meanReplacementFraction:mean(repl),medianReplacementFraction:median(repl)};
 
- const pass=base.winnerLift>0&&base.p<.05&&base.ci[0]>0&&costStress.find(x=>x.cost===.01).winnerLift>0&&costStress.find(x=>x.cost===.01).ci[0]>0;
+ const pass=baseEval.winnerLift>0&&baseEval.p<.05&&baseEval.ci[0]>0&&costStress.find(x=>x.cost===.01).winnerLift>0&&costStress.find(x=>x.cost===.01).ci[0]>0;
  console.log('RESULT',JSON.stringify({
    nStocks:Object.keys(data).length,nDates:snapshots.length,
    primary:'MOM6 top 20%, future 84d winner >=20%',
