@@ -1,0 +1,17 @@
+name: MOM6 broad print codes
+on:
+ push:
+  branches: [main]
+  paths:
+   - 'stock-api/research/mom6-broad-fresh-validation-print.js'
+   - '.github/workflows/mom6-broad-fresh-validation-print.yml'
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 60
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with:
+      node-version: '20'
+   - run: node stock-api/research/mom6-broad-fresh-validation-print.js
