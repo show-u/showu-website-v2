@@ -7,6 +7,12 @@ const q=(a,p)=>{const x=[...a].sort((a,b)=>a-b),z=(x.length-1)*p,l=Math.floor(z)
 function rng(seed){let x=seed>>>0;return()=>{x=(1664525*x+1013904223)>>>0;return x/4294967296}}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function fm(ds,id){for(let a=0;a<4;a++){const u=new URL(API);u.searchParams.set('dataset',ds);if(id)u.searchParams.set('data_id',id);u.searchParams.set('start_date',START);u.searchParams.set('end_date',END);const r=await fetch(u);if(r.ok)return (await r.json()).data||[];await sleep(400*(a+1))}return[]}
+async function yahoo(code,type){
+ const suffix=type==='twse'?'.TW':'.TWO',p1=Math.floor(Date.parse(START+'T00:00:00Z')/1000),p2=Math.floor(Date.parse('2026-09-23T00:00:00Z')/1000);
+ const u='https://query1.finance.yahoo.com/v8/finance/chart/'+code+suffix+'?period1='+p1+'&period2='+p2+'&interval=1d&events=div%2Csplits&includeAdjustedClose=true';
+ for(let a=0;a<3;a++){const r=await fetch(u,{headers:{'User-Agent':'Mozilla/5.0'}});if(r.ok){const j=await r.json(),x=j?.chart?.result?.[0],ts=x?.timestamp||[],q=x?.indicators?.quote?.[0],adj=x?.indicators?.adjclose?.[0]?.adjclose||q?.close||[];return ts.map((t,i)=>({date:new Date(t*1000).toISOString().slice(0,10),close:+adj[i],Trading_money:(+q.volume?.[i]||0)*(+q.close?.[i]||0)})).filter(z=>z.close>0)}await sleep(250*(a+1))}return[];
+}
+async function pool(items,limit,fn){const out=new Array(items.length);let idx=0;async function w(){while(true){const i=idx++;if(i>=items.length)return;try{out[i]=await fn(items[i])}catch{out[i]=null}}}await Promise.all(Array.from({length:limit},w));return out}
 async function info(){const u=new URL(API);u.searchParams.set('dataset','TaiwanStockInfo');const r=await fetch(u);return (await r.json()).data||[]}
 function P(rows){return rows.map(x=>({date:x.date,c:+x.close,m:+x.Trading_money||0})).filter(x=>x.c>0).sort((a,b)=>a.date.localeCompare(b.date))}
 function pct(vals){const s=vals.map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]),o=new Array(vals.length);for(let k=0;k<s.length;k++)o[s[k][1]]=k/(s.length-1||1);return o}
@@ -36,7 +42,9 @@ function feats(p,i){
  }));
  const raw=await info(),latest=new Map();for(const x of raw){if(!['twse','tpex'].includes(x.type)||!/^[0-9]{4}$/.test(x.stock_id)||USED.has(x.stock_id)||x.industry_category==='ETF'||x.stock_name.includes('創'))continue;const o=latest.get(x.stock_id);if(!o||x.date>o.date)latest.set(x.stock_id,x)}
  const rr=rng(SEED),cand=[...latest.values()].sort(()=>rr()-.5),data={};
- for(const s of cand){if(Object.keys(data).length>=TARGET)break;const p=P(await fm('TaiwanStockPrice',s.stock_id));if(p.length>=900){data[s.stock_id]={p,map:new Map(p.map((x,i)=>[x.date,i])),name:s.stock_name}}await sleep(40)}
+ const fetched=await pool(cand.slice(0,500),18,async s=>{const p=P(await yahoo(s.stock_id,s.type));return p.length>=900?{s,p}:null});
+ for(const z of fetched.filter(Boolean)){if(Object.keys(data).length>=200)break;data[z.s.stock_id]={p:z.p,map:new Map(z.p.map((x,i)=>[x.date,i])),name:z.s.stock_name}}
+
  console.log('LOCK',JSON.stringify({fresh:Object.keys(data).length,codes:Object.keys(data)}));
  const base=data[Object.keys(data)[0]].p,cal=base.map(x=>x.date),pos=new Map(cal.map((d,i)=>[d,i])),dates=[];for(let i=300;i<cal.length-H;i+=84){const d=cal[i];if(d>='2021-06-01'&&d<='2026-04-30')dates.push(d)}console.log('DATES',JSON.stringify(dates));
  const keys=['mom6','mom3','mom12','accel','highProx','posShare'],diff={};keys.forEach(k=>diff[k]=[]);const rowsOut=[];
