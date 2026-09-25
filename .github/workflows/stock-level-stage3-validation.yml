@@ -1,0 +1,14 @@
+name: Stock level stage3 validation
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/stock-level-stage3-validation.js','.github/workflows/stock-level-stage3-validation.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 60
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/stock-level-stage3-validation.js
