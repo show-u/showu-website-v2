@@ -1,0 +1,13 @@
+name: Stock level dataset inspect
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/stock-level-dataset-inspect.js','.github/workflows/stock-level-dataset-inspect.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/stock-level-dataset-inspect.js
