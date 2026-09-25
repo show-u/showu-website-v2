@@ -1,0 +1,14 @@
+name: Five stock final fast
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/five-stock-final-fast.js','.github/workflows/five-stock-final-fast.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 30
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/five-stock-final-fast.js
