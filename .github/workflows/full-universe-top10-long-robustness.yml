@@ -1,0 +1,14 @@
+name: Full universe top10 long robustness
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/full-universe-top10-long-robustness.js','.github/workflows/full-universe-top10-long-robustness.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 90
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/full-universe-top10-long-robustness.js
