@@ -1,0 +1,14 @@
+name: Current MOM6 revenue accel shortlist
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/current-mom6-revaccel-shortlist.js','.github/workflows/current-mom6-revaccel-shortlist.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 45
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/current-mom6-revaccel-shortlist.js
