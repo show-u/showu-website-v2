@@ -1,0 +1,14 @@
+name: Clean replication MOM6 revenue accel
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/clean-replication-mom6-revaccel.js','.github/workflows/clean-replication-mom6-revaccel.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 60
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/clean-replication-mom6-revaccel.js
