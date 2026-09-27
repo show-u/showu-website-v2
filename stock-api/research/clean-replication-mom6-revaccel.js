@@ -1,5 +1,5 @@
 
-const fs=require('fs'),path=require('path');
+const fs=require('fs'),path=require('path'),cp=require('child_process');
 const API='https://api.finmindtrade.com/api/v4/data';
 const START='2020-01-01',END='2026-09-22',H=84,TARGET=160,SEED=20260927;
 const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
@@ -15,12 +15,22 @@ function revFeat(rows,date){const a=rows.filter(x=>(x.create_time||x.date)<=date
 function perm(v,B=20000){let z=864209;const r=()=>{z=(1664525*z+1013904223)>>>0;return z/4294967296};const obs=mean(v);let e=0;for(let b=0;b<B;b++)if(mean(v.map(x=>r()<.5?x:-x))>=obs)e++;return(e+1)/(B+1)}
 function boot(v,B=10000){let z=420986;const r=()=>{z=(1664525*z+1013904223)>>>0;return z/4294967296};const a=[];for(let b=0;b<B;b++){const t=[];for(let i=0;i<v.length;i++)t.push(v[Math.floor(r()*v.length)]);a.push(mean(t))}return[q(a,.025),q(a,.975)]}
 function priorCodes(){
- const dir=path.join(process.cwd(),'stock-api','research'),set=new Set();
- for(const f of fs.readdirSync(dir)){if(!f.endsWith('.js')||f==='clean-replication-mom6-revaccel.js')continue;const txt=fs.readFileSync(path.join(dir,f),'utf8');for(const m of txt.matchAll(/["']([0-9]{4})["']/g))set.add(m[1]);}
- return set;
+ const set=new Set(), seenFiles=new Set();
+ const commits=cp.execSync('git rev-list --all',{encoding:'utf8',maxBuffer:50*1024*1024}).trim().split(/\s+/).filter(Boolean);
+ for(const commit of commits){
+   let names='';
+   try{names=cp.execSync('git ls-tree -r --name-only '+commit+' stock-api/research',{encoding:'utf8',maxBuffer:20*1024*1024})}catch{continue}
+   for(const file of names.split(/\n/).filter(x=>x.endsWith('.js')&&!x.endsWith('clean-replication-mom6-revaccel.js'))){
+     const key=commit+':'+file;if(seenFiles.has(key))continue;seenFiles.add(key);
+     let txt='';try{txt=cp.execSync('git show '+commit+':'+file,{encoding:'utf8',maxBuffer:20*1024*1024})}catch{continue}
+     for(const m of txt.matchAll(/["']([0-9]{4})["']/g))set.add(m[1]);
+   }
+ }
+ return {set,commits:commits.length,files:seenFiles.size};
 }
 (async()=>{
- const excluded=priorCodes();
+ const hist=priorCodes(), excluded=hist.set;
+ console.log('HISTORY_AUDIT',JSON.stringify({commits:hist.commits,historicalResearchFiles:hist.files,excludedCount:excluded.size}));
  console.log('PROTOCOL',JSON.stringify({goal:'clean independent replication',rules:'prelocked MOM6 top20 then revenue-acceleration top33',outcome:'future84 >=20%',dates:'non-overlapping 84 trading days',exclusion:'every 4-digit stock code appearing in any earlier research JS',excludedCount:excluded.size,success:'delta>0, p<0.05, bootstrap lower CI>0'}));
  const raw=await info(),latest=new Map();for(const x of raw){if(!['twse','tpex'].includes(x.type)||!/^[0-9]{4}$/.test(x.stock_id)||excluded.has(x.stock_id)||x.industry_category==='ETF'||x.stock_name.includes('創'))continue;const o=latest.get(x.stock_id);if(!o||x.date>o.date)latest.set(x.stock_id,x)}
  const rr=rng(SEED),cand=[...latest.values()].sort(()=>rr()-.5).slice(0,700);
