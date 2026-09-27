@@ -1,0 +1,13 @@
+name: Audit prior code exclusion
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/audit-prior-code-exclusion.js','.github/workflows/audit-prior-code-exclusion.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/audit-prior-code-exclusion.js
