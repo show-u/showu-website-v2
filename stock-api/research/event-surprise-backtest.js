@@ -36,7 +36,7 @@ const pageCache=new Map(),detailCache=new Map();
 async function confList(code){
  if(pageCache.has(code))return pageCache.get(code);
  const r=await fetch('https://finmoconf.diveinvest.net/company/'+code,{headers:{'User-Agent':'Mozilla/5.0'}});if(!r.ok){pageCache.set(code,[]);return[]}
- const t=await r.text(),arr=[],re=new RegExp('href="(/presentation/[^"]+)"[\\\\s\\\\S]{0,5000}?https://mopsov\\\\.twse\\\\.com\\\\.tw/nas/STR/'+code+'(20\\\\d{6})M\\\\d{3}\\\\.pdf','g');let m;
+ const t=await r.text(),arr=[],re=new RegExp('href="(/presentation/[^"]+)"[\\\\s\\\\S]{0,30000}?https://mopsov\\\\.twse\\\\.com\\\\.tw/nas/STR/'+code+'(20\\\\d{6})M\\\\d{3}\\\\.pdf','g');let m;
  while((m=re.exec(t))){const d=m[2].slice(0,4)+'-'+m[2].slice(4,6)+'-'+m[2].slice(6,8);if(!arr.some(x=>x.path===m[1]))arr.push({path:m[1],date:d})}
  arr.sort((a,b)=>a.date.localeCompare(b.date));pageCache.set(code,arr);return arr;
 }
