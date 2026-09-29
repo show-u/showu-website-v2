@@ -1,0 +1,14 @@
+name: Locked Top10 Plan v1
+on:
+  push:
+    branches: [main]
+    paths: ['stock-api/research/locked-top10-plan-v1.js','.github/workflows/locked-top10-plan-v1.yml']
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: node stock-api/research/locked-top10-plan-v1.js
