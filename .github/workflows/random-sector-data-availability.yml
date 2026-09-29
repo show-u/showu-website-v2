@@ -1,0 +1,14 @@
+name: Random sector data availability
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/random-sector-data-availability.js','.github/workflows/random-sector-data-availability.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 30
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/random-sector-data-availability.js
