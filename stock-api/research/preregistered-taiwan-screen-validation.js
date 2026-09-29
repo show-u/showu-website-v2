@@ -13,7 +13,7 @@ function priorCodes(){
  try{files=cp.execSync("find stock-api/research -type f -name '*.js' ! -name 'preregistered-taiwan-screen-validation.js'",{encoding:'utf8'}).trim().split(/\n+/).filter(Boolean)}catch{}
  for(const f of files){
    const t=fs.readFileSync(f,'utf8');
-   for(const m of t.matchAll(/['"\[](\d{4})['"\]]/g)) out.add(m[1]);
+   for(const m of t.matchAll(/["'](\d{4})["']/g)) out.add(m[1]);
  }
  return out;
 }
