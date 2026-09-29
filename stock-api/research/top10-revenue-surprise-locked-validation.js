@@ -64,3 +64,5 @@ function boot(v,B=10000){let z=774411;const r=()=>{z=(1664525*z+1013904223)>>>0;
   byDate:val.map(x=>({date:x.date,gateN:x.gateN,gatePrecision:x.gatePrecision,raw:x.rules.rawMOM.precision,selected:x.rules[best].precision,codes:x.rules[best].codes}))
  }));
 })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+
+// rerun 2026-09-29
