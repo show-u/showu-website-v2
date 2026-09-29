@@ -66,3 +66,5 @@ function boot(v,B=10000){let z=118877;const r=()=>{z=(1664525*z+1013904223)>>>0;
    byDate:out
  }));
 })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+
+// rerun 2026-09-29
