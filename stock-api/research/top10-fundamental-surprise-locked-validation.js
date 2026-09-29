@@ -64,3 +64,5 @@ function boot(v,B=10000){let z=443322;const r=()=>{z=(1664525*z+1013904223)>>>0;
  const dRaw=val.map(x=>x.rules[best].precision-x.rules.raw.precision),dGate=val.map(x=>x.rules[best].precision-x.gatePrecision);
  console.log('RESULT',JSON.stringify({discovery:{periods:disc.length,means,selected:best},validation:{periods:val.length,precision:mean(val.map(x=>x.rules[best].precision)),rawMOM10Precision:mean(val.map(x=>x.rules.raw.precision)),gatePrecision:mean(val.map(x=>x.gatePrecision)),deltaVsRaw10:mean(dRaw),pVsRaw10:perm(dRaw),ciVsRaw10:boot(dRaw),deltaVsGate:mean(dGate),pVsGate:perm(dGate),ciVsGate:boot(dGate)},byDate:val.map(x=>({date:x.date,gateN:x.gateN,gatePrecision:x.gatePrecision,raw:x.rules.raw.precision,selected:x.rules[best].precision,codes:x.rules[best].codes}))}));
 })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+
+// rerun 2026-09-29
