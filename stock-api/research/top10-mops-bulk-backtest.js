@@ -77,7 +77,12 @@ function revSignal(arr,date){
 }
 function perm(v,B=20000){if(!v.length)return null;let z=19790421;const r=()=>{z=(1664525*z+1013904223)>>>0;return z/4294967296};const obs=mean(v);let e=0;for(let b=0;b<B;b++)if(mean(v.map(x=>r()<.5?x:-x))>=obs)e++;return(e+1)/(B+1)}
 function boot(v,B=10000){if(!v.length)return null;let z=4201979;const r=()=>{z=(1664525*z+1013904223)>>>0;return z/4294967296};const a=[];for(let b=0;b<B;b++){const t=[];for(let i=0;i<v.length;i++)t.push(v[Math.floor(r()*v.length)]);a.push(mean(t))}return[q(a,.025),q(a,.975)]}
-function summarize(arr,label){const v=arr.map(x=>x.delta),p=arr.map(x=>x.precision);return{label,nDates:arr.length,avgUniverse:mean(arr.map(x=>x.universeN)),precision:mean(p),deltaVsUniverse:mean(v),positive:v.filter(x=>x>0).length/(v.length||1),p:perm(v),ci:boot(v)}}
+function summarize(arr,label){
+  const v=arr.map(x=>x.delta), vm=arr.map(x=>x.deltaVsMOM20),p=arr.map(x=>x.precision);
+  return{label,nDates:arr.length,avgUniverse:mean(arr.map(x=>x.universeN)),precision:mean(p),
+    deltaVsUniverse:mean(v),positive:v.filter(x=>x>0).length/(v.length||1),p:perm(v),ci:boot(v),
+    deltaVsMOM20:mean(vm),pVsMOM20:perm(vm),ciVsMOM20:boot(vm)};
+}
 (async()=>{
  console.log('PROTOCOL',JSON.stringify({
   objective:'Can a transparent Taiwan-localized method select exactly 10 stocks with out-of-sample value?',
@@ -96,7 +101,7 @@ function summarize(arr,label){const v=arr.map(x=>x.delta),p=arr.map(x=>x.precisi
  const rev=await revenueBulk();
  console.log('REVENUE_LOCK',JSON.stringify({codes:rev.size,first:[...rev.entries()].slice(0,3).map(([c,a])=>({code:c,n:a.length,first:a[0],last:a.at(-1)}))}));
  const anchor=[...px].sort((a,b)=>b.p.length-a.p.length)[0],cal=anchor.p.map(x=>x.date),dates=[];for(let i=300;i<cal.length-H;i+=84){const d=cal[i];if(d>='2021-08-01'&&d<='2026-01-31')dates.push(d)}console.log('DATES',JSON.stringify(dates));
- const methods={MOM10:[],REV10:[],COMPOSITE10:[]},detail=[];
+ const methods={MOM20:[],MOM10:[],REV10:[],COMPOSITE10:[]},detail=[];
  for(const date of dates){
   const rows=[];
   for(const d of px){
@@ -110,8 +115,13 @@ function summarize(arr,label){const v=arr.map(x=>x.delta),p=arr.map(x=>x.precisi
   const mom10=[...rows].sort((a,b)=>b.mom6-a.mom6).slice(0,10),pool20=rows.filter(x=>x.momPct>=.8);
   const rp=pctRank(pool20,'revZ12'),mp=pctRank(pool20,'mom6');pool20.forEach((x,i)=>{x.rp=rp[i];x.mp=mp[i];x.comp=.5*x.rp+.5*x.mp});
   const rev10=[...pool20].sort((a,b)=>b.revZ12-a.revZ12).slice(0,10),comp10=[...pool20].sort((a,b)=>b.comp-a.comp).slice(0,10);
-  const groups={MOM10:mom10,REV10:rev10,COMPOSITE10:comp10},rec={date,n:rows.length,universePrec,groups:{}};
-  for(const [k,g] of Object.entries(groups)){const pr=mean(g.map(x=>x.ret>=.2?1:0)),delta=pr-universePrec;methods[k].push({date,universeN:rows.length,precision:pr,delta});rec.groups[k]={precision:pr,delta,codes:g.map(x=>x.code)}}
+  const groups={MOM20:pool20,MOM10:mom10,REV10:rev10,COMPOSITE10:comp10},rec={date,n:rows.length,universePrec,groups:{}};
+  const mom20Prec=mean(pool20.map(x=>x.ret>=.2?1:0));
+  for(const [k,g] of Object.entries(groups)){
+    const pr=mean(g.map(x=>x.ret>=.2?1:0)),delta=pr-universePrec,deltaVsMOM20=pr-mom20Prec;
+    methods[k].push({date,universeN:rows.length,precision:pr,delta,deltaVsMOM20});
+    rec.groups[k]={precision:pr,delta,deltaVsMOM20,codes:k==='MOM20'?[]:g.map(x=>x.code)};
+  }
   detail.push(rec);
  }
  const res={all:{},early:{},late:{},detail};
