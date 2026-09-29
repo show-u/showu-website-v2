@@ -1,0 +1,14 @@
+name: Top10 MOPS bulk backtest
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/top10-mops-bulk-backtest.js','.github/workflows/top10-mops-bulk-backtest.yml']
+jobs:
+ test:
+  runs-on: ubuntu-latest
+  timeout-minutes: 60
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/top10-mops-bulk-backtest.js
