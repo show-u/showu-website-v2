@@ -1,0 +1,15 @@
+name: All market data audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['stock-api/research/all-market-data-audit.js','.github/workflows/all-market-data-audit.yml']
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: node stock-api/research/all-market-data-audit.js
