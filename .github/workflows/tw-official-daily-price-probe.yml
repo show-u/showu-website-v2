@@ -1,0 +1,14 @@
+name: TW official daily price probe
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/tw-official-daily-price-probe.py','.github/workflows/tw-official-daily-price-probe.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-python@v5
+     with: {python-version: '3.12'}
+   - run: pip install requests
+   - run: python stock-api/research/tw-official-daily-price-probe.py
