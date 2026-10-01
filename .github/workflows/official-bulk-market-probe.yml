@@ -1,0 +1,13 @@
+name: Official bulk market probe
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/official-bulk-market-probe.js','.github/workflows/official-bulk-market-probe.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/official-bulk-market-probe.js
