@@ -15,7 +15,7 @@ for u in urls:
         found=[]
         for df in tabs:
             cols=[str(c) for c in df.columns]
-            sample=df.head(2).astype(str).to_dict("records")
+            sample=[[str(v) for v in row] for row in df.head(2).to_numpy().tolist()]
             if df.shape[1]>=8:
                 found.append({"shape":list(df.shape),"cols":cols[:12],"sample":sample[:1]})
         out["candidates"]=found[:3]
