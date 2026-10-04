@@ -1,0 +1,1 @@
+(async()=>{const u=new URL('https://api.finmindtrade.com/api/v4/data');u.searchParams.set('dataset','TaiwanStockInfo');const r=await fetch(u);const j=await r.json();console.log('RESULT',JSON.stringify((j.data||[]).filter(x=>x.stock_id==='2301').slice(-2)));})().catch(e=>{console.error(e);process.exit(1)});
