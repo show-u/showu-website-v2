@@ -1,0 +1,14 @@
+name: New methods comparison
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/new-methods-comparison.js','.github/workflows/new-methods-comparison.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  timeout-minutes: 60
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/new-methods-comparison.js
