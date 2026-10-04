@@ -14,16 +14,17 @@ function pct(vals){const s=vals.map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]),o=new A
 function dateAdd(d,n){return new Date(new Date(d+'T00:00:00Z').getTime()+n*86400000).toISOString().slice(0,10)}
 function perm(v,B=20000){let z=171717;const r=()=>{z=(1664525*z+1013904223)>>>0;return z/4294967296};const obs=mean(v);let e=0;for(let b=0;b<B;b++)if(mean(v.map(x=>r()<.5?x:-x))>=obs)e++;return(e+1)/(B+1)}
 function boot(v,B=10000){let z=272727;const r=()=>{z=(1664525*z+1013904223)>>>0;return z/4294967296};const a=[];for(let b=0;b<B;b++){const t=[];for(let i=0;i<v.length;i++)t.push(v[Math.floor(r()*v.length)]);a.push(mean(t))}return[q(a,.025),q(a,.975)]}
-function finFeat(rows,date){
- const cutoff=dateAdd(date,-70),a=rows.filter(x=>x.date<=cutoff),ds=[...new Set(a.map(x=>x.date))].sort();if(!ds.length)return{};
- const d=ds.at(-1),get=t=>{const z=a.find(x=>x.date===d&&x.type===t);return z?+z.value:null};
- const gp=get('GrossProfit'),ta=get('TotalAssets'),op=get('OperatingIncome'),rev=get('Revenue');
- return {gpTA:(Number.isFinite(gp)&&ta>0)?gp/ta:null,opMargin:(Number.isFinite(op)&&rev>0)?op/rev:null};
+function finFeat(fin,bal,date){
+ const cutoff=dateAdd(date,-70),fa=fin.filter(x=>x.date<=cutoff),ba=bal.filter(x=>x.date<=cutoff);
+ const ds=[...new Set(fa.map(x=>x.date).filter(d=>ba.some(y=>y.date===d)))].sort();if(!ds.length)return{};
+ const d=ds.at(-1),gf=t=>{const z=fa.find(x=>x.date===d&&x.type===t);return z?+z.value:null},gb=t=>{const z=ba.find(x=>x.date===d&&x.type===t);return z?+z.value:null};
+ const gp=gf('GrossProfit'),ta=gb('TotalAssets'),op=gf('OperatingIncome'),rev=gf('Revenue');
+ return {statementDate:d,totalAssets:ta,gpTA:(Number.isFinite(gp)&&ta>0)?gp/ta:null,opMargin:(Number.isFinite(op)&&rev>0)?op/rev:null};
 }
-function ocfFeat(rows,date,finRows){
+function ocfFeat(rows,date,bal,statementDate){
  const cutoff=dateAdd(date,-70),a=rows.filter(x=>x.date<=cutoff&&(x.type==='CashFlowsFromOperatingActivities'||x.type==='NetCashInflowFromOperatingActivities')&&Number.isFinite(+x.value)).sort((x,z)=>x.date.localeCompare(z.date));if(!a.length)return null;
- const ds=[...new Set(finRows.filter(x=>x.date<=cutoff).map(x=>x.date))].sort();if(!ds.length)return null;const d=ds.at(-1),taRow=finRows.find(x=>x.date===d&&x.type==='TotalAssets'),ta=taRow?+taRow.value:null;if(!(ta>0))return null;
- const latest=a.at(-1);return (+latest.value)/ta;
+ const ba=bal.filter(x=>x.date<=cutoff);const d=statementDate||[...new Set(ba.map(x=>x.date))].sort().at(-1);if(!d)return null;const taRow=ba.find(x=>x.date===d&&x.type==='TotalAssets'),ta=taRow?+taRow.value:null;if(!(ta>0))return null;
+ const latest=a.filter(x=>x.date<=d).at(-1)||a.at(-1);return (+latest.value)/ta;
 }
 function betaResidualScore(p,i,marketMap){
  const rs=[],ms=[];for(let j=i-125;j<=i-21;j++){if(j<=0)continue;const d=p[j].date,m=marketMap.get(d);if(!Number.isFinite(m))continue;const r=p[j].c/p[j-1].c-1;rs.push(r);ms.push(m)}
@@ -46,14 +47,14 @@ function betaResidualScore(p,i,marketMap){
  }));
  const raw=await info(),latest=new Map();for(const x of raw){if(!['twse','tpex'].includes(x.type)||!/^[0-9]{4}$/.test(x.stock_id)||x.industry_category==='ETF'||x.stock_name.includes('創'))continue;const o=latest.get(x.stock_id);if(!o||x.date>o.date)latest.set(x.stock_id,x)}
  const rr=rng(SEED),cand=[...latest.values()].sort(()=>rr()-.5).slice(0,520);
- const got=(await pool(cand,14,async s=>{const [p,fin,cash]=await Promise.all([yahoo(s.stock_id,s.type),fm('TaiwanStockFinancialStatements',s.stock_id),fm('TaiwanStockCashFlowsStatement',s.stock_id)]);if(p.length<900||fin.length<20)return null;return{s,p,map:new Map(p.map((x,i)=>[x.date,i])),fin,cash}})).filter(Boolean).slice(0,TARGET);
+ const got=(await pool(cand,14,async s=>{const [p,fin,cash,bal]=await Promise.all([yahoo(s.stock_id,s.type),fm('TaiwanStockFinancialStatements',s.stock_id),fm('TaiwanStockCashFlowsStatement',s.stock_id),fm('TaiwanStockBalanceSheet',s.stock_id)]);if(p.length<900||fin.length<20||bal.length<20)return null;return{s,p,map:new Map(p.map((x,i)=>[x.date,i])),fin,cash,bal}})).filter(Boolean).slice(0,TARGET);
  console.log('LOCK',JSON.stringify({n:got.length,codes:got.map(x=>x.s.stock_id)}));
  const cal=got[0].p.map(x=>x.date),dates=[];for(let i=300;i<cal.length-H;i+=84){const d=cal[i];if(d>='2021-08-01'&&d<='2026-01-31')dates.push(d)}console.log('DATES',JSON.stringify(dates));
  const names=['MOM6','RESMOM1F','GPTA','OCF_A','MOM6_LOWLIQ'],lift={},prec={},cnt={};for(const n of names){lift[n]=[];prec[n]=[];cnt[n]=[]}
  const rowsOut=[];
  for(const date of dates){
    const temp=[];
-   for(const d of got){const i=d.map.get(date);if(i==null||i<126||!d.p[i+H])continue;const mom6=d.p[i-21].c/d.p[i-126].c-1,ret=d.p[i+H].c/d.p[i].c-1,avgDollar=mean(d.p.slice(i-19,i+1).map(x=>x.v*x.c)),ff=finFeat(d.fin,date),ocf=ocfFeat(d.cash,date,d.fin);temp.push({d,i,code:d.s.stock_id,mom6,ret,avgDollar,...ff,ocfA:ocf})}
+   for(const d of got){const i=d.map.get(date);if(i==null||i<126||!d.p[i+H])continue;const mom6=d.p[i-21].c/d.p[i-126].c-1,ret=d.p[i+H].c/d.p[i].c-1,avgDollar=mean(d.p.slice(i-19,i+1).map(x=>x.v*x.c)),ff=finFeat(d.fin,d.bal,date),ocf=ocfFeat(d.cash,date,d.bal,ff.statementDate);temp.push({d,i,code:d.s.stock_id,mom6,ret,avgDollar,...ff,ocfA:ocf})}
    if(temp.length<100)continue;
    const allDateSet=new Set(temp.map(x=>x.d.p[x.i].date));
    const marketMap=new Map();
