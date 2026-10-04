@@ -27,7 +27,8 @@ async function pool(items,limit,fn){
   await Promise.all(Array.from({length:limit},w));return out;
 }
 (async()=>{
-  const info=await req('TaiwanStockInfo',null,'2026-09-24','2026-09-24');
+  const ui=new URL(API);ui.searchParams.set('dataset','TaiwanStockInfo');
+  const ir=await fetch(ui); const ij=await ir.json(); const info=ij.data||[];
   const latest=new Map();
   for(const x of info){
     if(!['twse','tpex'].includes(x.type)||!/^[0-9]{4}$/.test(x.stock_id)||x.industry_category==='ETF'||x.stock_name.includes('創')) continue;
@@ -60,7 +61,7 @@ async function pool(items,limit,fn){
   // Verify whether all-market direct query works without data_id.
   const direct={};
   for(const ds of datasets){
-    const rows=await req(ds,null,'2026-09-01','2026-09-24');
+    const rows=await req(ds,null,'2026-08-01','2026-09-24');
     direct[ds]={rows:rows.length,uniqueStocks:new Set(rows.map(x=>x.stock_id)).size};
   }
   console.log('DIRECT',JSON.stringify(direct));
