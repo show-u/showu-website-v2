@@ -1,0 +1,13 @@
+name: Financial types probe
+on:
+ push:
+  branches: [main]
+  paths: ['stock-api/research/financial-types-probe.js','.github/workflows/financial-types-probe.yml']
+jobs:
+ run:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '20'}
+   - run: node stock-api/research/financial-types-probe.js
